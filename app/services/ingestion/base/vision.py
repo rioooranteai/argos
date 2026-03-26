@@ -16,7 +16,7 @@ class BaseVisionProcessor(ABC):
         """
 
     @abstractmethod
-    async def describe(self, element: DocumentElement) -> str:
+    async def describe_image(self, element: DocumentElement) -> str:
         """
         Kirim gambar ke VLM dan kembalikan deskripsi teks.
         Deskripsi harus mencakup: angka, label, tren, dan konteks visual.
