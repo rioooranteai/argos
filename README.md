@@ -167,4 +167,3 @@ The following are limitations of the ArgosAI system that should be understood be
 ---
 
 *ArgosAI — Built with LangChain · FastAPI · ChromaDB · SQLite · OpenAI*
-```
