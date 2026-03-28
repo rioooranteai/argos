@@ -63,26 +63,12 @@ flowchart TD
 Create a `.env` file in the project root directory (same level as `docker-compose.yml`):
 
 ```env
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=""
 ```
 
 > ⚠️ Never commit the `.env` file to your repository. Make sure `.env` is included in `.gitignore`.
 
-### Step 2 — Ensure the database file exists
-
-If `argos.db` does not exist yet, create it first so the Docker volume can be mounted properly:
-
-```bash
-# Windows PowerShell
-New-Item -ItemType File argos.db
-
-# Mac / Linux
-touch argos.db
-```
-
-> 📌 The file `argos.db` on your host machine will be mounted as `competitor_data.db` inside the container.
-
-### Step 3 — Build and run the container
+### Step 2 — Build and run the container
 
 ```bash
 docker-compose up --build
