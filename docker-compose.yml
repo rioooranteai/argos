@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  argos-api:
+    build: .
+    container_name: argos_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env  
+    volumes:
+      - ./argos.db:/app/competitor_data.db
+      - ./chroma_data:/app/chroma_db
+    restart: unless-stopped

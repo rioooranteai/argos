@@ -4,7 +4,6 @@ import logging
 
 from langchain_openai import OpenAIEmbeddings
 
-from app.core.config import Config
 from app.services.shared.base.embedder import BaseEmbedder
 
 logger = logging.getLogger(__name__)
@@ -19,14 +18,18 @@ _DIMENSIONS: dict[str, int] = {
 class OpenAIEmbedder(BaseEmbedder):
     """
     Embedding provider menggunakan LangChain OpenAIEmbeddings.
-    Default model: text-embedding-3-small (cost-efficient).
+    Menerima parameter langsung dari Factory untuk memudahkan Dependency Injection.
     """
 
-    def __init__(self):
+    # KUNCI PERBAIKAN: Buka "pintu" agar class ini bisa menerima argumen dari Factory
+    def __init__(self, api_key: str, model: str, chunk_size: int = 1000):
+        self.model_name = model  # Simpan nama model untuk properti dimension nanti
+
+        # Teruskan argumen ke library bawaan LangChain
         self._embedder = OpenAIEmbeddings(
-            api_key=Config.OPENAI_API_KEY,
-            model=Config.OPENAI_EMBEDDING_MODEL,
-            chunk_size=Config.OPENAI_EMBEDDING_CHUNK_SIZE,
+            api_key=api_key,
+            model=model,
+            chunk_size=chunk_size,
         )
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -49,4 +52,5 @@ class OpenAIEmbedder(BaseEmbedder):
 
     @property
     def dimension(self) -> int:
-        return _DIMENSIONS.get(Config.OPENAI_EMBEDDING_MODEL, 1536)
+        # Gunakan self.model_name yang sudah disimpan saat init
+        return _DIMENSIONS.get(self.model_name, 1536)

@@ -1,23 +1,63 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
 
 class CompetitorFeature(BaseModel):
     """
-    Skema data untuk hasil ekstraksi Agent.
-    Deskripsi pada Field() ini SANGAT PENTING karena akan dibaca oleh LLM (PydanticAI)
-    sebagai instruksi cara mengekstrak datanya.
+    Representasi satu fitur kompetitor hasil ekstraksi agent.
+    Tipe data disesuaikan untuk penyimpanan SQL dan query filtering.
     """
+
     competitor_name: str = Field(
-        description="Nama perusahaan atau entitas kompetitor (contoh: Tencent Games, NetEase, dll)."
+        description="Exact name of the competitor game or publisher"
     )
+
     feature_name: str = Field(
-        description="Nama fitur produk, layanan, atau metrik spesifik yang sedang dibahas."
+        description="Name of the feature, KPI, or capability (max 60 chars)"
     )
-    price: Optional[str] = Field(
+
+    price: float | None = Field(
         default=None,
-        description="Harga atau nilai moneter dari fitur/layanan tersebut. Biarkan null jika tidak disebutkan dalam teks."
+        description=(
+            "Direct user-facing price in USD as plain float. "
+            "Example: 9.99, 29.0, 4.99. "
+            "Null if no user-facing price is mentioned. "
+            "Revenue figures and KPI metrics are NOT valid prices."
+        )
     )
-    pros_cons: Optional[str] = Field(
+
+    advantages: str | None = Field(
         default=None,
-        description="Kelebihan (pros) atau kekurangan (cons) dari fitur ini jika ada opini atau evaluasi di dalam teks."
+        description="Positive aspects, strengths, or growth metrics as text"
     )
+
+    disadvantages: str | None = Field(
+        default=None,
+        description="Negative aspects, weaknesses, or declining metrics as text"
+    )
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def parse_price(cls, v):
+        """
+        Guard layer: jika LLM mengirim price sebagai string
+        (misal "$9.99" atau "9.99"), bersihkan dan convert ke float.
+        Jika tidak bisa di-parse → return None daripada error.
+        """
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            # Hapus simbol currency dan whitespace
+            cleaned = v.strip().replace("$", "").replace(",", "").replace(" ", "")
+            try:
+                return float(cleaned)
+            except ValueError:
+                return None
+        return None
+
+    @field_validator("competitor_name", "feature_name", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
