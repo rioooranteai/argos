@@ -76,7 +76,7 @@ docker-compose up --build
 
 This command will build the image, install all dependencies, and start the FastAPI server on port 8000.
 
-### Step 4 — Access the application
+### Step 3 — Access the application
 
 Once the container is running, open your browser and go to:
 
