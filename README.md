@@ -117,158 +117,23 @@ The test was conducted by asking the same question **3 times consecutively** to 
 
 ### Table A — Indonesian Prompt (3 Attempts)
 
-*Prompt language: Bahasa Indonesia — "Coba cari tahu tentang Scopely, apa kelebihan atau kekurangan mereka?"*
+*Prompt: "Coba cari tahu tentang Scopely, apa kelebihan atau kekurangan mereka?"*
 
----
-
-#### Attempt #1
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;
-```
-
-**AI Answer:**
-
-**Scopely** terlihat punya beberapa **kelebihan** di data ini, tetapi **tidak ada kekurangan** yang ditampilkan.
-
-##### Kelebihan
-- **Data source attribution**: menjadi dasar data untuk metrik studi kasus **Star Trek™ Fleet Command**.
-- **Revenue Growth Leadership 2023**: **MONOPOLY GO!** menghasilkan **$1.2 billion** pada **2023** dan berada di puncak chart pertumbuhan revenue.
-
-##### Kekurangan
-- **Tidak terlihat** ada kekurangan yang tercantum di data saat ini.
-
-Kalau kamu mau, saya juga bisa bantu rangkum **Scopely** dalam versi yang lebih singkat atau fokus ke **performance** mereka saja.
-
----
-
-#### Attempt #2
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name
-```
-
-**AI Answer:**
-
-Scopely terlihat punya **kelebihan** yang cukup jelas di data ini, sementara **kekurangan**-nya tidak terlihat.
-
-##### Kelebihan
-- **MONOPOLY GO!** menghasilkan **$1.2 billion** pada **2023** dan **menduduki puncak chart pertumbuhan revenue**.
-- Scopely juga tercatat sebagai **sumber data** yang menjadi dasar metrik **Star Trek™ Fleet Command** case study.
-
-##### Kekurangan
-- **Tidak ada kekurangan yang tercantum** dalam data yang tersedia saat ini.
-
-Jadi, dari data ini Scopely terlihat kuat di sisi **pertumbuhan revenue** dan juga berperan sebagai **data source** untuk case study yang ditampilkan.
-
----
-
-#### Attempt #3
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name
-```
-
-**AI Answer:**
-
-**Scopely** terlihat punya beberapa **kelebihan** di data yang ada, sementara **kekurangan** tidak terlihat disebutkan.
-
-##### Kelebihan
-- **MONOPOLY GO!** menghasilkan **$1.2 billion** pada **2023** dan **memimpin growth chart pendapatan**.
-- Scopely juga menjadi **data source** untuk metrik studi kasus **Star Trek™ Fleet Command**.
-
-##### Kekurangan
-- **Tidak ada kekurangan yang terlihat** di data saat ini.
-
-Kalau kamu mau, saya juga bisa bantu rangkum **Scopely** dalam versi singkat, atau bandingkan dengan kompetitor lain jika ada datanya.
-
----
+| Attempt | Generated SQL | AI Answer (Summary) |
+|---|---|---|
+| #1 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Scopely unggul sebagai data source Star Trek™ Fleet Command dan MONOPOLY GO! raih $1.2B di 2023. Tidak ada kekurangan tercantum. |
+| #2 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | MONOPOLY GO! menduduki puncak growth chart revenue 2023 ($1.2B). Scopely juga menjadi basis data case study. Kekurangan: tidak terlihat. |
+| #3 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | Dua kelebihan utama: revenue leadership (MONOPOLY GO! $1.2B) dan data source attribution. Kekurangan tidak tercantum di data. |
 
 ### Table B — English Prompt (3 Attempts)
 
-*Prompt language: English — "Find out about Scopely, what are their strengths and weaknesses?"*
+*Prompt: "Find out about Scopely, what are their strengths and weaknesses?"*
 
----
-
-#### Attempt #1
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages
-FROM features
-WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%'
-ORDER BY competitor_name, feature_name;
-```
-
-**AI Answer:**
-
-**Scopely** shows two clear strengths in the current data, but no weaknesses are visible.
-
-##### Strengths
-
-- **Data source attribution**: Scopely provided the data basis for the **Star Trek™ Fleet Command** case study metrics.
-- **Revenue Growth Leadership 2023**: **MONOPOLY GO!** generated **$1.2 billion** in **2023** and topped the revenue growth chart.
-
-##### Weaknesses
-
-- No weaknesses are shown in the current data.
-
----
-
-#### Attempt #2
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages
-FROM features
-WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%'
-ORDER BY competitor_name, feature_name;
-```
-
-**AI Answer:**
-
-**Scopely** shows two clear strengths in the current data: it served as the **data source** for the **Star Trek™ Fleet Command** case study metrics, and **MONOPOLY GO!** generated **$1.2 billion** in **2023** and **topped the revenue growth chart**.
-
-##### Strengths
-
-- **Data source attribution**: Provided the data basis for the **Star Trek™ Fleet Command** case study metrics.
-- **Revenue Growth Leadership 2023**: **MONOPOLY GO!** generated **$1.2 billion** in **2023** and topped the revenue growth chart.
-
-##### Weaknesses
-
-- No weaknesses are visible in the current data.
-
----
-
-#### Attempt #3
-
-**Generated SQL:**
-```sql
-SELECT competitor_name, feature_name, advantages, disadvantages
-FROM features
-WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%'
-ORDER BY competitor_name, feature_name
-```
-
-**AI Answer:**
-
-**Scopely** shows two clear strengths in the current data, and **no weaknesses are visible**.
-
-##### Strengths
-
-- **Data source attribution**: Scopely provided the data basis for the **Star Trek™ Fleet Command** case study metrics.
-- **Revenue Growth Leadership 2023**: **MONOPOLY GO!** generated **$1.2 billion** in **2023** and topped the revenue growth chart.
-
-##### Weaknesses
-
-- **No disadvantages are shown** in the current data.
-
-If you want, I can also summarize this into a shorter competitor snapshot.
-
----
+| Attempt | Generated SQL | AI Answer (Summary) |
+|---|---|---|
+| #1 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Two strengths: data source for Star Trek™ case study + MONOPOLY GO! revenue $1.2B topped 2023 chart. No weaknesses visible. |
+| #2 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Scopely shows two clear strengths. MONOPOLY GO! generated $1.2B in 2023 and topped the revenue growth chart. No weaknesses shown. |
+| #3 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | Strengths: data source attribution + MONOPOLY GO! $1.2B revenue leadership 2023. Weaknesses: none visible in current data. |
 
 ### Reliability Test Conclusions
 
