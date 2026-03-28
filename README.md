@@ -80,6 +80,8 @@ New-Item -ItemType File argos.db
 touch argos.db
 ```
 
+> 📌 The file `argos.db` on your host machine will be mounted as `competitor_data.db` inside the container.
+
 ### Step 3 — Build and run the container
 
 ```bash
