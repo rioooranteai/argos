@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import uuid
+from pathlib import Path
 from typing import List
 
 from app.services.ingestion.factories.loader_factory import LoaderFactory
@@ -22,16 +24,19 @@ class IngestionService:
             vision_factory: VisionFactory,
             chunker: ContentAwareChunker,
     ):
-        # Menerima alat-alat kerjanya dari luar (Dependency Injection)
         self.loader_factory = loader_factory
         self.vision_factory = vision_factory
         self.chunker = chunker
 
-    async def process_document(self, file_path: str, competitor_name: str) -> List[Chunk]:
+    async def process_document(self, file_path: str) -> List[Chunk]:
         """
         Mengeksekusi siklus penuh (end-to-end) pembacaan satu dokumen.
         """
-        logger.info(f"Memulai proses Ingestion (Baca & Potong) untuk: {file_path}")
+        # --- PERUBAHAN: Membuat ID Unik untuk Dokumen ---
+        doc_filename = Path(file_path).name
+        document_id = f"doc_{uuid.uuid4().hex[:8]}"
+
+        logger.info(f"Memulai proses Ingestion untuk: {doc_filename} | Doc ID: {document_id}")
 
         # 1. LOADER: Baca file dan jadikan DocumentElement mentah
         loader = self.loader_factory.get_loader(file_path)
@@ -46,21 +51,19 @@ class IngestionService:
         vision_tasks = []
 
         for el in elements:
-            # Jika elemen ini adalah gambar dan disupport oleh Vision Processor
             if vision_processor.supports(el):
                 task = self._process_single_image(vision_processor, el)
                 vision_tasks.append(task)
 
-        # Eksekusi semua proses baca gambar secara bersamaan (Paralel) agar cepat!
         if vision_tasks:
-            logger.info(f"Memproses {len(vision_tasks)} gambar/grafik ke Vision API...")
+            logger.info(f"Menemukan {len(vision_tasks)} gambar. Mengirim ke Vision API secara paralel...")
             await asyncio.gather(*vision_tasks)
 
-        # 3. CHUNKER: Potong-potong elemen menjadi Chunk dan suntikkan metadata Bab
-        chunks = self.chunker.chunk(
+        # 3. CHUNKER: Konversi menjadi Chunk
+        # --- PERUBAHAN: Kirimkan document_id ke Chunker ---
+        chunks = self.chunker.process_elements(
             elements=elements,
-            source_doc=file_path,
-            competitor_name=competitor_name
+            document_id=document_id
         )
 
         logger.info(f"Proses Ingestion selesai. Menghasilkan {len(chunks)} chunks.")
@@ -69,15 +72,9 @@ class IngestionService:
     async def _process_single_image(self, processor, element: DocumentElement):
         """Fungsi pembantu internal untuk memanggil Vision API."""
         try:
-            # Panggil AI untuk mendeskripsikan gambar
             deskripsi = await processor.describe_image(element)
-
-            # Timpa teks elemen yang kosong dengan hasil deskripsi AI
             element.content = f"[DESKRIPSI VISUAL GRAFIK/GAMBAR]: {deskripsi}"
-
-            # Hapus byte gambar dari memory agar RAM tidak jebol
             element.image_bytes = None
-
         except Exception as e:
             logger.error(f"Gagal memproses gambar di halaman {element.page_number}: {str(e)}")
             element.content = "[GAMBAR GAGAL DIPROSES OLEH AI]"

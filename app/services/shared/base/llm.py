@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Type, Any
 
 from pydantic import BaseModel
 
@@ -28,4 +28,12 @@ class BaseLLM(ABC):
         """
         Return instance LLM yang output-nya dipaksa sesuai Pydantic schema.
         Digunakan oleh extraction agent untuk output terstruktur.
+        """
+        
+    @abstractmethod
+    def get_client(self) -> Any:
+        """
+        Mengembalikan native client (contoh: objek ChatOpenAI murni).
+        Sangat krusial agar fitur LCEL Langchain (prompt | llm | parser) 
+        di dalam service tetap berfungsi tanpa harus mengimpor Langchain di service.
         """

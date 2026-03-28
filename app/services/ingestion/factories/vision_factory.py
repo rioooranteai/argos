@@ -1,6 +1,5 @@
 import logging
-
-from app.core.config import Config
+from pathlib import Path
 from app.services.ingestion.base.vision import BaseVisionProcessor
 from app.services.ingestion.providers.vision.openai_vision import OpenAIVisionProcessor
 
@@ -9,25 +8,32 @@ logger = logging.getLogger(__name__)
 
 class VisionFactory:
     """
-    Factory pattern untuk menyajikan model Vision (VLM)
-    berdasarkan konfigurasi environment (.env).
+    Factory pattern untuk memilih dan merakit Vision Processor.
+    Bertugas memuat konfigurasi berat (seperti file prompt) di awal.
     """
 
-    @staticmethod
-    def get_processor() -> BaseVisionProcessor:
-        """
-        Mengembalikan instance VisionProcessor sesuai Config.LLM_PROVIDER.
-        """
-        provider = Config.LLM_PROVIDER.lower()
-        logger.info(f"Inisialisasi Vision Processor menggunakan provider: {provider}")
+    def __init__(self):
+        prompt_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "prompts" / "vision_description.md"
 
-        if provider == "openai":
-            return OpenAIVisionProcessor()
-        # elif provider == "anthropic":
-        #     return AnthropicVisionProcessor()
-        else:
-            logger.warning(
-                f"Provider '{provider}' tidak didukung untuk Vision. "
-                "Jatuh kembali (fallback) ke OpenAI."
+        self._vision_prompt = self._load_prompt(prompt_path)
+
+    def _load_prompt(self, path: Path) -> str:
+        """Membaca isi file markdown dengan aman."""
+        try:
+            logger.info(f"Memuat Vision Prompt dari: {path.name}")
+            return path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.error(f"Vision prompt file tidak ditemukan di: {path}")
+            # Memberikan fallback aman jika file tidak sengaja terhapus
+            return (
+                "Kamu adalah ahli analis data. "
+                "Tolong deskripsikan grafik atau gambar ini secara detail."
             )
-            return OpenAIVisionProcessor()
+
+    def get_processor(self) -> BaseVisionProcessor:
+        """
+        Merakit dan mengembalikan instance OpenAIVisionProcessor
+        dengan menyuntikkan prompt yang sudah diload.
+        """
+        logger.info("Merakit OpenAIVisionProcessor...")
+        return OpenAIVisionProcessor(prompt_template=self._vision_prompt)

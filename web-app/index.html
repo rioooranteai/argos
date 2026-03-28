@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Argos - Competitive Intelligence</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    <!-- Mobile overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="app-wrapper">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-container">
+                    <div class="brand-dot"></div>
+                    <span class="brand-text">Argos</span>
+                </div>
+                <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+            </div>
+
+            <nav class="menu">
+                <div class="menu-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Asisten
+                </div>
+            </nav>
+
+            <div class="upload-section">
+                <p class="upload-title">Data</p>
+                <div class="upload-card">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d13732" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <p>Unggah PDF / MD</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.md">
+                    <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Pilih File</button>
+                    <div id="file-list" class="file-list-text"></div>
+                    <button class="btn btn-primary" id="uploadBtn" style="display:none;">
+                        Ekstrak ke DB
+                    </button>
+                    <div id="upload-status"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat -->
+        <main class="chat-main">
+            <div class="chat-header">
+                <div class="header-left">
+                    <button class="btn-menu-toggle" onclick="toggleSidebar()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
+                    <span class="header-title">Chat Interaktif</span>
+                </div>
+                <div class="header-status">
+                    <span class="status-dot"></span> Database Siap
+                </div>
+            </div>
+
+            <div class="chat-box" id="chatBox">
+                <div class="message-wrapper bot-wrapper">
+                    <div class="message bot">
+                        Halo! Saya Argos. Silakan unggah dokumen pdf di menu sebelah kiri, lalu tanyakan apa saja seputar harga, fitur, atau metrik mereka.
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading-container" id="chatLoading">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <input
+                        type="text"
+                        id="chatInput"
+                        placeholder="Ketik pertanyaan Anda di sini..."
+                    >
+                    <button class="btn-send" id="sendBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script src="/js/main.js"></script>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
