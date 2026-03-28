@@ -142,6 +142,8 @@ The test was conducted by asking the same question **3 times consecutively** to 
 - **Consistent content:** Key facts (MONOPOLY GO! $1.2B, Star Trek™ data source attribution) appeared in every answer.
 - **Natural variation:** Sentence structure varied slightly between attempts, demonstrating generative responses rather than static templates.
 
+---
+
 ## 5. Limitations
 
 The following are limitations of the ArgosAI system that should be understood before using it in a production context.
@@ -150,19 +152,37 @@ The following are limitations of the ArgosAI system that should be understood be
 
 - Answer quality is entirely dependent on the quality of the uploaded documents. Ambiguous, incomplete, or unstructured data will result in less accurate extractions.
 - The system only supports **PDF** and **Markdown** formats. Other formats such as DOCX, XLSX, or standalone images are not yet supported.
-- Data is limited to a maximum of **100 rows per query** (`MAX_RAW_ROWS=100`) to prevent context overflow to the LLM.
-
 ### AI & Accuracy
 
 - The LLM may generate suboptimal SQL queries for very complex or ambiguous questions, although the security system blocks destructive queries.
 - **ArgosAI currently does not use conversation memory.** Every chat message is processed independently — there is no context carried over from previous messages. Each question is treated as a completely new and isolated interaction.
-- Answers are bounded by data in SQLite. The LLM will not inject knowledge from outside the database, by design.
 
 ### Infrastructure
 
 - **No user authentication.** The system currently has no login or access management mechanism, so public deployment is not recommended without an additional security layer.
 - **SQLite is not suitable for high-concurrency writes.** For large-scale multi-user usage, migrating to PostgreSQL is strongly advised.
 - **OpenAI API costs are per-request.** Each question triggers two API calls (NL→SQL and SQL→Answer), so operational costs should be monitored for intensive usage.
+
+---
+
+## 6. Screenshots
+
+<div align="center">
+
+  <img src="images/Img-1.png" width="700" alt="ArgosAI - Chat Interface with AI Response" />
+  <p><i>Chat interface showing a natural language query and structured AI response about competitor data</i></p>
+
+  <br/>
+
+  <img src="images/Img-2.png" width="700" alt="ArgosAI - Document Upload and Processing" />
+  <p><i>Document upload panel with AI extraction processing in progress</i></p>
+
+  <br/>
+
+  <img src="images/Img-3.png" width="700" alt="ArgosAI - Empty State Ready for Upload" />
+  <p><i>Initial state — ready to receive competitor documents via the upload panel</i></p>
+
+</div>
 
 ---
 
