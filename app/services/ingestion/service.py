@@ -11,7 +11,6 @@ from app.services.ingestion.models import Chunk, DocumentElement
 
 logger = logging.getLogger(__name__)
 
-
 class IngestionService:
     """
     Service khusus untuk menangani proses ekstraksi dokumen mentah (PDF/MD)
@@ -32,21 +31,15 @@ class IngestionService:
         """
         Mengeksekusi siklus penuh (end-to-end) pembacaan satu dokumen.
         """
-        # --- PERUBAHAN: Membuat ID Unik untuk Dokumen ---
         doc_filename = Path(file_path).name
         document_id = f"doc_{uuid.uuid4().hex[:8]}"
 
-        logger.info(f"Memulai proses Ingestion untuk: {doc_filename} | Doc ID: {document_id}")
-
-        # 1. LOADER: Baca file dan jadikan DocumentElement mentah
         loader = self.loader_factory.get_loader(file_path)
         elements = loader.load(file_path)
 
         if not elements:
-            logger.warning(f"Tidak ada elemen yang bisa diekstrak dari {file_path}")
             return []
 
-        # 2. VISION: Cari gambar/grafik dan deskripsikan menggunakan AI
         vision_processor = self.vision_factory.get_processor()
         vision_tasks = []
 
@@ -56,17 +49,13 @@ class IngestionService:
                 vision_tasks.append(task)
 
         if vision_tasks:
-            logger.info(f"Menemukan {len(vision_tasks)} gambar. Mengirim ke Vision API secara paralel...")
             await asyncio.gather(*vision_tasks)
 
-        # 3. CHUNKER: Konversi menjadi Chunk
-        # --- PERUBAHAN: Kirimkan document_id ke Chunker ---
         chunks = self.chunker.process_elements(
             elements=elements,
             document_id=document_id
         )
 
-        logger.info(f"Proses Ingestion selesai. Menghasilkan {len(chunks)} chunks.")
         return chunks
 
     async def _process_single_image(self, processor, element: DocumentElement):
@@ -76,6 +65,5 @@ class IngestionService:
             element.content = f"[DESKRIPSI VISUAL GRAFIK/GAMBAR]: {deskripsi}"
             element.image_bytes = None
         except Exception as e:
-            logger.error(f"Gagal memproses gambar di halaman {element.page_number}: {str(e)}")
             element.content = "[GAMBAR GAGAL DIPROSES OLEH AI]"
             element.image_bytes = None

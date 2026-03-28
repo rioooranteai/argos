@@ -46,7 +46,6 @@ async def upload_documents(
         return result
 
     except Exception as e:
-        logger.error(f"Engine gagal memproses dokumen: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan saat pemrosesan AI: {str(e)}")
 
     finally:

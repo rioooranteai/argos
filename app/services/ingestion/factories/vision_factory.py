@@ -5,7 +5,6 @@ from app.services.ingestion.providers.vision.openai_vision import OpenAIVisionPr
 
 logger = logging.getLogger(__name__)
 
-
 class VisionFactory:
     """
     Factory pattern untuk memilih dan merakit Vision Processor.
@@ -20,11 +19,8 @@ class VisionFactory:
     def _load_prompt(self, path: Path) -> str:
         """Membaca isi file markdown dengan aman."""
         try:
-            logger.info(f"Memuat Vision Prompt dari: {path.name}")
             return path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            logger.error(f"Vision prompt file tidak ditemukan di: {path}")
-            # Memberikan fallback aman jika file tidak sengaja terhapus
             return (
                 "Kamu adalah ahli analis data. "
                 "Tolong deskripsikan grafik atau gambar ini secara detail."
@@ -35,5 +31,4 @@ class VisionFactory:
         Merakit dan mengembalikan instance OpenAIVisionProcessor
         dengan menyuntikkan prompt yang sudah diload.
         """
-        logger.info("Merakit OpenAIVisionProcessor...")
         return OpenAIVisionProcessor(prompt_template=self._vision_prompt)

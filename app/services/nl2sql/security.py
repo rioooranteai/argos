@@ -3,7 +3,6 @@ import sqlparse
 from sqlparse.sql import Statement
 from sqlparse.tokens import Keyword, DDL
 
-# Lapisan 1: Blokir prompt injection dari bahasa natural
 FORBIDDEN_NL_PATTERNS = [
     r"\b(hapus|drop|delete|truncate|format)\b",
     r"\b(ignore|abaikan).*(instruksi|perintah|system)\b",
@@ -18,8 +17,6 @@ def sanitize_nl_input(user_input: str) -> str:
             raise ValueError("Input ditolak: Terdeteksi pola bahasa yang mencurigakan atau tidak diizinkan.")
     return user_input.strip()
 
-
-# Lapisan 2: Validasi Output SQL dari LLM
 ALLOWED_STATEMENT_TYPES = {"SELECT"}
 FORBIDDEN_KEYWORDS = {"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "EXEC", "EXECUTE", "REPLACE"}
 

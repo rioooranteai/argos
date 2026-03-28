@@ -28,7 +28,6 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
                 max_retries=2,
             )
         except Exception as e:
-            logger.error(f"Gagal inisialisasi OpenAI Vision: {str(e)}")
             raise
 
     def supports(self, element: DocumentElement) -> bool:
@@ -70,17 +69,12 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
                 ]
             )
 
-            logger.info(
-                f"Sending image (page {element.page_number}) "
-                f"to Vision API (model={Config.OPENAI_VLM_MODEL})..."
-            )
 
             response = await self.vision_model.ainvoke([message])
 
             return response.content.strip()
 
         except Exception as e:
-            logger.error(f"Error Vision API di halaman {element.page_number}: {str(e)}")
             raise VisionProcessingError(
                 page_number=element.page_number,
                 reason=str(e)

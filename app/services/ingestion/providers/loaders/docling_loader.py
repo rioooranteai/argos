@@ -1,6 +1,5 @@
 import io
 import logging
-from typing import Any
 
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
@@ -14,7 +13,6 @@ from app.services.ingestion.exceptions import DocumentLoadError
 
 logger = logging.getLogger(__name__)
 
-
 class DoclingLoader(BaseDocumentLoader):
     """
     Loader PDF Ultimate dengan akselerasi GPU, HybridChunker, dan Image Extraction.
@@ -26,7 +24,6 @@ class DoclingLoader(BaseDocumentLoader):
             device=AcceleratorDevice.AUTO,
         )
 
-        # KUNCI UTAMA 1: do_ocr=False untuk menyelamatkan RAM laptop
         pipeline_options = PdfPipelineOptions(
             do_ocr=False,
             accelerator_options=accel_options,
@@ -41,7 +38,6 @@ class DoclingLoader(BaseDocumentLoader):
             }
         )
 
-        # KUNCI UTAMA 2: Max tokens diturunkan menjadi 400 untuk memberikan ruang bagi metadata/heading
         self.chunker = HybridChunker(max_tokens=400, merge_peers=True)
 
     def supports(self, file_path: str) -> bool:
@@ -51,12 +47,9 @@ class DoclingLoader(BaseDocumentLoader):
         elements: list[DocumentElement] = []
 
         try:
-            logger.info(f"Memulai Docling parsing (OCR OFF) untuk: {file_path}")
-
             result = self.converter.convert(file_path)
             doc = result.document
 
-            # --- A. PROSES TEKS DAN TABEL ---
             docling_chunks = list(self.chunker.chunk(dl_doc=doc))
 
             for c in docling_chunks:
@@ -69,7 +62,6 @@ class DoclingLoader(BaseDocumentLoader):
 
                 is_table = any(item.label == "table" for item in c.meta.doc_items)
 
-                # NOISE FILTER: Buang teks sampah/label grafik pendek
                 if not is_table and len(enriched_text.split("] ")[-1].strip()) < 15:
                     continue
 
@@ -85,9 +77,7 @@ class DoclingLoader(BaseDocumentLoader):
                     )
                 )
 
-            # --- B. PROSES GAMBAR (Mengambil Byte Gambar untuk Vision API) ---
             if hasattr(doc, 'pictures'):
-                # KUNCI UTAMA 3: Gunakan enumerate untuk membuat teks/ID gambar menjadi unik
                 for idx, pic in enumerate(doc.pictures):
                     page_num = pic.prov[0].page_no if pic.prov else 0
                     image_bytes = None
@@ -102,7 +92,6 @@ class DoclingLoader(BaseDocumentLoader):
                             elements.append(
                                 DocumentElement(
                                     element_type=ElementType.FIGURE,
-                                    # String unik agar tidak memicu DuplicateIDError di ChromaDB
                                     content=f"[GAMBAR/GRAFIK {idx + 1}] Menunggu diproses oleh Vision API...",
                                     page_number=page_num,
                                     section_heading="",
@@ -113,7 +102,6 @@ class DoclingLoader(BaseDocumentLoader):
                     except Exception as img_err:
                         logger.warning(f"Gagal mengekstrak gambar di halaman {page_num}: {img_err}")
 
-            logger.info(f"Berhasil mengekstrak {len(elements)} elemen (GPU + Filtered) dari {file_path}")
             return elements
 
         except Exception as e:

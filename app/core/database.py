@@ -1,9 +1,6 @@
 import sqlite3
-import logging
 from pathlib import Path
 from contextlib import contextmanager
-
-logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "competitor_data.db"
 
@@ -51,8 +48,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_document_id
             ON features (document_id)
         """)
-
-    logger.info(f"Database SQLite siap di: {DB_PATH.name}")
 
 
 def insert_feature(feature_dict: dict, document_id: str):
