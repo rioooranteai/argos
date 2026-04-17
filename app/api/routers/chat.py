@@ -1,10 +1,10 @@
 import logging
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.dependencies import get_nl2sql_service
+from app.core.dependencies import get_nl2sql_service
 from app.services.nl2sql.service import NL2SQLService
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/chat", tags=['Chat & NL2SQL'])
 logger = logging.getLogger(__name__)
 
 class ChatRequest(BaseModel):

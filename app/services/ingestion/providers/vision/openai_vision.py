@@ -3,7 +3,7 @@ import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
-from app.core.config import Config
+from app.core.config import config
 from app.services.ingestion.base.vision import BaseVisionProcessor
 from app.services.ingestion.models import DocumentElement, ElementType
 from app.services.ingestion.exceptions import VisionProcessingError
@@ -20,8 +20,8 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
         self.prompt_template = prompt_template
         try:
             self.vision_model = ChatOpenAI(
-                model=Config.OPENAI_VLM_MODEL,
-                api_key=Config.OPENAI_API_KEY,
+                model=config.OPENAI_VLM_MODEL,
+                api_key=config.OPENAI_API_KEY,
                 temperature=0.0,
                 max_tokens=1500,
                 timeout=45,

@@ -2,119 +2,230 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Argos - Competitive Intelligence</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Argos — Competitive Intelligence</title>
+    <link href="/css/style.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- Mobile overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <div class="app-wrapper">
+<div class="app-wrapper">
 
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="brand-container">
-                    <div class="brand-dot"></div>
-                    <span class="brand-text">Argos</span>
-                </div>
-                <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-            </div>
+    <aside class="sidebar" id="sidebar">
 
-            <nav class="menu">
-                <div class="menu-item active">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <div class="sidebar-header">
+            <div class="brand-container">
+                <div class="brand-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                     </svg>
-                    Asisten
                 </div>
-            </nav>
+                <span class="brand-text">Argos</span>
+            </div>
+            <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Tutup menu">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>
+        </div>
 
-            <div class="upload-section">
-                <p class="upload-title">Data</p>
-                <div class="upload-card">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d13732" stroke-width="2">
+        <nav class="menu">
+            <div class="menu-section-label">Menu</div>
+            <div class="menu-item active">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                AI Chat Helper
+            </div>
+            <div class="menu-item">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Dokumen
+            </div>
+            <div class="menu-item">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Analitik
+            </div>
+            <div class="menu-item">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                </svg>
+                Pengaturan
+            </div>
+        </nav>
+
+        <div class="upload-section">
+            <p class="upload-title">Dokumen</p>
+            <div class="upload-card">
+                <div class="upload-icon-wrap">
+                    <svg fill="none" height="22" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="22">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
+                        <line x1="12" x2="12" y1="3" y2="15"/>
                     </svg>
-                    <p>Unggah PDF / MD</p>
-                    <input type="file" id="fileInput" multiple accept=".pdf,.md">
-                    <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Pilih File</button>
-                    <div id="file-list" class="file-list-text"></div>
-                    <button class="btn btn-primary" id="uploadBtn" style="display:none;">
-                        Ekstrak ke DB
-                    </button>
-                    <div id="upload-status"></div>
                 </div>
-            </div>
-        </aside>
+                <p class="upload-desc">Unggah PDF atau Markdown</p>
 
-        <!-- Main Chat -->
-        <main class="chat-main">
-            <div class="chat-header">
-                <div class="header-left">
-                    <button class="btn-menu-toggle" onclick="toggleSidebar()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="3" y1="12" x2="21" y2="12"/>
-                            <line x1="3" y1="18" x2="21" y2="18"/>
-                        </svg>
-                    </button>
-                    <span class="header-title">Chat Interaktif</span>
-                </div>
-                <div class="header-status">
-                    <span class="status-dot"></span> Database Siap
-                </div>
-            </div>
+                <input accept=".pdf,.md" id="fileInput" multiple type="file">
 
-            <div class="chat-box" id="chatBox">
-                <div class="message-wrapper bot-wrapper">
+                <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
+                    Pilih File
+                </button>
+
+                <div class="file-list-text" id="file-list"></div>
+
+                <button class="btn btn-primary" id="uploadBtn" style="display:none;">
+                    Ekstrak ke DB
+                </button>
+
+                <div id="upload-status"></div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn-logout">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" x2="9" y1="12" y2="12"/>
+                </svg>
+                Log out
+            </button>
+        </div>
+
+    </aside>
+
+    <main class="chat-main">
+
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-left">
+                <button class="btn-menu-toggle" onclick="toggleSidebar()" title="Buka menu">
+                    <svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18">
+                        <line x1="3" x2="21" y1="6" y2="6"/>
+                        <line x1="3" x2="21" y1="12" y2="12"/>
+                        <line x1="3" x2="21" y1="18" y2="18"/>
+                    </svg>
+                </button>
+                <span class="header-title">AI Chat Helper</span>
+            </div>
+            <div class="header-actions">
+                <div class="header-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" placeholder="Search" class="header-search-input">
+                </div>
+                <button class="header-icon-btn" title="Notifikasi">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </button>
+                <button class="header-icon-btn" title="Bagikan">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat messages -->
+        <div class="chat-box" id="chatBox">
+
+            <!-- Welcome message -->
+            <div class="message-wrapper bot-wrapper">
+                <div class="msg-avatar bot-avatar">Ar</div>
+                <div class="bubble-group">
                     <div class="message bot">
-                        Halo! Saya Argos. Silakan unggah dokumen pdf di menu sebelah kiri, lalu tanyakan apa saja seputar harga, fitur, atau metrik mereka.
+                        Halo! Saya <strong>Argos</strong>. Unggah dokumen PDF di menu kiri, lalu tanyakan apa saja
+                        seputar harga, fitur, atau metrik kompetitor.
+                    </div>
+                    <div class="bubble-actions">
+                        <button class="btn-action-icon btn-tts" id="welcomeTtsBtn" title="Dengarkan">
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div class="loading-container" id="chatLoading">
-                <div class="typing-indicator">
-                    <span></span><span></span><span></span>
-                </div>
-            </div>
+        </div>
 
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <input
-                        type="text"
+        <!-- Typing indicator -->
+        <div class="loading-container" id="chatLoading">
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <button class="btn-icon btn-attach" title="Lampirkan file">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                </button>
+                <input
+                        autocomplete="off"
                         id="chatInput"
-                        placeholder="Ketik pertanyaan Anda di sini..."
-                    >
-                    <button class="btn-send" id="sendBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                    </button>
-                </div>
+                        placeholder="Start typing..."
+                        type="text"
+                >
+                <button class="btn-icon btn-mic" id="micBtn" title="Rekam suara">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" x2="12" y1="19" y2="23"/>
+                        <line x1="8" x2="16" y1="23" y2="23"/>
+                    </svg>
+                </button>
+                <button class="btn-icon btn-send" id="sendBtn" title="Kirim">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <line x1="22" x2="11" y1="2" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
             </div>
-        </main>
+            <p class="input-disclaimer">Argos dapat membuat kesalahan. Periksa informasi penting.</p>
+        </div>
 
-    </div>
+    </main>
 
-    <script src="/js/main.js"></script>
+    <aside class="history-panel">
+        <div class="history-header">
+            <span class="history-title">History</span>
+            <span class="history-count" id="historyCount">0/50</span>
+        </div>
+        <div class="history-list" id="historyList">
+            <!-- populated by JS -->
+        </div>
+        <div class="history-footer">
+            <button class="btn-clear-history" id="clearHistoryBtn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+                Clear history
+            </button>
+        </div>
+    </aside>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-        }
-    </script>
+</div>
+
+<script src="/js/main.js"></script>
 </body>
 </html>

@@ -26,13 +26,13 @@ def init_db():
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS features (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                document_id     TEXT    NOT NULL,
-                competitor_name TEXT    NOT NULL,
-                feature_name    TEXT    NOT NULL,
-                price           REAL,               -- float atau NULL, untuk SQL filter (WHERE price < 50)
-                advantages      TEXT,               -- pros dalam bentuk teks, nullable
-                disadvantages   TEXT                -- cons dalam bentuk teks, nullable
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_id TEXT NOT NULL,
+                competitor_name TEXT NOT NULL,
+                feature_name TEXT NOT NULL,
+                price REAL,          
+                advantages TEXT,             
+                disadvantages TEXT              
             )
         """)
 

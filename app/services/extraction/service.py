@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from pydantic_ai import Agent
 
-from app.core.config import Config
+from app.core.config import config
 from app.services.extraction.models import CompetitorFeature
 from app.core.database import insert_feature
 from app.services.chroma_service import ChromaService
@@ -27,7 +27,7 @@ def _load_prompt(path: Path) -> str:
 _SYSTEM_PROMPT = _load_prompt(_PROMPT_PATH)
 
 extraction_agent = Agent(
-    model=f"openai:{Config.OPENAI_LLM_MODEL}", 
+    model=f"openai:{config.OPENAI_LLM_MODEL}",
     output_type=list[CompetitorFeature],
     system_prompt=_SYSTEM_PROMPT,
 )

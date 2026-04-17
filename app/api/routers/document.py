@@ -4,11 +4,11 @@ import logging
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, File, UploadFile, Form, Depends, HTTPException
-from app.api.dependencies import get_document_engine
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
+from app.core.dependencies import get_document_engine
 from app.engines.document_engine import DocumentProcessingEngine
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/document", tags=['Document Processing'])
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path("temp_uploads")
