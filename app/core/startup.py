@@ -1,26 +1,37 @@
-# app/core/startup.py
+import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
+from app.core.config import config
 from app.core.database import init_db
 from app.engines.document_engine import DocumentProcessingEngine
-from app.services.chroma_service import ChromaService
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import ContentAwareChunker
 from app.services.ingestion.factories.loader_factory import LoaderFactory
 from app.services.ingestion.factories.vision_factory import VisionFactory
 from app.services.ingestion.service import IngestionService
 from app.services.nl2sql.service import NL2SQLService
-from app.services.voice.service import VoiceService
 from app.services.shared.factories.embedder_factory import get_embedder
 from app.services.shared.factories.llm_factory import get_llm
-import logging
+from app.services.vector_store.service import VectorStoreService
+from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     init_db()
+
+    embedder = get_embedder()
+
+    app.state.vector_store_svc = VectorStoreService(
+        embedder=embedder,
+        provider="chroma",
+        collection_name="competitor_knowledge",
+    )
 
     app.state.document_engine = DocumentProcessingEngine(
         ingestion_svc=IngestionService(
@@ -28,8 +39,11 @@ async def lifespan(app: FastAPI):
             vision_factory=VisionFactory(),
             chunker=ContentAwareChunker(),
         ),
-        chroma_svc=ChromaService(embedder=get_embedder()),
-        extraction_svc=ExtractionService(),
+        vector_store_svc=app.state.vector_store_svc,
+        extraction_svc=ExtractionService(
+            provider="pydantic_ai",
+            model=config.OPENAI_EXTRACTION_MODEL,
+        ),
     )
 
     app.state.nl2sql_service = NL2SQLService(

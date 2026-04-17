@@ -1,19 +1,13 @@
 from pydantic import BaseModel, Field, field_validator
 
-class CompetitorFeature(BaseModel):
-    """
-    Representasi satu fitur kompetitor hasil ekstraksi agent.
-    Tipe data disesuaikan untuk penyimpanan SQL dan query filtering.
-    """
 
+class CompetitorFeature(BaseModel):
     competitor_name: str = Field(
         description="Exact name of the competitor game or publisher"
     )
-
     feature_name: str = Field(
         description="Name of the feature, KPI, or capability (max 60 chars)"
     )
-
     price: float | None = Field(
         default=None,
         description=(
@@ -23,12 +17,10 @@ class CompetitorFeature(BaseModel):
             "Revenue figures and KPI metrics are NOT valid prices."
         )
     )
-
     advantages: str | None = Field(
         default=None,
         description="Positive aspects, strengths, or growth metrics as text"
     )
-
     disadvantages: str | None = Field(
         default=None,
         description="Negative aspects, weaknesses, or declining metrics as text"
@@ -37,17 +29,11 @@ class CompetitorFeature(BaseModel):
     @field_validator("price", mode="before")
     @classmethod
     def parse_price(cls, v):
-        """
-        Guard layer: jika LLM mengirim price sebagai string
-        (misal "$9.99" atau "9.99"), bersihkan dan convert ke float.
-        Jika tidak bisa di-parse → return None daripada error.
-        """
         if v is None:
             return None
         if isinstance(v, (int, float)):
             return float(v)
         if isinstance(v, str):
-            # Hapus simbol currency dan whitespace
             cleaned = v.strip().replace("$", "").replace(",", "").replace(" ", "")
             try:
                 return float(cleaned)
@@ -61,3 +47,9 @@ class CompetitorFeature(BaseModel):
         if isinstance(v, str):
             return v.strip()
         return v
+
+
+class ExtractionResult(BaseModel):
+    status: str
+    document_id: str
+    total_features_extracted: int
