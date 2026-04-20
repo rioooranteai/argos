@@ -16,11 +16,9 @@ class OpenAITTSProvider(BaseTTSProvider):
     Docs : https://platform.openai.com/docs/guides/text-to-speech
     """
 
-    def __init__(self, model: str = "tts-1"):
+    def __init__(self):
         self._client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
-        self._model = model
-
-    # ── Kontrak Base ──────────────────────────────────────────────────────────
+        self._model = config.OPENAI_VOICE_MODEL
 
     @property
     def provider_name(self) -> str:

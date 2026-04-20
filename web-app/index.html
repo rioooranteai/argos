@@ -17,6 +17,7 @@
 
     <aside class="sidebar" id="sidebar">
 
+        <!-- Brand Header -->
         <div class="sidebar-header">
             <div class="brand-container">
                 <div class="brand-icon">
@@ -33,6 +34,30 @@
             </button>
         </div>
 
+        <!-- History Section -->
+        <div class="history-section">
+            <div class="history-section-header">
+                <span class="history-title">History</span>
+                <span class="history-count" id="historyCount">0/50</span>
+            </div>
+            <div class="history-list" id="historyList">
+                <!-- populated by JS -->
+            </div>
+            <div class="history-footer">
+                <button class="btn-clear-history" id="clearHistoryBtn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                    Clear history
+                </button>
+            </div>
+        </div>
+
+        <!-- Spacer pushes menu+upload to bottom -->
+        <div class="sidebar-spacer"></div>
+
+        <!-- Nav Menu -->
         <nav class="menu">
             <div class="menu-section-label">Menu</div>
             <div class="menu-item active">
@@ -50,18 +75,23 @@
             </div>
             <div class="menu-item">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
-                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
                 </svg>
                 Analitik
             </div>
             <div class="menu-item">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
-                    <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
                 </svg>
                 Pengaturan
             </div>
         </nav>
 
+        <!-- Upload Section -->
         <div class="upload-section">
             <p class="upload-title">Dokumen</p>
             <div class="upload-card">
@@ -74,7 +104,8 @@
                 </div>
                 <p class="upload-desc">Unggah PDF atau Markdown</p>
 
-                <input accept=".pdf,.md" id="fileInput" multiple type="file">
+                <!-- Native input hidden — tombol custom di bawah yang trigger .click() -->
+                <input accept=".pdf,.md" id="fileInput" multiple type="file" style="display:none;">
 
                 <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
                     Pilih File
@@ -90,6 +121,7 @@
             </div>
         </div>
 
+        <!-- Sidebar Footer -->
         <div class="sidebar-footer">
             <button class="btn-logout">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -132,7 +164,9 @@
                 </button>
                 <button class="header-icon-btn" title="Bagikan">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
                         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
                         <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
                     </svg>
@@ -142,8 +176,6 @@
 
         <!-- Chat messages -->
         <div class="chat-box" id="chatBox">
-
-            <!-- Welcome message -->
             <div class="message-wrapper bot-wrapper">
                 <div class="msg-avatar bot-avatar">Ar</div>
                 <div class="bubble-group">
@@ -162,7 +194,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         <!-- Typing indicator -->
@@ -180,12 +211,7 @@
                         <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                     </svg>
                 </button>
-                <input
-                        autocomplete="off"
-                        id="chatInput"
-                        placeholder="Start typing..."
-                        type="text"
-                >
+                <input autocomplete="off" id="chatInput" placeholder="Start typing..." type="text">
                 <button class="btn-icon btn-mic" id="micBtn" title="Rekam suara">
                     <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -205,24 +231,6 @@
         </div>
 
     </main>
-
-    <aside class="history-panel">
-        <div class="history-header">
-            <span class="history-title">History</span>
-            <span class="history-count" id="historyCount">0/50</span>
-        </div>
-        <div class="history-list" id="historyList">
-            <!-- populated by JS -->
-        </div>
-        <div class="history-footer">
-            <button class="btn-clear-history" id="clearHistoryBtn">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-                Clear history
-            </button>
-        </div>
-    </aside>
 
 </div>
 

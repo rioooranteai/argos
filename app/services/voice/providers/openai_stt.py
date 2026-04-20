@@ -1,4 +1,5 @@
 import logging
+import io
 
 from app.core.config import config
 from app.services.voice.base.stt_base import BaseSTTProvider
@@ -8,6 +9,22 @@ from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
+MIME_TO_EXT = {
+    "audio/webm": "webm",
+    "video/webm": "webm",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "mp4",
+    "video/mp4": "mp4",
+    "audio/ogg": "ogg",
+    "audio/oga": "oga",
+    "audio/flac": "flac",
+    "audio/x-flac": "flac",
+    "audio/m4a": "m4a",
+    "audio/x-m4a": "m4a",
+}
 
 class OpenAISTTProvider(BaseSTTProvider):
     """
@@ -46,11 +63,16 @@ class OpenAISTTProvider(BaseSTTProvider):
                 f"| lang={request.language} | timestamps={request.with_timestamps}"
             )
 
-            filename = f"audio.{request.audio_format or 'webm'}"
+            ext = MIME_TO_EXT.get(request.audio_format, "webm")
+            filename = f"audio.{ext}"
+
+            audio_file = io.BytesIO(audio_bytes)
+            audio_file.name = filename
+
             if request.with_timestamps:
                 response = await self._client.audio.transcriptions.create(
                     model="whisper-1",
-                    file=(filename, audio_bytes),
+                    file=audio_file,
                     language=request.language,
                     prompt=request.prompt,
                     response_format="verbose_json",
