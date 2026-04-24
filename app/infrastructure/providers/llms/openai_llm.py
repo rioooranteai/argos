@@ -1,15 +1,16 @@
 import logging
 from typing import Type, Any
-from pydantic import BaseModel
-from langchain_openai import ChatOpenAI
 
-from app.services.shared.base.llm import BaseLLM
+from app.core.interface.llm import BaseLLM
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+
 class OpenAILLM(BaseLLM):
     """Implementasi konkrit untuk provider OpenAI."""
-    
+
     def __init__(self, api_key: str, model: str, temperature: float = 0.0):
         logger.info(f"Membangun mesin OpenAILLM (Model: {model}, Temp: {temperature})")
         # Inisialisasi Langchain ChatOpenAI di sini

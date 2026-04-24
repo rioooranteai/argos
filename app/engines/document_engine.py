@@ -8,7 +8,6 @@ from app.services.vector_store.service import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
-
 class DocumentProcessingEngine:
     """Orchestrator yang mengatur aliran data dari PDF -> Vector DB -> SQL DB."""
 
@@ -23,23 +22,21 @@ class DocumentProcessingEngine:
         self.extraction_svc = extraction_svc
 
     async def process_single_file(self, file_path: str) -> dict:
-        # Step 1: PDF → chunks
+        # PDF → chunks
         chunks = await self.ingestion_svc.process_document(file_path)
 
         if not chunks:
-            logger.warning(f"Tidak ada chunk dihasilkan dari file: {file_path}")
             return {"status": "failed", "file": file_path}
 
         document_id = chunks[0].metadata.get("document_id")
 
-        # Step 2: Simpan chunks ke Vector DB
+        # Simpan chunks ke Vector DB
         inserted_ids = self.vector_store_svc.add_chunks(chunks)
-        logger.info(f"Berhasil menyimpan {len(inserted_ids)} chunk untuk document_id: {document_id}")
 
-        # Step 3: Ambil teks dari Vector DB — engine yang ambil, bukan extraction service
-        chunks_text = self.vector_store_svc.get_by_document_id(document_id)
+        # Ambil teks dari Vector DB — engine yang ambil, bukan extraction service
+        chunks_text = [chunk.page_content for chunk in chunks]
 
-        # Step 4: Kirim teks ke ExtractionService → simpan ke SQL DB
+        # Kirim teks ke ExtractionService → simpan ke SQL DB
         extraction_result = await self.extraction_svc.process_document_texts(
             document_id=document_id,
             chunks_text=chunks_text,

@@ -1,35 +1,37 @@
 import io
 import logging
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
+import tiktoken
+from app.core.config import config
+from app.services.ingestion.base.loader import BaseDocumentLoader
+from app.services.ingestion.exceptions import DocumentLoadError
+from app.services.ingestion.models import DocumentElement, ElementType
+from docling.chunking import HybridChunker
+from docling.datamodel.accelerator_options import AcceleratorOptions, AcceleratorDevice
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.datamodel.accelerator_options import AcceleratorOptions, AcceleratorDevice
-from docling.chunking import HybridChunker
-
-from app.services.ingestion.base.loader import BaseDocumentLoader
-from app.services.ingestion.models import DocumentElement, ElementType
-from app.services.ingestion.exceptions import DocumentLoadError
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
 logger = logging.getLogger(__name__)
+
 
 class DoclingLoader(BaseDocumentLoader):
     """
     Loader PDF Ultimate dengan akselerasi GPU, HybridChunker, dan Image Extraction.
-    OCR dimatikan untuk mencegah memori penuh (std::bad_alloc).
     """
 
     def __init__(self):
         accel_options = AcceleratorOptions(
-            device=AcceleratorDevice.AUTO,
+            device=AcceleratorDevice.CUDA,
+            num_threads=4
         )
 
-        pipeline_options = PdfPipelineOptions(
-            do_ocr=False,
-            accelerator_options=accel_options,
-            generate_picture_images=True,
-            images_scale=1.0,
-        )
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = True
+        pipeline_options.accelerator_options = accel_options
+        pipeline_options.generate_picture_images = True
+        pipeline_options.images_scale = 1.0
 
         self.converter = DocumentConverter(
             allowed_formats=[InputFormat.PDF, InputFormat.DOCX, InputFormat.MD],
@@ -38,7 +40,17 @@ class DoclingLoader(BaseDocumentLoader):
             }
         )
 
-        self.chunker = HybridChunker(max_tokens=400, merge_peers=True)
+        encoding = tiktoken.get_encoding("cl100k_base")
+
+        tokenizer = OpenAITokenizer(
+            tokenizer=encoding,
+            max_tokens=config.OPENAI_EMBEDDING_CHUNK_SIZE
+        )
+
+        self.chunker = HybridChunker(
+            tokenizer=tokenizer,
+            merge_peers=True
+        )
 
     def supports(self, file_path: str) -> bool:
         return file_path.lower().endswith((".pdf", ".docx", ".md"))
@@ -62,7 +74,7 @@ class DoclingLoader(BaseDocumentLoader):
 
                 is_table = any(item.label == "table" for item in c.meta.doc_items)
 
-                if not is_table and len(enriched_text.split("] ")[-1].strip()) < 15:
+                if not is_table and len(enriched_text) < 15:
                     continue
 
                 el_type = ElementType.TABLE if is_table else ElementType.TEXT
@@ -80,7 +92,6 @@ class DoclingLoader(BaseDocumentLoader):
             if hasattr(doc, 'pictures'):
                 for idx, pic in enumerate(doc.pictures):
                     page_num = pic.prov[0].page_no if pic.prov else 0
-                    image_bytes = None
 
                     try:
                         pil_image = pic.get_image(doc)

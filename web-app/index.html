@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- Mobile overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 <div class="app-wrapper">
@@ -40,9 +39,7 @@
                 <span class="history-title">History</span>
                 <span class="history-count" id="historyCount">0/50</span>
             </div>
-            <div class="history-list" id="historyList">
-                <!-- populated by JS -->
-            </div>
+            <div class="history-list" id="historyList"></div>
             <div class="history-footer">
                 <button class="btn-clear-history" id="clearHistoryBtn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -54,7 +51,6 @@
             </div>
         </div>
 
-        <!-- Spacer pushes menu+upload to bottom -->
         <div class="sidebar-spacer"></div>
 
         <!-- Nav Menu -->
@@ -103,27 +99,32 @@
                     </svg>
                 </div>
                 <p class="upload-desc">Unggah PDF atau Markdown</p>
-
-                <!-- Native input hidden — tombol custom di bawah yang trigger .click() -->
                 <input accept=".pdf,.md" id="fileInput" multiple type="file" style="display:none;">
-
                 <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
                     Pilih File
                 </button>
-
                 <div class="file-list-text" id="file-list"></div>
-
                 <button class="btn btn-primary" id="uploadBtn" style="display:none;">
                     Ekstrak ke DB
                 </button>
-
                 <div id="upload-status"></div>
+            </div>
+        </div>
+
+        <!-- ----------------------------------------------------------------
+             User Profile — populated by JS from JWT payload
+        ----------------------------------------------------------------- -->
+        <div class="sidebar-user" id="sidebarUser">
+            <div class="sidebar-user-avatar" id="userAvatar"></div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name" id="userName">Loading...</div>
+                <div class="sidebar-user-email" id="userEmail"></div>
             </div>
         </div>
 
         <!-- Sidebar Footer -->
         <div class="sidebar-footer">
-            <button class="btn-logout">
+            <button class="btn-logout" id="logoutBtn">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                     <polyline points="16 17 21 12 16 7"/>
@@ -233,6 +234,45 @@
     </main>
 
 </div>
+
+<script>
+    // Decode JWT payload (no verification — display only)
+    function parseJwt(token) {
+        try {
+            return JSON.parse(atob(token.split(".")[1]));
+        } catch {
+            return null;
+        }
+    }
+
+    // Populate user profile from token claims
+    (function renderUserProfile() {
+        const token = localStorage.getItem("access_token");
+        const payload = token ? parseJwt(token) : null;
+
+        const nameEl   = document.getElementById("userName");
+        const emailEl  = document.getElementById("userEmail");
+        const avatarEl = document.getElementById("userAvatar");
+
+        if (payload) {
+            const name  = payload.name  || "User";
+            const email = payload.email || "";
+            nameEl.textContent   = name;
+            emailEl.textContent  = email;
+            avatarEl.textContent = name.charAt(0).toUpperCase();
+        } else {
+            nameEl.textContent  = "Guest";
+            emailEl.textContent = "";
+            avatarEl.textContent = "G";
+        }
+    })();
+
+    // Logout — clear token and redirect to login page
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("access_token");
+        window.location.href = "/login";
+    });
+</script>
 
 <script src="/js/main.js"></script>
 </body>

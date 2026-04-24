@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import chromadb
-from app.services.shared.base.embedder import BaseEmbedder
+from app.core.interface.embedder import BaseEmbedder
 from app.services.vector_store.base.vector_store_base import BaseVectorStoreProvider
 from app.services.vector_store.exceptions import VectorStoreInsertError, VectorStoreSearchError
 

@@ -1,12 +1,11 @@
 import logging
 from pathlib import Path
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-
-from app.services.shared.base.llm import BaseLLM
-from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
+from app.core.interface.llm import BaseLLM
 from app.services.nl2sql.executor import execute_readonly_sql
+from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -26,16 +25,20 @@ CREATE TABLE features (
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
-def _load_prompt(filename: str, fallback_text: str) -> str:
+
+def _load_prompt(filename: str) -> str:
     path = _PROMPT_DIR / filename
     try:
         content = path.read_text(encoding="utf-8")
         return content
     except FileNotFoundError:
-        return fallback_text
+        raise FileNotFoundError
 
-_SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md", "Kamu adalah asisten pengubah Natural Language menjadi SQLite query. Gunakan schema:\n{schema}")
-_ANSWER_PROMPT_TEXT = _load_prompt("nl2sql_answer.md", "Kamu analis data. Jawab berdasarkan data ini saja. Jangan mengarang.")
+
+
+_SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md")
+_ANSWER_PROMPT_TEXT = _load_prompt("nl2sql_answer.md")
+
 
 class NL2SQLService:
     def __init__(self, llm_provider: BaseLLM):
@@ -72,7 +75,8 @@ class NL2SQLService:
             if raw_sql.strip().upper() == "INVALID_QUESTION":
                 return {
                     "status": "success",
-                    "answer": "Pertanyaan tidak relevan dengan database intelijen kompetitor atau tidak dapat dijawab dengan data yang tersedia.",
+                    "answer": "Pertanyaan tidak relevan dengan database intelijen kompetitor atau tidak dapat dijawab "
+                              "dengan data yang tersedia.",
                     "sql_query": None,
                     "raw_data": None
                 }

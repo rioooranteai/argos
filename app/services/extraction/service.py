@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from app.core.database import insert_feature
+from app.core.database import db
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.factories.extraction_factory import ExtractionFactory
 from app.services.extraction.models import ExtractionResult
@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 _MAX_CHUNK_CHARS = 100_000
 _MIN_CHUNK_CHARS = 80
-
 
 class ExtractionService:
 
@@ -51,11 +50,14 @@ class ExtractionService:
         try:
             extracted_features = await self._provider.extract(combined_text)
 
-            for feature in extracted_features:
-                if not feature.competitor_name or not feature.feature_name:
-                    continue
-                insert_feature(feature.model_dump(), document_id)
-                total_saved += 1
+            valid_features = [
+                f.model_dump for f in extracted_features
+                if f.competitor_name and f.feature_name
+            ]
+
+            if valid_features:
+                db.insert_features_batch(valid_features, document_id)
+                total_saved = len(valid_features)
 
         except Exception as e:
             logger.error(f"Gagal saat proses ekstraksi: {e}", exc_info=True)

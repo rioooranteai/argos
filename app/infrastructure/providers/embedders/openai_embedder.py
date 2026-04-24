@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import logging
-
+from app.core.interface.embedder import BaseEmbedder
 from langchain_openai import OpenAIEmbeddings
-
-from app.services.shared.base.embedder import BaseEmbedder
 
 _DIMENSIONS: dict[str, int] = {
     "text-embedding-3-small": 1536,

@@ -55,7 +55,6 @@ async def speech_to_text(
         with_timestamps: bool = Query(default=False),
         voice_service: VoiceService = Depends(get_voice_service),
 ):
-
     content_type = audio.content_type or "application/octet-stream"
 
     if content_type not in ALLOWED_AUDIO:

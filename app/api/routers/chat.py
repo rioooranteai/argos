@@ -1,14 +1,17 @@
 import logging
-from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, HTTPException
+
 from app.core.dependencies import get_nl2sql_service
 from app.services.nl2sql.service import NL2SQLService
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/chat", tags=['Chat & NL2SQL'])
 logger = logging.getLogger(__name__)
 
+
 class ChatRequest(BaseModel):
     question: str = Field(..., description="Pertanyaan natural language dari user")
+
 
 @router.post("/", summary="Chat dengan AI Assistant (NL2SQL)")
 async def chat_with_data(
@@ -39,4 +42,4 @@ async def chat_with_data(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Terjadi kesalahan internal saat memproses pertanyaan Anda.")
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal saat memproses pertanyaan Anda. {e}")

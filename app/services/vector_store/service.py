@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from app.services.shared.base.embedder import BaseEmbedder
+from app.core.interface.embedder import BaseEmbedder
 from app.services.vector_store.base.vector_store_base import BaseVectorStoreProvider
 from app.services.vector_store.factories.vector_store_factory import VectorStoreFactory
 

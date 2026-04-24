@@ -1,29 +1,33 @@
 import logging
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
+import os
+import tensorrt_libs
 
 from app.core.config import config
-from app.core.database import init_db
+from app.core.database import db
 from app.engines.document_engine import DocumentProcessingEngine
+from app.infrastructure.factories.embedder_factory import get_embedder
+from app.infrastructure.factories.llm_factory import get_llm
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import ContentAwareChunker
 from app.services.ingestion.factories.loader_factory import LoaderFactory
 from app.services.ingestion.factories.vision_factory import VisionFactory
 from app.services.ingestion.service import IngestionService
 from app.services.nl2sql.service import NL2SQLService
-from app.services.shared.factories.embedder_factory import get_embedder
-from app.services.shared.factories.llm_factory import get_llm
 from app.services.vector_store.service import VectorStoreService
 from app.services.voice.service import VoiceService
+from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
-    init_db()
+
+    dll_dir = os.path.dirname(tensorrt_libs.__file__)
+    os.add_dll_directory(dll_dir)
+
+    db.init_db()
 
     embedder = get_embedder()
 

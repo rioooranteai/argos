@@ -1,10 +1,12 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
-from dotenv import load_dotenv
 from typing import ClassVar
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(_env_path)
+
 
 class Config(BaseSettings):
     model_config = SettingsConfigDict(
