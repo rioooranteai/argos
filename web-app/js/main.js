@@ -5,29 +5,22 @@ const API_BASE_URL = "/api/v1";
 // ---------------------------------------------------------------------------
 
 const params = new URLSearchParams(window.location.search);
-const token = params.get("token");
-if (token) {
-    localStorage.setItem("access_token", token);
-    window.history.replaceState({}, document.title, "/");
+const tokenFromUrl = params.get("token");
+if (tokenFromUrl) {
+    localStorage.setItem("access_token", tokenFromUrl);
+    // Strip the query but keep any existing hash route.
+    window.history.replaceState({}, document.title, "/" + (window.location.hash || ""));
 }
 
-function getToken() {
-    return localStorage.getItem("access_token");
-}
-
-function isLoggedIn() {
-    return !!getToken();
-}
+function getToken()    { return localStorage.getItem("access_token"); }
+function isLoggedIn()  { return !!getToken(); }
 
 if (!isLoggedIn()) {
     window.location.href = "/login";
 }
 
 function authHeaders(extraHeaders = {}) {
-    return {
-        "Authorization": `Bearer ${getToken()}`,
-        ...extraHeaders
-    };
+    return { "Authorization": `Bearer ${getToken()}`, ...extraHeaders };
 }
 
 async function handleResponse(response) {
@@ -38,22 +31,38 @@ async function handleResponse(response) {
     }
     return response;
 }
+
 // ---------------------------------------------------------------------------
 // DOM References
 // ---------------------------------------------------------------------------
 
-const fileInput    = document.getElementById("fileInput");
-const fileListDiv  = document.getElementById("file-list");
-const uploadBtn    = document.getElementById("uploadBtn");
-const uploadStatus = document.getElementById("upload-status");
-const chatInput    = document.getElementById("chatInput");
-const chatBox      = document.getElementById("chatBox");
-const sendBtn      = document.getElementById("sendBtn");
-const chatLoading  = document.getElementById("chatLoading");
-const micBtn       = document.getElementById("micBtn");
+const fileInput        = document.getElementById("fileInput");
+const fileListDiv      = document.getElementById("file-list");
+const uploadBtn        = document.getElementById("uploadBtn");
+const uploadStatus     = document.getElementById("upload-status");
+const chatInput        = document.getElementById("chatInput");
+const chatBox          = document.getElementById("chatBox");
+const sendBtn          = document.getElementById("sendBtn");
+const chatLoading      = document.getElementById("chatLoading");
+const micBtn           = document.getElementById("micBtn");
+const newChatBtn       = document.getElementById("newChatBtn");
+const historyList      = document.getElementById("historyList");
+const historyCount     = document.getElementById("historyCount");
+const historyEmpty     = document.getElementById("historyEmpty");
+const welcomeScreen    = document.getElementById("welcomeScreen");
+const chatHeaderTitle  = document.getElementById("chatHeaderTitle");
+const renameThreadBtn  = document.getElementById("renameThreadBtn");
+const deleteThreadBtn  = document.getElementById("deleteThreadBtn");
 
 // ---------------------------------------------------------------------------
-// File Upload
+// State
+// ---------------------------------------------------------------------------
+
+let currentConversationId = null;
+let conversationCache     = []; // cached list of conversations from /conversations
+
+// ---------------------------------------------------------------------------
+// File Upload (unchanged)
 // ---------------------------------------------------------------------------
 
 fileInput.addEventListener("change", () => {
@@ -114,7 +123,7 @@ async function uploadFiles() {
 uploadBtn.addEventListener("click", uploadFiles);
 
 // ---------------------------------------------------------------------------
-// Chat
+// Chat rendering
 // ---------------------------------------------------------------------------
 
 function appendMessage(sender, text) {
@@ -130,19 +139,21 @@ function appendMessage(sender, text) {
 
     const bubble = document.createElement("div");
     bubble.classList.add("message", sender);
-    bubble.innerHTML = sender === "bot" ? marked.parse(text) : "";
-    if (sender !== "bot") bubble.textContent = text;
+    if (sender === "bot") bubble.innerHTML = marked.parse(text || "");
+    else bubble.textContent = text;
 
     const actions = document.createElement("div");
     actions.classList.add("bubble-actions");
 
-    const ttsBtn = document.createElement("button");
-    ttsBtn.className = "btn-action-icon btn-tts";
-    ttsBtn.title = "Dengarkan";
-    ttsBtn.innerHTML = iconSpeaker();
-    ttsBtn.addEventListener("click", () => speakMessage(text, ttsBtn));
+    if (sender === "bot") {
+        const ttsBtn = document.createElement("button");
+        ttsBtn.className = "btn-action-icon btn-tts";
+        ttsBtn.title = "Dengarkan";
+        ttsBtn.innerHTML = iconSpeaker();
+        ttsBtn.addEventListener("click", () => speakMessage(text, ttsBtn));
+        actions.appendChild(ttsBtn);
+    }
 
-    actions.appendChild(ttsBtn);
     group.appendChild(bubble);
     group.appendChild(actions);
     wrapper.appendChild(avatar);
@@ -151,9 +162,228 @@ function appendMessage(sender, text) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+function clearChatView() {
+    chatBox.innerHTML = "";
+}
+
+function showWelcome() {
+    welcomeScreen.style.display = "flex";
+    chatBox.style.display = "none";
+    chatHeaderTitle.textContent = "AI Chat Helper";
+    renameThreadBtn.style.display = "none";
+    deleteThreadBtn.style.display = "none";
+}
+
+function showChat() {
+    welcomeScreen.style.display = "none";
+    chatBox.style.display = "block";
+    renameThreadBtn.style.display = "inline-flex";
+    deleteThreadBtn.style.display = "inline-flex";
+}
+
+// ---------------------------------------------------------------------------
+// Conversation API
+// ---------------------------------------------------------------------------
+
+async function fetchConversations() {
+    try {
+        const raw = await fetch(`${API_BASE_URL}/chat/conversations`, {
+            method: "GET",
+            headers: authHeaders()
+        });
+        const response = await handleResponse(raw);
+        if (!response || !response.ok) return [];
+        return await response.json();
+    } catch (e) {
+        console.error("Failed to fetch conversations:", e);
+        return [];
+    }
+}
+
+async function fetchConversationDetail(conversationId) {
+    try {
+        const raw = await fetch(
+            `${API_BASE_URL}/chat/conversations/${conversationId}`,
+            { method: "GET", headers: authHeaders() }
+        );
+        const response = await handleResponse(raw);
+        if (!response) return null;
+        if (response.status === 404) return null;
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.error("Failed to fetch conversation:", e);
+        return null;
+    }
+}
+
+async function renameConversation(conversationId, newTitle) {
+    try {
+        const raw = await fetch(
+            `${API_BASE_URL}/chat/conversations/${conversationId}`,
+            {
+                method: "PATCH",
+                headers: authHeaders({ "Content-Type": "application/json" }),
+                body: JSON.stringify({ title: newTitle })
+            }
+        );
+        const response = await handleResponse(raw);
+        return response && response.ok;
+    } catch (e) {
+        console.error("Rename failed:", e);
+        return false;
+    }
+}
+
+async function deleteConversation(conversationId) {
+    try {
+        const raw = await fetch(
+            `${API_BASE_URL}/chat/conversations/${conversationId}`,
+            { method: "DELETE", headers: authHeaders() }
+        );
+        const response = await handleResponse(raw);
+        return response && (response.ok || response.status === 204);
+    } catch (e) {
+        console.error("Delete failed:", e);
+        return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar thread list
+// ---------------------------------------------------------------------------
+
+async function refreshThreadList() {
+    conversationCache = await fetchConversations();
+    renderThreadList();
+}
+
+function renderThreadList() {
+    historyList.innerHTML = "";
+    historyCount.textContent = String(conversationCache.length);
+
+    if (conversationCache.length === 0) {
+        const empty = document.createElement("div");
+        empty.classList.add("history-empty");
+        empty.textContent = "Belum ada percakapan.";
+        historyList.appendChild(empty);
+        return;
+    }
+
+    conversationCache.forEach(conv => {
+        const item = document.createElement("div");
+        item.classList.add("history-item");
+        if (conv.id === currentConversationId) item.classList.add("active");
+        item.dataset.conversationId = conv.id;
+
+        const content = document.createElement("div");
+        content.classList.add("history-item-content");
+
+        const title = document.createElement("div");
+        title.classList.add("history-item-title");
+        title.textContent = conv.title || "Untitled";
+
+        const sub = document.createElement("div");
+        sub.classList.add("history-item-subtitle");
+        sub.textContent = formatRelative(conv.updated_at);
+
+        content.appendChild(title);
+        content.appendChild(sub);
+        item.appendChild(content);
+
+        item.addEventListener("click", () => {
+            navigateToConversation(conv.id);
+        });
+
+        historyList.appendChild(item);
+    });
+}
+
+function formatRelative(isoTs) {
+    if (!isoTs) return "";
+    const d = new Date(isoTs);
+    if (isNaN(d.getTime())) return "";
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)        return "baru saja";
+    if (diff < 3600)      return `${Math.floor(diff / 60)} menit lalu`;
+    if (diff < 86400)     return `${Math.floor(diff / 3600)} jam lalu`;
+    if (diff < 604800)    return `${Math.floor(diff / 86400)} hari lalu`;
+    return d.toLocaleDateString("id-ID");
+}
+
+// ---------------------------------------------------------------------------
+// Routing (hash-based)
+// ---------------------------------------------------------------------------
+
+function parseHashRoute() {
+    const h = window.location.hash || "";
+    const m = h.match(/^#\/chat\/([a-zA-Z0-9-]+)$/);
+    return m ? m[1] : null;
+}
+
+function navigateToConversation(conversationId) {
+    if (conversationId === currentConversationId) return;
+    window.location.hash = `#/chat/${conversationId}`;
+}
+
+function navigateToNewChat() {
+    if (window.location.hash) {
+        window.location.hash = "";
+    } else {
+        // Already at root — re-render the welcome state explicitly.
+        currentConversationId = null;
+        clearChatView();
+        showWelcome();
+        renderThreadList();
+    }
+}
+
+async function handleRouteChange() {
+    const target = parseHashRoute();
+
+    if (!target) {
+        currentConversationId = null;
+        clearChatView();
+        showWelcome();
+        renderThreadList();
+        return;
+    }
+
+    // Load thread.
+    currentConversationId = target;
+    clearChatView();
+    showChat();
+    chatHeaderTitle.textContent = "Memuat...";
+
+    const detail = await fetchConversationDetail(target);
+    if (!detail) {
+        // Either 404 or fetch error — fall back to welcome.
+        currentConversationId = null;
+        window.location.hash = "";
+        return;
+    }
+
+    chatHeaderTitle.textContent = detail.title || "Untitled";
+    detail.messages.forEach(m => {
+        appendMessage(m.role === "user" ? "user" : "bot", m.content);
+    });
+    renderThreadList();
+}
+
+window.addEventListener("hashchange", handleRouteChange);
+
+// ---------------------------------------------------------------------------
+// Send message
+// ---------------------------------------------------------------------------
+
 async function sendMessage() {
     const question = chatInput.value.trim();
     if (!question) return;
+
+    // Switch to chat view if we're on the welcome screen.
+    if (welcomeScreen.style.display !== "none") {
+        showChat();
+    }
 
     appendMessage("user", question);
     chatInput.value = "";
@@ -163,10 +393,13 @@ async function sendMessage() {
     chatLoading.style.display = "block";
 
     try {
+        const body = { question };
+        if (currentConversationId) body.conversation_id = currentConversationId;
+
         const raw = await fetch(`${API_BASE_URL}/chat/`, {
             method: "POST",
             headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ question })
+            body: JSON.stringify(body)
         });
 
         const response = await handleResponse(raw);
@@ -176,6 +409,24 @@ async function sendMessage() {
 
         if (response.ok) {
             appendMessage("bot", result.answer);
+
+            // If this was a new conversation, persist its ID + update URL.
+            if (result.conversation_id && !currentConversationId) {
+                currentConversationId = result.conversation_id;
+                // replaceState avoids triggering hashchange (we already loaded).
+                window.history.replaceState(
+                    {}, document.title,
+                    `/#/chat/${currentConversationId}`
+                );
+                // Refresh sidebar so the new thread appears.
+                // Slight delay lets the auto-title task on the server run; we
+                // poll once after 1.5s to pick up the LLM-generated title.
+                refreshThreadList();
+                setTimeout(refreshThreadList, 1500);
+            } else {
+                // Existing conversation: refresh list so updated_at re-orders.
+                refreshThreadList();
+            }
         } else {
             appendMessage("bot", `Maaf, terjadi kesalahan: ${result.detail || "Ditolak sistem."}`);
         }
@@ -192,6 +443,52 @@ async function sendMessage() {
 sendBtn.addEventListener("click", sendMessage);
 chatInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter" && !e.shiftKey) sendMessage();
+});
+
+// ---------------------------------------------------------------------------
+// New chat / rename / delete
+// ---------------------------------------------------------------------------
+
+newChatBtn.addEventListener("click", navigateToNewChat);
+
+renameThreadBtn.addEventListener("click", async () => {
+    if (!currentConversationId) return;
+    const current = conversationCache.find(c => c.id === currentConversationId);
+    const proposed = prompt("Ganti nama percakapan:", current?.title || "");
+    if (!proposed || !proposed.trim()) return;
+    const ok = await renameConversation(currentConversationId, proposed.trim());
+    if (ok) {
+        chatHeaderTitle.textContent = proposed.trim();
+        await refreshThreadList();
+    } else {
+        alert("Gagal mengganti nama.");
+    }
+});
+
+deleteThreadBtn.addEventListener("click", async () => {
+    if (!currentConversationId) return;
+    if (!confirm("Hapus percakapan ini? Tindakan tidak bisa dibatalkan.")) return;
+    const ok = await deleteConversation(currentConversationId);
+    if (ok) {
+        currentConversationId = null;
+        await refreshThreadList();
+        navigateToNewChat();
+    } else {
+        alert("Gagal menghapus percakapan.");
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Welcome suggestions
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll(".welcome-suggestion").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const prompt = btn.dataset.prompt;
+        if (!prompt) return;
+        chatInput.value = prompt;
+        sendMessage();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -227,7 +524,6 @@ async function speakMessage(text, btnEl) {
 
         const response = await handleResponse(raw);
         if (!response) return;
-
         if (!response.ok) throw new Error("Server error");
 
         const blob = await response.blob();
@@ -327,7 +623,7 @@ async function transcribeAudioServer(audioBlob) {
     } finally {
         micBtn.disabled = false;
         micBtn.classList.remove("loading");
-        chatInput.placeholder = "Ketik atau bicara...";
+        chatInput.placeholder = "Tulis pesan...";
     }
 }
 
@@ -351,7 +647,7 @@ function iconPause() {
 }
 
 // ---------------------------------------------------------------------------
-// Sidebar
+// Sidebar toggle
 // ---------------------------------------------------------------------------
 
 window.toggleSidebar = function () {
@@ -360,110 +656,10 @@ window.toggleSidebar = function () {
 };
 
 // ---------------------------------------------------------------------------
-// Welcome TTS
+// Bootstrap
 // ---------------------------------------------------------------------------
 
-const welcomeTtsBtn = document.getElementById("welcomeTtsBtn");
-if (welcomeTtsBtn) {
-    welcomeTtsBtn.addEventListener("click", function () {
-        speakMessage(
-            "Halo! Saya Argos. Unggah dokumen PDF di menu kiri, lalu tanyakan apa saja seputar harga, fitur, atau metrik kompetitor.",
-            this
-        );
-    });
-}
-
-// ---------------------------------------------------------------------------
-// Chat History
-// ---------------------------------------------------------------------------
-
-let chatHistory = [];
-const historyList     = document.getElementById("historyList");
-const historyCount    = document.getElementById("historyCount");
-const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-
-function addToHistory(userText, botText) {
-    const entry = { id: Date.now(), title: userText, subtitle: botText };
-    chatHistory.unshift(entry);
-    if (chatHistory.length > 50) chatHistory.pop();
-    renderHistory();
-}
-
-function renderHistory() {
-    if (!historyList) return;
-    historyList.innerHTML = "";
-    historyCount.textContent = `${chatHistory.length}/50`;
-
-    chatHistory.forEach(entry => {
-        const item = document.createElement("div");
-        item.classList.add("history-item");
-
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.classList.add("history-checkbox");
-
-        const content = document.createElement("div");
-        content.classList.add("history-item-content");
-
-        const title = document.createElement("div");
-        title.classList.add("history-item-title");
-        title.textContent = entry.title;
-
-        const sub = document.createElement("div");
-        sub.classList.add("history-item-subtitle");
-        sub.textContent = entry.subtitle;
-
-        content.appendChild(title);
-        content.appendChild(sub);
-        item.appendChild(cb);
-        item.appendChild(content);
-        historyList.appendChild(item);
-    });
-}
-
-// Intercept sendMessage to capture the question before it clears the input
-const _origSendMessage = sendMessage;
-window.sendMessage = async function () {
-    const question = chatInput.value.trim();
-    if (!question) return;
-    await _origSendMessage();
-};
-
-// Observe chatBox for new bot messages and record them in history
-const _historyObserver = new MutationObserver((mutations) => {
-    mutations.forEach(m => {
-        m.addedNodes.forEach(node => {
-            if (node.classList && node.classList.contains("bot-wrapper")) {
-                const botBubble = node.querySelector(".message.bot");
-                if (!botBubble) return;
-
-                const allWrappers = Array.from(chatBox.children);
-                const idx = allWrappers.indexOf(node);
-                let userText = "";
-
-                for (let i = idx - 1; i >= 0; i--) {
-                    const userMsg = allWrappers[i].querySelector(".message.user");
-                    if (userMsg) {
-                        userText = userMsg.textContent.trim();
-                        break;
-                    }
-                }
-
-                const botText = botBubble.textContent.trim().slice(0, 60) +
-                    (botBubble.textContent.length > 60 ? "..." : "");
-
-                if (userText) addToHistory(userText, botText);
-            }
-        });
-    });
-});
-_historyObserver.observe(chatBox, { childList: true });
-
-if (clearHistoryBtn) {
-    clearHistoryBtn.addEventListener("click", () => {
-        chatHistory = [];
-        renderHistory();
-    });
-}
-
-renderHistory();
+(async function init() {
+    await refreshThreadList();
+    await handleRouteChange();
+})();
