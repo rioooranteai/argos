@@ -1,8 +1,6 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 
-import tensorrt_libs
 from app.core.config import config
 from app.core.database import db
 from app.engines.chat_engine.engine import ChatEngine
@@ -25,9 +23,6 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
-
-    dll_dir = os.path.dirname(tensorrt_libs.__file__)
-    os.add_dll_directory(dll_dir)
 
     db.init_db()
 

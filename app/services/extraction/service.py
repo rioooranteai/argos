@@ -51,7 +51,7 @@ class ExtractionService:
             extracted_features = await self._provider.extract(combined_text)
 
             valid_features = [
-                f.model_dump for f in extracted_features
+                f.model_dump() for f in extracted_features
                 if f.competitor_name and f.feature_name
             ]
 
@@ -61,6 +61,11 @@ class ExtractionService:
 
         except Exception as e:
             logger.error(f"Gagal saat proses ekstraksi: {e}", exc_info=True)
+            return ExtractionResult(
+                status="failed",
+                document_id=document_id,
+                total_features_extracted=0,
+            ).model_dump()
 
         return ExtractionResult(
             status="success",

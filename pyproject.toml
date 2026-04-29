@@ -1,0 +1,61 @@
+[project]
+name = "argos"
+version = "1.0.0"
+description = "ArgosAI — Competitive Intelligence System (RAG + NL2SQL + Voice)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "rioooranteai" }]
+
+# Dependency list duplikat di requirements.txt (untuk Docker simplicity).
+# Pertahankan keduanya tetap sinkron, atau pakai pip-tools/uv untuk single source of truth.
+dependencies = [
+    "fastapi>=0.115,<0.120",
+    "uvicorn[standard]>=0.32,<0.40",
+    "python-multipart>=0.0.20",
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "python-dotenv>=1.0,<2.0",
+    "authlib>=1.3,<2.0",
+    "python-jose[cryptography]>=3.3,<4.0",
+    "itsdangerous>=2.2,<3.0",
+    "openai>=1.55,<2.0",
+    "langchain-core>=0.3,<0.4",
+    "langchain-openai>=0.2,<0.4",
+    "langgraph>=0.2,<0.4",
+    "pydantic-ai>=0.0.13",
+    "tiktoken>=0.8,<1.0",
+    "docling>=2.10,<3.0",
+    "docling-core>=2.10,<3.0",
+    "chromadb>=0.5,<2.0",
+    "sqlalchemy>=2.0,<3.0",
+    "sqlparse>=0.5,<1.0",
+    "typing-extensions>=4.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "httpx>=0.27",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true

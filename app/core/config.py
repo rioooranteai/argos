@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,7 +34,14 @@ class Config(BaseSettings):
     secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
-    allowed_origins: ClassVar[list[str]] = ["*"]
+
+    # CORS — comma-separated list di .env, contoh:
+    # ALLOWED_ORIGINS="http://localhost:8000,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:8000,http://localhost:3000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
     # Database
     DATABASE_URL: str = ""
