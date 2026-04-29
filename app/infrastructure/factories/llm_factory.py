@@ -1,5 +1,5 @@
 from app.core.config import config
-from app.core.interface.llm import BaseLLM
+from app.infrastructure.interface.llm import BaseLLM
 
 from app.infrastructure.providers.llms.openai_llm import OpenAILLM
 

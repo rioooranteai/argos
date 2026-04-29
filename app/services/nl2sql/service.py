@@ -1,11 +1,10 @@
 import logging
 from pathlib import Path
 
-from app.core.interface.llm import BaseLLM
+from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.executor import execute_readonly_sql
 from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from app.services.nl2sql.exceptions import InvalidQuestionError
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +28,9 @@ _PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 def _load_prompt(filename: str) -> str:
     path = _PROMPT_DIR / filename
     try:
-        content = path.read_text(encoding="utf-8")
-        return content
+        return path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise FileNotFoundError
-
+        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}")
 
 
 _SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md")
@@ -44,74 +41,73 @@ class NL2SQLService:
     def __init__(self, llm_provider: BaseLLM):
         """
         Inisialisasi service menggunakan Dependency Injection.
-        llm_provider disuntikkan dari luar (Factory), service ini tidak peduli 
+        llm_provider disuntikkan dari luar (Factory), service ini tidak peduli
         apakah itu OpenAI, Anthropic, atau model lokal.
         """
+        self.llm = llm_provider
 
-        self.llm = llm_provider.get_client()
-
-        self.sql_prompt = ChatPromptTemplate.from_messages([
-            ("system", _SQL_PROMPT_TEXT),
-            ("human", "{question}")
-        ])
-
-        self.answer_prompt = ChatPromptTemplate.from_messages([
-            ("system", _ANSWER_PROMPT_TEXT),
-            ("human", "Pertanyaan: {question}\nData SQL: {data}")
-        ])
-
-        self.sql_chain = self.sql_prompt | self.llm | StrOutputParser()
-        self.answer_chain = self.answer_prompt | self.llm | StrOutputParser()
+    def _build_sql_prompt(self, question: str) -> str:
+        """Sisipkan schema ke dalam pertanyaan user sebelum dikirim ke LLM."""
+        return (
+            f"Schema database:\n{TABLE_SCHEMA}\n\n"
+            f"Pertanyaan: {question}"
+        )
 
     async def process_query(self, user_question: str) -> dict:
         try:
             safe_question = sanitize_nl_input(user_question)
-
-            raw_sql = await self.sql_chain.ainvoke({
-                "schema": TABLE_SCHEMA,
-                "question": safe_question
-            })
-
-            if raw_sql.strip().upper() == "INVALID_QUESTION":
-                return {
-                    "status": "success",
-                    "answer": "Pertanyaan tidak relevan dengan database intelijen kompetitor atau tidak dapat dijawab "
-                              "dengan data yang tersedia.",
-                    "sql_query": None,
-                    "raw_data": None
-                }
-
-            clean_sql = raw_sql.replace("```sql", "").replace("```", "").strip()
-
-            validated_sql = validate_generated_sql(clean_sql)
-
-            query_results = execute_readonly_sql(validated_sql)
-
-            is_truncated = len(query_results) > MAX_RAW_ROWS
-            limited_results = query_results[:MAX_RAW_ROWS]
-
-            final_answer = await self.answer_chain.ainvoke({
-                "question": safe_question,
-                "data": str(limited_results)
-            })
+            sql = await self._generate_sql(safe_question)
+            rows, row_count, is_truncated = self._execute_sql(sql)
+            final_answer = await self._generate_answer(safe_question, rows)
 
             return {
                 "status": "success",
-                "sql_query": validated_sql,
-                "raw_data": limited_results,
-                "row_count": len(query_results),
+                "sql_query": sql,
+                "raw_data": rows,
+                "row_count": row_count,
                 "truncated": is_truncated,
                 "answer": final_answer
             }
 
+        except InvalidQuestionError as e:
+            return {
+                "status": "success",
+                "answer": str(e),
+                "sql_query": None,
+                "raw_data": None
+            }
         except ValueError as ve:
-            return {
-                "status": "error",
-                "message": str(ve)
-            }
-
+            return {"status": "error", "message": str(ve)}
         except Exception:
-            return {
-                "status": "error",
-                "message": "Terjadi kesalahan sistem saat memproses pertanyaan."
-            }
+            logger.exception("Kesalahan tidak terduga saat memproses query NL2SQL")
+            return {"status": "error", "message": "Terjadi kesalahan sistem."}
+
+    async def _generate_sql(self, question: str) -> str:
+        raw_sql = await self.llm.ainvoke(
+            prompt=self._build_sql_prompt(question),
+            system=_SQL_PROMPT_TEXT
+        )
+
+        if raw_sql.strip().upper() == "INVALID_QUESTION":
+            raise InvalidQuestionError(
+                "Pertanyaan tidak relevan dengan database intelijen kompetitor "
+                "atau tidak dapat dijawab dengan data yang tersedia."
+            )
+
+        clean_sql = raw_sql.replace("```sql", "").replace("```", "").strip()
+        return validate_generated_sql(clean_sql)
+
+    def _execute_sql(self, sql: str) -> tuple[list, int, bool]:
+        query_results = execute_readonly_sql(sql)
+        is_truncated = len(query_results) > MAX_RAW_ROWS
+        limited_results = query_results[:MAX_RAW_ROWS]
+
+        return limited_results, len(query_results), is_truncated
+
+    async def _generate_answer(self, question: str, rows: list) -> str:
+        final_answer = await self.llm.ainvoke(
+            prompt=f"Pertanyaan: {question}\nData SQL: {rows}",
+            system=_ANSWER_PROMPT_TEXT
+        )
+
+        return final_answer

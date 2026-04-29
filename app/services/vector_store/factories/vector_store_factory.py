@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from app.core.interface.embedder import BaseEmbedder
+from app.infrastructure.interface.embedder import BaseEmbedder
 from app.services.vector_store.base.vector_store_base import BaseVectorStoreProvider
 from app.services.vector_store.exceptions import UnsupportedProviderError
 from app.services.vector_store.providers.chroma_provider import ChromaProvider

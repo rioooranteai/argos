@@ -28,6 +28,10 @@ def get_document_engine(request: Request) -> DocumentProcessingEngine:
     return request.app.state.document_engine
 
 
+def get_chat_engine(request: Request) -> DocumentProcessingEngine:
+    return request.app.state.chat_engine
+
+
 def get_nl2sql_service(request: Request) -> NL2SQLService:
     return request.app.state.nl2sql_service
 

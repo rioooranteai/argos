@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.config import config
-from app.core.interface.embedder import BaseEmbedder
+from app.infrastructure.interface.embedder import BaseEmbedder
 from app.infrastructure.providers.embedders.openai_embedder import OpenAIEmbedder
 
 

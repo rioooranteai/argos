@@ -1,10 +1,11 @@
 import logging
-from contextlib import asynccontextmanager
 import os
-import tensorrt_libs
+from contextlib import asynccontextmanager
 
+import tensorrt_libs
 from app.core.config import config
 from app.core.database import db
+from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine import DocumentProcessingEngine
 from app.infrastructure.factories.embedder_factory import get_embedder
 from app.infrastructure.factories.llm_factory import get_llm
@@ -19,6 +20,7 @@ from app.services.voice.service import VoiceService
 from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,6 +57,12 @@ async def lifespan(app: FastAPI):
     )
 
     app.state.voice_service = VoiceService()
+
+    app.state.chat_engine = ChatEngine(
+        llm=get_llm(model_type="chat", temperature=0.3),
+        nl2sql_svc=app.state.nl2sql_service,
+        vector_svc=app.state.vector_store_svc,
+    )
 
     logger.info("All services initialized.")
     yield

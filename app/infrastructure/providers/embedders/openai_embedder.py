@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.interface.embedder import BaseEmbedder
+from app.infrastructure.interface.embedder import BaseEmbedder
 from langchain_openai import OpenAIEmbeddings
 
 _DIMENSIONS: dict[str, int] = {

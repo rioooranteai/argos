@@ -56,6 +56,7 @@ class OpenAISTTProvider(BaseSTTProvider):
             request: STTRequest,
     ) -> STTResult:
         self.validate_language(request.language)
+        self._model = config.OPENAI_TRANSCRIBE_MODEL
 
         try:
             logger.info(
@@ -71,7 +72,7 @@ class OpenAISTTProvider(BaseSTTProvider):
 
             if request.with_timestamps:
                 response = await self._client.audio.transcriptions.create(
-                    model="whisper-1",
+                    model=self._model,
                     file=audio_file,
                     language=request.language,
                     prompt=request.prompt,

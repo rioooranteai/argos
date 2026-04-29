@@ -6,7 +6,8 @@
     <title>Argos — Competitive Intelligence</title>
     <link href="/css/style.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap"
+          rel="stylesheet">
 </head>
 <body>
 
@@ -20,14 +21,16 @@
         <div class="sidebar-header">
             <div class="brand-container">
                 <div class="brand-icon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    <svg fill="none" height="18" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"
+                         width="18">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
                     </svg>
                 </div>
                 <span class="brand-text">Argos</span>
             </div>
             <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Tutup menu">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                     <path d="M9 18l6-6-6-6"/>
                 </svg>
             </button>
@@ -42,7 +45,7 @@
             <div class="history-list" id="historyList"></div>
             <div class="history-footer">
                 <button class="btn-clear-history" id="clearHistoryBtn">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="13">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                     </svg>
@@ -71,10 +74,10 @@
             </div>
             <div class="menu-item">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
+                    <rect height="7" width="7" x="3" y="3"/>
+                    <rect height="7" width="7" x="14" y="3"/>
+                    <rect height="7" width="7" x="14" y="14"/>
+                    <rect height="7" width="7" x="3" y="14"/>
                 </svg>
                 Analitik
             </div>
@@ -92,14 +95,15 @@
             <p class="upload-title">Dokumen</p>
             <div class="upload-card">
                 <div class="upload-icon-wrap">
-                    <svg fill="none" height="22" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="22">
+                    <svg fill="none" height="22" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"
+                         width="22">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="17 8 12 3 7 8"/>
                         <line x1="12" x2="12" y1="3" y2="15"/>
                     </svg>
                 </div>
                 <p class="upload-desc">Unggah PDF atau Markdown</p>
-                <input accept=".pdf,.md" id="fileInput" multiple type="file" style="display:none;">
+                <input accept=".pdf,.md" id="fileInput" multiple style="display:none;" type="file">
                 <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
                     Pilih File
                 </button>
@@ -125,7 +129,7 @@
         <!-- Sidebar Footer -->
         <div class="sidebar-footer">
             <button class="btn-logout" id="logoutBtn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                     <polyline points="16 17 21 12 16 7"/>
                     <line x1="21" x2="9" y1="12" y2="12"/>
@@ -152,24 +156,25 @@
             </div>
             <div class="header-actions">
                 <div class="header-search">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
                     </svg>
-                    <input type="text" placeholder="Search" class="header-search-input">
+                    <input class="header-search-input" placeholder="Search" type="text">
                 </div>
                 <button class="header-icon-btn" title="Notifikasi">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                 </button>
                 <button class="header-icon-btn" title="Bagikan">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                         <circle cx="18" cy="5" r="3"/>
                         <circle cx="6" cy="12" r="3"/>
                         <circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/>
+                        <line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
                     </svg>
                 </button>
             </div>
@@ -186,7 +191,8 @@
                     </div>
                     <div class="bubble-actions">
                         <button class="btn-action-icon btn-tts" id="welcomeTtsBtn" title="Dengarkan">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                                 width="14">
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
                                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -247,31 +253,26 @@
 
     // Populate user profile from token claims
     (function renderUserProfile() {
-        const token = localStorage.getItem("access_token");
-        const payload = token ? parseJwt(token) : null;
+    const token = localStorage.getItem("access_token");
+    const payload = token ? parseJwt(token) : null;
 
-        const nameEl   = document.getElementById("userName");
-        const emailEl  = document.getElementById("userEmail");
-        const avatarEl = document.getElementById("userAvatar");
+    const nameEl  = document.getElementById("userName");
+    const emailEl = document.getElementById("userEmail");
 
-        if (payload) {
-            const name  = payload.name  || "User";
-            const email = payload.email || "";
-            nameEl.textContent   = name;
-            emailEl.textContent  = email;
-            avatarEl.textContent = name.charAt(0).toUpperCase();
-        } else {
-            nameEl.textContent  = "Guest";
-            emailEl.textContent = "";
-            avatarEl.textContent = "G";
-        }
+    if (payload) {
+        nameEl.textContent  = payload.name  || "User";
+        emailEl.textContent = payload.email || "";
+    } else {
+        nameEl.textContent  = "Guest";
+        emailEl.textContent = "";
+    }
     })();
 
-    // Logout — clear token and redirect to login page
     document.getElementById("logoutBtn").addEventListener("click", () => {
         localStorage.removeItem("access_token");
         window.location.href = "/login";
     });
+
 </script>
 
 <script src="/js/main.js"></script>

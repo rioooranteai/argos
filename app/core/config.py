@@ -24,6 +24,7 @@ class Config(BaseSettings):
     OPENAI_LLM_MODEL: str = "gpt-4o"
     OPENAI_VLM_MODEL: str = "gpt-4o-mini"
     OPENAI_VOICE_MODEL: str = "gpt-4o-mini-tts"
+    OPENAI_TRANSCRIBE_MODEL: str = "whisper-1"
     OPENAI_EXTRACTION_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_CHUNK_SIZE: int = 400

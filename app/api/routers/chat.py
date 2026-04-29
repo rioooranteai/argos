@@ -1,45 +1,81 @@
 import logging
 
-from app.core.dependencies import get_nl2sql_service
-from app.services.nl2sql.service import NL2SQLService
+from app.core.dependencies import get_chat_engine, get_current_user
+from app.engines.chat_engine.engine import ChatEngine
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-router = APIRouter(prefix="/api/v1/chat", tags=['Chat & NL2SQL'])
+router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
     question: str = Field(..., description="Pertanyaan natural language dari user")
+    session_id: str = Field(default="default", description="ID sesi untuk isolasi history per user")
 
 
-@router.post("/", summary="Chat dengan AI Assistant (NL2SQL)")
+class ChatResponse(BaseModel):
+    question: str
+    answer: str
+    metadata: dict
+
+
+@router.post("/", summary="Chat dengan AI Assistant (SQL + Vector)")
 async def chat_with_data(
         request: ChatRequest,
-        nl2sql_svc: NL2SQLService = Depends(get_nl2sql_service)
+        chat_engine: ChatEngine = Depends(get_chat_engine),
+        user: dict = Depends(get_current_user),
 ):
     """
-    Endpoint interaksi pengguna.
-    Menerima pertanyaan dalam bahasa natural, menerjemahkannya ke SQL,
-    dan mengembalikan jawaban yang mudah dibaca.
+    Endpoint chat utama.
+    LangGraph akan otomatis memutuskan apakah menjawab dari SQL, Vector Store, atau keduanya.
     """
-
     try:
-        result = await nl2sql_svc.process_query(request.question)
+        # Isolasi history per user — gabungkan user ID dengan session_id
+        scoped_session_id = f"{user['sub']}:{request.session_id}"
 
-        if result.get("status") == "error":
-            raise HTTPException(status_code=400, detail=result.get("message"))
+        result = await chat_engine.chat(
+            user_input=request.question,
+            session_id=scoped_session_id,
+        )
 
-        return {
-            "question": request.question,
-            "answer": result.get("answer"),
-            "metadata": {
-                "generated_sql": result.get("sql_query"),
-                "raw_data_count": len(result.get("raw_data") or [])
-            }
-        }
+        if result.get("error"):
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return ChatResponse(
+            question=request.question,
+            answer=result["answer"],
+            metadata={
+                "route": result["route"],
+                "router_reasoning": result["router_reasoning"],
+                "session_id": request.session_id,
+            },
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan internal saat memproses pertanyaan Anda. {e}")
+        logger.exception("Kesalahan tidak terduga di endpoint chat")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{session_id}/history", summary="Reset conversation history")
+async def clear_history(
+        session_id: str,
+        chat_engine: ChatEngine = Depends(get_chat_engine),
+        user: dict = Depends(get_current_user),
+):
+    """Hapus conversation history untuk sesi tertentu."""
+    chat_engine.clear_history(f"{user['sub']}:{session_id}")
+    return {"status": "ok", "message": f"History sesi '{session_id}' berhasil dihapus."}
+
+
+@router.get("/{session_id}/history", summary="Lihat conversation history")
+async def get_history(
+        session_id: str,
+        chat_engine: ChatEngine = Depends(get_chat_engine),
+        user: dict = Depends(get_current_user),
+):
+    """Ambil conversation history untuk sesi tertentu."""
+    history = chat_engine.get_history(f"{user['sub']}:{session_id}")
+    return {"session_id": session_id, "messages": history}

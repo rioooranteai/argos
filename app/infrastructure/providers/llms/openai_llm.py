@@ -1,7 +1,7 @@
 import logging
-from typing import Type, Any
+from typing import Type
 
-from app.core.interface.llm import BaseLLM
+from app.infrastructure.interface.llm import BaseLLM
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
@@ -13,25 +13,28 @@ class OpenAILLM(BaseLLM):
 
     def __init__(self, api_key: str, model: str, temperature: float = 0.0):
         logger.info(f"Membangun mesin OpenAILLM (Model: {model}, Temp: {temperature})")
-        # Inisialisasi Langchain ChatOpenAI di sini
         self._client = ChatOpenAI(
             api_key=api_key,
             model=model,
             temperature=temperature
         )
 
+    def _build_messages(self, prompt: str, system: str | None) -> list:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        return messages
+
     def invoke(self, prompt: str, system: str | None = None) -> str:
-        # Implementasi standar
-        pass
+        messages = self._build_messages(prompt, system)
+        response = self._client.invoke(messages)
+        return response.content
 
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
-        # Implementasi standar
-        pass
+        messages = self._build_messages(prompt, system)
+        response = await self._client.ainvoke(messages)
+        return response.content
 
     def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
-        # Implementasi untuk extraction agent
-        pass
-
-    def get_client(self) -> Any:
-        """Mengekspos objek ChatOpenAI ke luar untuk dirakit dengan LCEL."""
-        return self._client
+        raise NotImplementedError("with_structured_output belum diimplementasi")
