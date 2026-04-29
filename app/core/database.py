@@ -28,8 +28,17 @@ class Database:
             yield conn
 
     def init_db(self):
-        """Membuat tabel SQL jika belum ada saat aplikasi pertama kali berjalan."""
+        """Membuat tabel SQL jika belum ada saat aplikasi pertama kali berjalan.
+
+        Catatan migrasi: tabel `conversation_history` (single-row-per-session,
+        JSON blob) dari versi sebelumnya digantikan oleh `conversations` +
+        `messages`. Tabel lama di-drop di sini bila masih ada — datanya tidak
+        dipertahankan karena formatnya rusak (lihat audit history).
+        """
         with self.get_connection() as conn:
+            # Aktifkan foreign key enforcement (off by default di SQLite).
+            conn.execute("PRAGMA foreign_keys = ON")
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS features (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,6 +62,40 @@ class Database:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_document_id
                 ON features (document_id)
+            """)
+
+            # Drop tabel lama (data corrupt karena bug serialization).
+            conn.execute("DROP TABLE IF EXISTS conversation_history")
+
+            # ── Multi-conversation schema ──────────────────────────────────
+            # 1 user → N conversations → N messages
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id          TEXT PRIMARY KEY,
+                    user_id     TEXT NOT NULL,
+                    title       TEXT NOT NULL,
+                    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_conversations_user
+                ON conversations (user_id, updated_at DESC)
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS messages (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id TEXT NOT NULL,
+                    role            TEXT NOT NULL CHECK (role IN ('user','assistant')),
+                    content         TEXT NOT NULL,
+                    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_messages_conversation
+                ON messages (conversation_id, created_at)
             """)
 
     def insert_feature(self, feature_dict: dict, document_id: str):

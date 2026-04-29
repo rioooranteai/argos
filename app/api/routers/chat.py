@@ -1,81 +1,256 @@
-import logging
+"""Chat router — multi-conversation API.
 
-from app.core.dependencies import get_chat_engine, get_current_user
-from app.engines.chat_engine.engine import ChatEngine
-from fastapi import APIRouter, Depends, HTTPException
+Endpoint surface:
+    GET    /api/v1/chat/conversations         List user's threads (sidebar).
+    POST   /api/v1/chat/conversations         Create empty thread.
+    GET    /api/v1/chat/conversations/{id}    Fetch thread + all messages.
+    PATCH  /api/v1/chat/conversations/{id}    Rename thread.
+    DELETE /api/v1/chat/conversations/{id}    Delete thread.
+    POST   /api/v1/chat/                      Send a message (creates thread if conversation_id is null).
+"""
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+
+from app.core.dependencies import (
+    get_chat_engine,
+    get_conversation_service,
+    get_current_user,
+)
+from app.engines.chat_engine.engine import ChatEngine
+from app.services.conversation.service import ConversationService
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
 
 
+# ── Schemas ────────────────────────────────────────────────────────────────
+
+
+class ConversationOut(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+
+
+class ConversationDetailOut(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    messages: list[MessageOut]
+
+
+class CreateConversationRequest(BaseModel):
+    title: str | None = Field(default=None, description="Optional initial title.")
+
+
+class RenameConversationRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+
 class ChatRequest(BaseModel):
-    question: str = Field(..., description="Pertanyaan natural language dari user")
-    session_id: str = Field(default="default", description="ID sesi untuk isolasi history per user")
+    question: str = Field(..., min_length=1, description="User message.")
+    conversation_id: str | None = Field(
+        default=None,
+        description="Existing thread ID. If null, a new thread is created and its ID returned.",
+    )
 
 
 class ChatResponse(BaseModel):
+    conversation_id: str
     question: str
     answer: str
     metadata: dict
 
 
-@router.post("/", summary="Chat dengan AI Assistant (SQL + Vector)")
-async def chat_with_data(
-        request: ChatRequest,
-        chat_engine: ChatEngine = Depends(get_chat_engine),
-        user: dict = Depends(get_current_user),
-):
-    """
-    Endpoint chat utama.
-    LangGraph akan otomatis memutuskan apakah menjawab dari SQL, Vector Store, atau keduanya.
-    """
-    try:
-        # Isolasi history per user — gabungkan user ID dengan session_id
-        scoped_session_id = f"{user['sub']}:{request.session_id}"
+# ── Conversation CRUD ──────────────────────────────────────────────────────
 
+
+@router.get("/conversations", summary="List user's conversations")
+async def list_conversations(
+    user: dict = Depends(get_current_user),
+    svc: ConversationService = Depends(get_conversation_service),
+) -> list[ConversationOut]:
+    convs = svc.list_for_user(user_id=user["sub"])
+    return [
+        ConversationOut(
+            id=c.id, title=c.title, created_at=c.created_at, updated_at=c.updated_at
+        )
+        for c in convs
+    ]
+
+
+@router.post(
+    "/conversations",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new conversation",
+)
+async def create_conversation(
+    body: CreateConversationRequest = CreateConversationRequest(),
+    user: dict = Depends(get_current_user),
+    svc: ConversationService = Depends(get_conversation_service),
+) -> ConversationOut:
+    conv = svc.create_for_user(user_id=user["sub"], first_message=body.title)
+    return ConversationOut(
+        id=conv.id, title=conv.title, created_at=conv.created_at, updated_at=conv.updated_at
+    )
+
+
+@router.get(
+    "/conversations/{conversation_id}",
+    summary="Get conversation with full message history",
+)
+async def get_conversation(
+    conversation_id: str,
+    user: dict = Depends(get_current_user),
+    svc: ConversationService = Depends(get_conversation_service),
+) -> ConversationDetailOut:
+    bundle = svc.get_with_messages(conversation_id, user["sub"])
+    if bundle is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return ConversationDetailOut(
+        id=bundle.conversation.id,
+        title=bundle.conversation.title,
+        created_at=bundle.conversation.created_at,
+        updated_at=bundle.conversation.updated_at,
+        messages=[
+            MessageOut(
+                id=m.id, role=m.role, content=m.content, created_at=m.created_at
+            )
+            for m in bundle.messages
+        ],
+    )
+
+
+@router.patch(
+    "/conversations/{conversation_id}",
+    summary="Rename a conversation",
+)
+async def rename_conversation(
+    conversation_id: str,
+    body: RenameConversationRequest,
+    user: dict = Depends(get_current_user),
+    svc: ConversationService = Depends(get_conversation_service),
+) -> ConversationOut:
+    ok = svc.rename(conversation_id, user["sub"], body.title)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    bundle = svc.get_with_messages(conversation_id, user["sub"])
+    # Defensive — bundle should exist since rename succeeded.
+    if bundle is None:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    c = bundle.conversation
+    return ConversationOut(
+        id=c.id, title=c.title, created_at=c.created_at, updated_at=c.updated_at
+    )
+
+
+@router.delete(
+    "/conversations/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a conversation",
+)
+async def delete_conversation(
+    conversation_id: str,
+    user: dict = Depends(get_current_user),
+    svc: ConversationService = Depends(get_conversation_service),
+) -> None:
+    ok = svc.delete(conversation_id, user["sub"])
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return None
+
+
+# ── Send a message ─────────────────────────────────────────────────────────
+
+
+@router.post("/", summary="Send a message in a conversation")
+async def chat_with_data(
+    request: ChatRequest,
+    chat_engine: ChatEngine = Depends(get_chat_engine),
+    svc: ConversationService = Depends(get_conversation_service),
+    user: dict = Depends(get_current_user),
+) -> ChatResponse:
+    """Send a message.
+
+    - If `conversation_id` is null, a new conversation is created (titled with a
+      truncated form of `question`) and its ID is returned. An LLM auto-title
+      task is scheduled in the background; the returned title may be stale on
+      this first response — clients should refetch the conversation list after
+      receiving the answer.
+    - Otherwise the message is appended to the existing conversation. 404 if
+      the user doesn't own it.
+    """
+    user_id = user["sub"]
+    is_new_conversation = request.conversation_id is None
+
+    # Resolve / create conversation.
+    if is_new_conversation:
+        conv = svc.create_for_user(user_id=user_id, first_message=request.question)
+        conversation_id = conv.id
+    else:
+        conversation_id = request.conversation_id
+        if svc.get_with_messages(conversation_id, user_id) is None:
+            raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    # 1. Persist user message FIRST so it shows up in history even if the
+    #    LLM call fails partway through.
+    user_msg = svc.append_user_message(conversation_id, user_id, request.question)
+    if user_msg is None:
+        # Should be unreachable — we just created/verified the conversation.
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    # 2. Load full history (already includes the user message we just saved)
+    history = svc.get_messages_for_engine(conversation_id, user_id) or []
+
+    # 3. Run the LangGraph pipeline.
+    try:
         result = await chat_engine.chat(
             user_input=request.question,
-            session_id=scoped_session_id,
+            history=history,
+        )
+    except Exception:
+        logger.exception("Chat engine failure (conversation=%s).", conversation_id)
+        raise HTTPException(status_code=500, detail="Chat engine error.")
+
+    if result.get("error"):
+        # User-facing error from the graph (e.g. NL2SQL refusal). We still
+        # leave the user message persisted so the user can see what they asked.
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    answer = result["answer"]
+
+    # 4. Persist assistant response.
+    svc.append_assistant_message(conversation_id, answer)
+
+    # 5. Schedule auto-title for new conversations (best-effort, async).
+    if is_new_conversation:
+        svc.schedule_auto_title(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            first_user_message=request.question,
         )
 
-        if result.get("error"):
-            raise HTTPException(status_code=400, detail=result["error"])
-
-        return ChatResponse(
-            question=request.question,
-            answer=result["answer"],
-            metadata={
-                "route": result["route"],
-                "router_reasoning": result["router_reasoning"],
-                "session_id": request.session_id,
-            },
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Kesalahan tidak terduga di endpoint chat")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/{session_id}/history", summary="Reset conversation history")
-async def clear_history(
-        session_id: str,
-        chat_engine: ChatEngine = Depends(get_chat_engine),
-        user: dict = Depends(get_current_user),
-):
-    """Hapus conversation history untuk sesi tertentu."""
-    chat_engine.clear_history(f"{user['sub']}:{session_id}")
-    return {"status": "ok", "message": f"History sesi '{session_id}' berhasil dihapus."}
-
-
-@router.get("/{session_id}/history", summary="Lihat conversation history")
-async def get_history(
-        session_id: str,
-        chat_engine: ChatEngine = Depends(get_chat_engine),
-        user: dict = Depends(get_current_user),
-):
-    """Ambil conversation history untuk sesi tertentu."""
-    history = chat_engine.get_history(f"{user['sub']}:{session_id}")
-    return {"session_id": session_id, "messages": history}
+    return ChatResponse(
+        conversation_id=conversation_id,
+        question=request.question,
+        answer=answer,
+        metadata={
+            "route": result["route"],
+            "router_reasoning": result["router_reasoning"],
+            "is_new_conversation": is_new_conversation,
+        },
+    )

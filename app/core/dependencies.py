@@ -1,6 +1,7 @@
 from app.core.config import config
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine import DocumentProcessingEngine
+from app.services.conversation.service import ConversationService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.voice.service import VoiceService
 
@@ -39,3 +40,7 @@ def get_nl2sql_service(request: Request) -> NL2SQLService:
 
 def get_voice_service(request: Request) -> VoiceService:
     return request.app.state.voice_service
+
+
+def get_conversation_service(request: Request) -> ConversationService:
+    return request.app.state.conversation_service

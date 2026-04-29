@@ -821,3 +821,285 @@ body {
   .btn-close-sidebar { display: flex; }
   .header-search { display: none; }
 }
+/* ══════════════════════════
+   NEW CHAT BUTTON
+══════════════════════════ */
+.new-chat-section {
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.btn-new-chat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  border: none;
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter var(--transition), transform var(--transition);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 12px rgba(244,124,60,0.18);
+}
+
+.btn-new-chat:hover  { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-new-chat:active { transform: translateY(0); filter: brightness(0.98); }
+
+/* ══════════════════════════
+   THREAD LIST — ACTIVE / EMPTY
+══════════════════════════ */
+.history-item.active {
+  background: var(--bg-active);
+  border: 1px solid var(--border-default);
+}
+
+.history-item.active .history-item-title { color: var(--text-primary); }
+
+.history-empty {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  padding: 14px 10px;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ══════════════════════════
+   WELCOME SCREEN
+══════════════════════════ */
+.welcome-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 6px 28px rgba(244,124,60,0.28);
+  margin-bottom: 4px;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.welcome-subtitle {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  max-width: 460px;
+  line-height: 1.55;
+}
+
+.welcome-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 580px;
+}
+
+.welcome-suggestion {
+  padding: 9px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.welcome-suggestion:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════
+   LOGIN PAGE
+══════════════════════════ */
+body.login-body {
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: auto;
+  position: relative;
+}
+
+.login-bg-glow {
+  position: fixed;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: 0;
+}
+
+.login-bg-glow--top {
+  top: -180px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(244,124,60,0.20), transparent 70%);
+}
+
+.login-bg-glow--bottom {
+  bottom: -200px;
+  right: -160px;
+  background: radial-gradient(circle, rgba(123,158,245,0.18), transparent 70%);
+}
+
+.login-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: 40px 36px 28px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 24px 60px rgba(0,0,0,0.45);
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.login-brand-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(244,124,60,0.32);
+}
+
+.login-brand-name {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
+  margin-top: 4px;
+}
+
+.login-brand-tagline {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.login-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 28px 0 24px;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-google-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+
+.btn-google-login:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 6px 18px rgba(0,0,0,0.32);
+}
+
+.btn-google-login:active { transform: translateY(0); }
+
+.btn-google-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.btn-google-icon svg { display: block; }
+
+.login-footer {
+  margin-top: 20px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.55;
+}
+
+/* ── Login: tighten on small screens ── */
+@media (max-width: 480px) {
+  .login-card { padding: 32px 24px 24px; border-radius: var(--radius-lg); }
+  .login-brand-name { font-size: 26px; }
+}
