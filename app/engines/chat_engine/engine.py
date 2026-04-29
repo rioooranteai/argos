@@ -3,25 +3,31 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.infrastructure.interface.llm import BaseLLM
+from app.engines.chat_engine.conversation_store import (
+    ConversationStore,
+    InMemoryConversationStore,
+)
 from app.engines.chat_engine.graph import build_graph
+from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
+
 class ChatEngine:
-    """
-    Entry point untuk sistem chatbot competitive intelligence berbasis LangGraph.
+    """Entry point for the LangGraph-based competitive intelligence chatbot.
 
-    Engine ini mengorkestrasi:
-    - Router (LLM memutuskan sumber data)
-    - SQL node (query terstruktur via NL2SQLService)
-    - Vector node (pencarian semantik via VectorStoreService)
-    - Synthesizer (gabungkan hasil → jawaban natural language)
+    The engine orchestrates:
+        - Router (LLM decides data source)
+        - SQL node (NL2SQLService for structured queries)
+        - Vector node (VectorStoreService for semantic search)
+        - Synthesizer (combines results into a natural-language answer)
 
-    Conversation history dikelola internal per sesi (in-memory).
-    Untuk persistent history, ganti `self._history` dengan database/cache.
+    Conversation history is delegated to a ConversationStore port. The default
+    InMemoryConversationStore preserves legacy behavior; production deployments
+    should inject SQLiteConversationStore (or a Redis-backed store) to survive
+    container restarts.
     """
 
     def __init__(
@@ -29,39 +35,21 @@ class ChatEngine:
         llm: BaseLLM,
         nl2sql_svc: NL2SQLService,
         vector_svc: VectorStoreService,
+        conversation_store: ConversationStore | None = None,
     ):
         self._graph = build_graph(
             llm=llm,
             nl2sql_svc=nl2sql_svc,
             vector_svc=vector_svc,
         )
-        # In-memory conversation history per session
-        # Key: session_id, Value: list of message dicts
-        self._history: dict[str, list[dict]] = {}
-        logger.info("ChatEngine siap.")
+        self._history: ConversationStore = conversation_store or InMemoryConversationStore()
+        logger.info("ChatEngine ready (history store: %s).", type(self._history).__name__)
 
     async def chat(self, user_input: str, session_id: str = "default") -> dict[str, Any]:
-        """
-        Proses satu giliran percakapan.
-
-        Args:
-            user_input: Pertanyaan dari user.
-            session_id: ID sesi untuk isolasi conversation history antar user.
-
-        Returns:
-            dict berisi:
-            - answer: str — jawaban final
-            - route: str — keputusan router (sql/vector/both/none)
-            - router_reasoning: str — alasan routing (untuk debugging)
-            - sql_result: dict | None — raw result dari SQL node
-            - vector_result: list | None — raw result dari vector node
-        """
         logger.info(f"[ChatEngine] session={session_id} | input='{user_input}'")
 
-        # Ambil history sesi ini (buat baru kalau belum ada)
-        session_history = self._history.get(session_id, [])
+        session_history = self._history.get(session_id)
 
-        # Bangun initial state
         initial_state = {
             "user_input": user_input,
             "messages": session_history,
@@ -75,7 +63,7 @@ class ChatEngine:
 
         final_state = await self._graph.ainvoke(initial_state)
 
-        self._history[session_id] = final_state["messages"]
+        self._history.append(session_id, final_state["messages"])
 
         return {
             "answer": final_state["final_answer"],
@@ -87,10 +75,10 @@ class ChatEngine:
         }
 
     def clear_history(self, session_id: str = "default") -> None:
-        """Reset conversation history untuk sesi tertentu."""
-        self._history.pop(session_id, None)
-        logger.info(f"[ChatEngine] History sesi '{session_id}' dihapus.")
+        """Reset conversation history for a given session."""
+        self._history.clear(session_id)
+        logger.info(f"[ChatEngine] History for session '{session_id}' cleared.")
 
     def get_history(self, session_id: str = "default") -> list[dict]:
-        """Ambil conversation history untuk sesi tertentu."""
-        return self._history.get(session_id, [])
+        """Return conversation history for a given session."""
+        return self._history.get(session_id)
