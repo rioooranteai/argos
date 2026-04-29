@@ -1,14 +1,17 @@
 """Tests for NL2SQLService — verifies orchestration of LLM, validator, executor."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Type
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
 
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.service import NL2SQLService
+
+_FAKE_DB_PATH = Path("/tmp/argos_test_unused.db")
 
 
 class FakeLLM(BaseLLM):
@@ -45,7 +48,7 @@ class TestNL2SQLServiceProcessQuery:
             "SELECT * FROM features WHERE competitor_name = 'Scopely'",  # SQL gen
             "Scopely unggul di MONOPOLY GO!",                            # final answer
         ])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         with patch(
             "app.services.nl2sql.service.execute_readonly_sql",
@@ -62,7 +65,7 @@ class TestNL2SQLServiceProcessQuery:
     @pytest.mark.asyncio
     async def test_invalid_question_returns_friendly_message(self):
         llm = FakeLLM(responses=["INVALID_QUESTION"])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         result = await service.process_query("What's the weather today?")
 
@@ -73,7 +76,7 @@ class TestNL2SQLServiceProcessQuery:
     @pytest.mark.asyncio
     async def test_destructive_user_input_blocked(self):
         llm = FakeLLM(responses=[])  # LLM should never be called
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         result = await service.process_query("drop table features")
 
@@ -84,7 +87,7 @@ class TestNL2SQLServiceProcessQuery:
     async def test_destructive_llm_output_blocked(self):
         # LLM goes rogue and returns DROP — validator must catch it
         llm = FakeLLM(responses=["DROP TABLE features"])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         with patch(
             "app.services.nl2sql.service.execute_readonly_sql"
@@ -100,7 +103,7 @@ class TestNL2SQLServiceProcessQuery:
             "```sql\nSELECT * FROM features\n```",
             "Hasil ditemukan.",
         ])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         with patch(
             "app.services.nl2sql.service.execute_readonly_sql",
@@ -117,7 +120,7 @@ class TestNL2SQLServiceProcessQuery:
             "SELECT * FROM features",
             "Banyak data ditemukan.",
         ])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
         many_rows = [{"competitor_name": f"X{i}"} for i in range(150)]
 
         with patch(
@@ -136,7 +139,7 @@ class TestNL2SQLServiceProcessQuery:
             "SELECT * FROM features",
             "...",
         ])
-        service = NL2SQLService(llm_provider=llm)
+        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
         with patch(
             "app.services.nl2sql.service.execute_readonly_sql",

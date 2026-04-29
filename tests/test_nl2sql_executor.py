@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -39,11 +38,11 @@ def temp_db(tmp_path: Path) -> Path:
 
 class TestExecuteReadonly:
     def test_select_returns_rows(self, temp_db):
-        from app.services.nl2sql import executor as exec_module
-        with patch.object(exec_module, "DB_PATH", temp_db):
-            rows = exec_module.execute_readonly_sql(
-                "SELECT competitor_name, price FROM features ORDER BY price"
-            )
+        from app.services.nl2sql.executor import execute_readonly_sql
+        rows = execute_readonly_sql(
+            "SELECT competitor_name, price FROM features ORDER BY price",
+            db_path=temp_db,
+        )
 
         assert len(rows) == 2
         assert rows[0]["competitor_name"] == "Scopely"
@@ -51,21 +50,21 @@ class TestExecuteReadonly:
         assert rows[1]["price"] == 0.99
 
     def test_write_rejected_at_driver_level(self, temp_db):
-        from app.services.nl2sql import executor as exec_module
-        with patch.object(exec_module, "DB_PATH", temp_db):
-            with pytest.raises(ValueError, match="Query gagal"):
-                exec_module.execute_readonly_sql(
-                    "INSERT INTO features (competitor_name) VALUES ('evil')"
-                )
+        from app.services.nl2sql.executor import execute_readonly_sql
+        with pytest.raises(ValueError, match="Query gagal"):
+            execute_readonly_sql(
+                "INSERT INTO features (competitor_name) VALUES ('evil')",
+                db_path=temp_db,
+            )
 
     def test_drop_rejected_at_driver_level(self, temp_db):
-        from app.services.nl2sql import executor as exec_module
-        with patch.object(exec_module, "DB_PATH", temp_db):
-            with pytest.raises(ValueError):
-                exec_module.execute_readonly_sql("DROP TABLE features")
+        from app.services.nl2sql.executor import execute_readonly_sql
+        with pytest.raises(ValueError):
+            execute_readonly_sql("DROP TABLE features", db_path=temp_db)
 
     def test_invalid_sql_raises_value_error(self, temp_db):
-        from app.services.nl2sql import executor as exec_module
-        with patch.object(exec_module, "DB_PATH", temp_db):
-            with pytest.raises(ValueError):
-                exec_module.execute_readonly_sql("SELECT * FROM nonexistent_table")
+        from app.services.nl2sql.executor import execute_readonly_sql
+        with pytest.raises(ValueError):
+            execute_readonly_sql(
+                "SELECT * FROM nonexistent_table", db_path=temp_db
+            )

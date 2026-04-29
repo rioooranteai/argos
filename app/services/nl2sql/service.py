@@ -3,8 +3,8 @@ from pathlib import Path
 
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.executor import execute_readonly_sql
-from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
 from app.services.nl2sql.exceptions import InvalidQuestionError
+from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,17 @@ _ANSWER_PROMPT_TEXT = _load_prompt("nl2sql_answer.md")
 
 
 class NL2SQLService:
-    def __init__(self, llm_provider: BaseLLM):
+    def __init__(self, llm_provider: BaseLLM, db_path: Path):
         """
         Inisialisasi service menggunakan Dependency Injection.
-        llm_provider disuntikkan dari luar (Factory), service ini tidak peduli
-        apakah itu OpenAI, Anthropic, atau model lokal.
+
+        Args:
+            llm_provider: Implementasi BaseLLM (OpenAI, Anthropic, lokal, dll).
+            db_path: Path ke SQLite database. Service tidak hardcode lokasinya
+                lagi sehingga mudah dipindah / di-test dengan DB temporer.
         """
         self.llm = llm_provider
+        self._db_path = db_path
 
     def _build_sql_prompt(self, question: str) -> str:
         """Sisipkan schema ke dalam pertanyaan user sebelum dikirim ke LLM."""
@@ -98,7 +102,7 @@ class NL2SQLService:
         return validate_generated_sql(clean_sql)
 
     def _execute_sql(self, sql: str) -> tuple[list, int, bool]:
-        query_results = execute_readonly_sql(sql)
+        query_results = execute_readonly_sql(sql, self._db_path)
         is_truncated = len(query_results) > MAX_RAW_ROWS
         limited_results = query_results[:MAX_RAW_ROWS]
 

@@ -3,13 +3,19 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
+# Default location for the SQLite DB. Kept as a module constant so existing
+# imports continue to work, but Database() now accepts an explicit path so
+# tests and alternative deployments can override it.
 DB_PATH = Path(__file__).resolve().parent.parent.parent / "competitor_data.db"
 
 
-class Database():
+class Database:
+    def __init__(self, db_path: Path | None = None):
+        self.db_path = db_path or DB_PATH
+
     @contextmanager
     def get_connection(self):
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
             yield conn
