@@ -58,8 +58,6 @@
             </div>
         </div>
 
-        <div class="sidebar-spacer"></div>
-
         <!-- Nav Menu -->
         <nav class="menu">
             <div class="menu-section-label">Menu</div>
@@ -255,6 +253,35 @@
 
     </main>
 
+</div>
+
+<!-- ══════════════════════════
+     MODAL DIALOG (login-card style)
+     Used for rename / delete confirmation / generic alerts.
+     Single instance, content swapped via JS.
+═══════════════════════════ -->
+<div class="modal-overlay" id="appModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-header">
+            <div class="modal-icon" id="modalIcon">
+                <!-- icon injected by JS -->
+            </div>
+            <h2 class="modal-title" id="modalTitle">Title</h2>
+            <p class="modal-subtitle" id="modalSubtitle"></p>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div class="modal-body" id="modalBody">
+            <!-- input field (only shown for prompt-type) -->
+            <input class="modal-input" id="modalInput" type="text" autocomplete="off" hidden>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="modal-btn modal-btn--ghost" id="modalCancelBtn">Batal</button>
+            <button type="button" class="modal-btn modal-btn--primary" id="modalConfirmBtn">OK</button>
+        </div>
+    </div>
 </div>
 
 <script>

@@ -62,6 +62,137 @@ let currentConversationId = null;
 let conversationCache     = []; // cached list of conversations from /conversations
 
 // ---------------------------------------------------------------------------
+// Modal helper (login-card style) — replaces native alert/confirm/prompt
+// ---------------------------------------------------------------------------
+
+const MODAL_ICONS = {
+    edit: '<svg fill="none" height="22" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="22"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    danger: '<svg fill="none" height="22" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="22"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+    info: '<svg fill="none" height="22" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="22"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8"  y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>',
+};
+
+const modalEl        = document.getElementById("appModal");
+const modalIconEl    = document.getElementById("modalIcon");
+const modalTitleEl   = document.getElementById("modalTitle");
+const modalSubEl     = document.getElementById("modalSubtitle");
+const modalInputEl   = document.getElementById("modalInput");
+const modalCancelBtn = document.getElementById("modalCancelBtn");
+const modalConfirmBtn= document.getElementById("modalConfirmBtn");
+
+let _modalResolver = null;
+
+function _closeModal(value) {
+    modalEl.hidden = true;
+    modalEl.classList.remove("is-danger");
+    document.removeEventListener("keydown", _modalKeyHandler);
+    if (_modalResolver) {
+        const r = _modalResolver;
+        _modalResolver = null;
+        r(value);
+    }
+}
+
+function _modalKeyHandler(e) {
+    if (e.key === "Escape") {
+        e.preventDefault();
+        _closeModal(null);
+    } else if (e.key === "Enter") {
+        // Enter confirms (only when input not multiline / when focus is in input or on confirm)
+        if (!modalInputEl.hidden && document.activeElement === modalInputEl) {
+            e.preventDefault();
+            modalConfirmBtn.click();
+        }
+    }
+}
+
+modalCancelBtn.addEventListener("click", () => _closeModal(null));
+modalEl.addEventListener("click", (e) => {
+    if (e.target === modalEl) _closeModal(null);  // backdrop click
+});
+
+/**
+ * Open modal as a Promise.
+ * @param {object} opts
+ * @param {string} opts.title
+ * @param {string} [opts.subtitle]
+ * @param {"edit"|"danger"|"info"} [opts.icon]
+ * @param {"prompt"|"confirm"|"alert"} [opts.kind]
+ * @param {string} [opts.defaultValue]   for prompt
+ * @param {string} [opts.placeholder]    for prompt
+ * @param {string} [opts.confirmLabel]
+ * @param {string} [opts.cancelLabel]
+ * @param {boolean} [opts.danger]        styles confirm button as danger
+ * @returns {Promise<string|boolean|null>}  prompt → string|null, confirm → bool, alert → true
+ */
+function openModal(opts) {
+    const {
+        title,
+        subtitle = "",
+        icon = "info",
+        kind = "confirm",
+        defaultValue = "",
+        placeholder = "",
+        confirmLabel = "OK",
+        cancelLabel = "Batal",
+        danger = false,
+    } = opts;
+
+    modalIconEl.innerHTML  = MODAL_ICONS[icon] || MODAL_ICONS.info;
+    modalTitleEl.textContent = title;
+    modalSubEl.textContent   = subtitle;
+    modalSubEl.style.display = subtitle ? "" : "none";
+
+    if (kind === "prompt") {
+        modalInputEl.hidden = false;
+        modalInputEl.value = defaultValue;
+        modalInputEl.placeholder = placeholder;
+    } else {
+        modalInputEl.hidden = true;
+    }
+
+    modalConfirmBtn.textContent = confirmLabel;
+    modalCancelBtn.textContent  = cancelLabel;
+
+    // Hide cancel for plain alert
+    modalCancelBtn.style.display = (kind === "alert") ? "none" : "";
+
+    // Danger styling on confirm button
+    modalConfirmBtn.classList.toggle("modal-btn--danger", !!danger);
+    modalConfirmBtn.classList.toggle("modal-btn--primary", !danger);
+
+    modalEl.hidden = false;
+
+    // Focus management
+    setTimeout(() => {
+        if (kind === "prompt") {
+            modalInputEl.focus();
+            modalInputEl.select();
+        } else {
+            modalConfirmBtn.focus();
+        }
+    }, 30);
+
+    document.addEventListener("keydown", _modalKeyHandler);
+
+    return new Promise((resolve) => {
+        _modalResolver = resolve;
+        modalConfirmBtn.onclick = () => {
+            if (kind === "prompt") {
+                _closeModal(modalInputEl.value);
+            } else if (kind === "confirm") {
+                _closeModal(true);
+            } else {
+                _closeModal(true);
+            }
+        };
+    });
+}
+
+function modalAlert(title, subtitle = "") {
+    return openModal({ title, subtitle, kind: "alert", icon: "info", confirmLabel: "OK" });
+}
+
+// ---------------------------------------------------------------------------
 // File Upload (unchanged)
 // ---------------------------------------------------------------------------
 
@@ -454,27 +585,47 @@ newChatBtn.addEventListener("click", navigateToNewChat);
 renameThreadBtn.addEventListener("click", async () => {
     if (!currentConversationId) return;
     const current = conversationCache.find(c => c.id === currentConversationId);
-    const proposed = prompt("Ganti nama percakapan:", current?.title || "");
-    if (!proposed || !proposed.trim()) return;
-    const ok = await renameConversation(currentConversationId, proposed.trim());
+    const proposed = await openModal({
+        title: "Ganti nama percakapan",
+        subtitle: "Beri nama yang singkat dan deskriptif.",
+        icon: "edit",
+        kind: "prompt",
+        defaultValue: current?.title || "",
+        placeholder: "Nama percakapan",
+        confirmLabel: "Simpan",
+        cancelLabel: "Batal",
+    });
+    if (proposed === null) return;
+    const trimmed = proposed.trim();
+    if (!trimmed) return;
+    const ok = await renameConversation(currentConversationId, trimmed);
     if (ok) {
-        chatHeaderTitle.textContent = proposed.trim();
+        chatHeaderTitle.textContent = trimmed;
         await refreshThreadList();
     } else {
-        alert("Gagal mengganti nama.");
+        await modalAlert("Gagal mengganti nama", "Silakan coba lagi sebentar lagi.");
     }
 });
 
 deleteThreadBtn.addEventListener("click", async () => {
     if (!currentConversationId) return;
-    if (!confirm("Hapus percakapan ini? Tindakan tidak bisa dibatalkan.")) return;
+    const confirmed = await openModal({
+        title: "Hapus percakapan?",
+        subtitle: "Tindakan ini tidak bisa dibatalkan. Semua pesan dalam percakapan ini akan dihapus permanen.",
+        icon: "danger",
+        kind: "confirm",
+        confirmLabel: "Hapus",
+        cancelLabel: "Batal",
+        danger: true,
+    });
+    if (!confirmed) return;
     const ok = await deleteConversation(currentConversationId);
     if (ok) {
         currentConversationId = null;
         await refreshThreadList();
         navigateToNewChat();
     } else {
-        alert("Gagal menghapus percakapan.");
+        await modalAlert("Gagal menghapus", "Percakapan tidak bisa dihapus saat ini. Coba lagi.");
     }
 });
 
@@ -588,7 +739,7 @@ micBtn.addEventListener("click", async () => {
         micBtn.classList.add("recording");
         chatInput.placeholder = "Mendengarkan... (Klik mic untuk selesai)";
     } catch (err) {
-        alert("Akses mikrofon ditolak.");
+        modalAlert("Akses mikrofon ditolak", "Izinkan akses mikrofon di pengaturan browser untuk merekam suara.");
     }
 });
 
