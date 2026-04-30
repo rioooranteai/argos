@@ -14,40 +14,67 @@ The system is designed for **product**, **strategy**, and **business intelligenc
 
 ## 2. System Architecture
 
-ArgosAI consists of three main interconnected processes: document ingestion, AI extraction, and NL2SQL-based chat.
+ArgosAI is built around four interconnected flows: **authentication**, **document ingestion + extraction**, **multi-conversation chat**, and a **hybrid retrieval graph** that routes each question to SQL, vector search, or both.
 
 ```mermaid
 flowchart TD
-    A["📄 PDF / Markdown\nCompetitor Documents"] -->|Upload via Web UI| B
+    %% ─── Client ───
+    UI["🖥️ Web UI Frontend\n(login · sidebar · chat)"]
 
-    subgraph INGESTION ["⚙️ Process 1 — Ingestion"]
-        B["Docling Loader & Chunker\n+ Contextual Metadata"]
+    %% ─── Auth ───
+    subgraph AUTH ["🔐 Authentication"]
+        GOOGLE["Google OAuth 2.0"]
+        JWT["JWT issuer\n(sub · email · name · picture)"]
+        GOOGLE --> JWT
     end
+    UI <-->|Bearer token on every request| JWT
 
-    B -->|Store chunks| C[("🗄️ ChromaDB\n(Vector Search)")]
-    C -->|Retrieve context| D
-
-    subgraph EXTRACTION ["🤖 Process 3 — Extraction"]
-        D["AI Agent Extraction"]
+    %% ─── Ingestion + Extraction ───
+    DOC["📄 PDF / Markdown"] -->|Upload| ING
+    subgraph ING ["⚙️ Ingestion"]
+        DOCLING["Docling parser\n+ contextual chunker"]
     end
+    DOCLING -->|chunks + metadata| CHROMA[("🗄️ ChromaDB\nvector store")]
 
-    D -->|Save features| E[("🗃️ SQLite DB\nTable: features")]
-
-    subgraph CHAT ["💬 Process 2 — NL2SQL Chat"]
-        F["NL→SQL (LLM)"] -->|Execute SQL| E
-        E -->|Return results| G["SQL→Answer (LLM)"]
+    subgraph EXT ["🤖 Extraction"]
+        AGENT["LLM Extraction Agent"]
     end
+    CHROMA -->|retrieve context| AGENT
+    AGENT -->|structured rows| FEATURES[("🗃️ SQLite · features")]
 
-    H["🖥️ Web UI Frontend"] <-->|Question / Answer| F
-    G -->|Natural language answer| H
+    %% ─── Conversation persistence ───
+    UI -->|send message| CHATAPI["Chat API\n(/api/v1/chat/*)"]
+    CHATAPI <--> CONVSVC["ConversationService\n+ Repository port"]
+    CONVSVC <--> CONVDB[("🗃️ SQLite\nconversations · messages")]
+
+    %% ─── Hybrid retrieval graph ───
+    CHATAPI -->|history + question| GRAPH
+    subgraph GRAPH ["🧠 LangGraph Chat Engine"]
+        ROUTER["router_node\nclassify intent"]
+        SQLN["sql_node\nNL→SQL → exec"]
+        VECN["vector_node\nsemantic search"]
+        SYNTH["synthesizer_node\nfinal answer (LLM)"]
+        ROUTER -->|sql| SQLN
+        ROUTER -->|vector| VECN
+        ROUTER -->|both — parallel| SQLN
+        ROUTER -->|both — parallel| VECN
+        ROUTER -->|none| SYNTH
+        SQLN --> SYNTH
+        VECN --> SYNTH
+    end
+    SQLN <--> FEATURES
+    VECN <--> CHROMA
+    SYNTH -->|answer + auto-title| CHATAPI
+    CHATAPI -->|stream answer| UI
 ```
 
 ### Component Explanation
 
-- **Data Source:** PDF or Markdown documents containing competitor data are uploaded through the Web UI.
-- **Process 1 — Ingestion:** Docling reads and parses the document, splits text into chunks with contextual metadata, then stores them in ChromaDB.
-- **Process 3 — Extraction:** The AI Agent reads the entire document via ChromaDB and extracts competitor features (pricing, advantages, disadvantages) into the `features` table in SQLite.
-- **Process 2 — NL2SQL Chat:** The user's question is translated by the LLM into a SQL query, executed against SQLite, and the result is summarized back into a natural language answer by the LLM.
+- **Authentication.** Users sign in with **Google OAuth 2.0**; the backend issues a **JWT** containing `sub`, `email`, `name`, `given_name`, and `picture`. Every API request must carry the token, and all data is scoped per `user_id`.
+- **Ingestion.** Uploaded **PDF / Markdown** documents are parsed by **Docling**, split into chunks with contextual metadata, and embedded into **ChromaDB**.
+- **Extraction.** An **LLM agent** reads the document via ChromaDB and writes structured rows (`competitor_name`, `feature_name`, `price`, `advantages`, `disadvantages`) into the `features` table in SQLite.
+- **Conversation persistence.** The `Chat API` talks to a `ConversationService` backed by a **repository port** (SQLite adapter today, swappable later). Each user owns multiple conversations; each conversation owns an ordered list of messages. Titles are generated automatically from the first message via a small LLM call.
+- **Hybrid retrieval graph.** Built with **LangGraph**: a `router_node` classifies the question into `sql`, `vector`, `both`, or `none`. `sql_node` runs an NL→SQL → safe-execute pipeline against `features`. `vector_node` performs semantic search on ChromaDB. Their outputs are merged by `synthesizer_node`, which produces the final natural-language answer in the user's language.
 
 ---
 
@@ -138,16 +165,15 @@ The following are limitations of the ArgosAI system that should be understood be
 
 - Answer quality is entirely dependent on the quality of the uploaded documents. Ambiguous, incomplete, or unstructured data will result in less accurate extractions.
 - The system only supports **PDF** and **Markdown** formats. Other formats such as DOCX, XLSX, or standalone images are not yet supported.
+
 ### AI & Accuracy
 
 - The LLM may generate suboptimal SQL queries for very complex or ambiguous questions, although the security system blocks destructive queries.
-- **ArgosAI currently does not use conversation memory.** Every chat message is processed independently — there is no context carried over from previous messages. Each question is treated as a completely new and isolated interaction.
 
 ### Infrastructure
 
-- **No user authentication.** The system currently has no login or access management mechanism, so public deployment is not recommended without an additional security layer.
 - **SQLite is not suitable for high-concurrency writes.** For large-scale multi-user usage, migrating to PostgreSQL is strongly advised.
-- **OpenAI API costs are per-request.** Each question triggers two API calls (NL→SQL and SQL→Answer), so operational costs should be monitored for intensive usage.
+- **OpenAI API costs are per-request.** Each question can trigger several API calls along the LangGraph pipeline (router → SQL and/or vector → synthesizer, plus an auto-title call on the first turn), so operational costs should be monitored for intensive usage.
 
 ---
 
@@ -172,4 +198,4 @@ The following are limitations of the ArgosAI system that should be understood be
 
 ---
 
-*ArgosAI — Built with LangChain · FastAPI · ChromaDB · SQLite · OpenAI*
+*ArgosAI — Built with FastAPI · LangGraph · LangChain · ChromaDB · SQLite · Google OAuth · OpenAI*
