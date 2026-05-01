@@ -11,9 +11,7 @@ import uuid
 from datetime import datetime
 
 from app.core.database import Database
-from app.services.conversation.base.repository import (
-    ConversationRepository,
-)
+from app.infrastructure.interface.conversation_repository import BaseConversationRepository
 from app.services.conversation.model import Conversation, Message
 
 
@@ -29,7 +27,7 @@ def _parse_ts(value) -> datetime:
         return datetime.utcnow()
 
 
-class SQLiteConversationRepository(ConversationRepository):
+class SQLiteConversationRepository(BaseConversationRepository):
     def __init__(self, database: Database) -> None:
         self._db = database
 

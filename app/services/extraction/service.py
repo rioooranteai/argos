@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
-from app.services.extraction.base.repository import BaseFeatureRepository
+from app.infrastructure.interface.repository import BaseFeatureRepository
 from app.services.extraction.factories.extraction_factory import ExtractionFactory
 from app.services.extraction.models import ExtractionResult
 

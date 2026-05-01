@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from app.services.conversation.model import Conversation, Message
 
 
-class ConversationRepository(ABC):
+class BaseConversationRepository(ABC):
     """Kontrak persistence untuk conversations + messages.
 
     Semua method yang menerima `user_id` melakukan owner check di adapter:

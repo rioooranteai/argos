@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.core.database import Database
-from app.services.extraction.base.repository import BaseFeatureRepository
+from app.infrastructure.interface.feature_repository import BaseFeatureRepository
 
 logger = logging.getLogger(__name__)
 

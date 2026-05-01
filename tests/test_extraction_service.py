@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.extraction.base.repository import BaseFeatureRepository
+from app.infrastructure.interface.repository import BaseFeatureRepository
 from app.services.extraction.models import CompetitorFeature
 from app.services.extraction.service import ExtractionService
 
