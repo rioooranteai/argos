@@ -1,36 +1,8 @@
-"""Port (abstract base) untuk persistence multi-conversation chat history.
-
-Adapter konkret (SQLite, Postgres, Redis-cached, dll) implement interface ini.
-ConversationService dan API router berbicara hanya dengan port — adapter
-disuntikkan via composition root (startup.py).
-"""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from datetime import datetime
 
-
-@dataclass
-class Conversation:
-    """Satu thread percakapan (entry di sidebar UI)."""
-
-    id: str
-    user_id: str
-    title: str
-    created_at: datetime
-    updated_at: datetime
-
-
-@dataclass
-class Message:
-    """Satu pesan (user atau assistant) dalam sebuah thread."""
-
-    id: int
-    conversation_id: str
-    role: str  # 'user' | 'assistant'
-    content: str
-    created_at: datetime
+from app.services.conversation.model import Conversation, Message
 
 
 class ConversationRepository(ABC):
@@ -40,8 +12,6 @@ class ConversationRepository(ABC):
     method WAJIB return None / raise / no-op bila conversation tidak dimiliki
     user tersebut. Tidak ada method yang membypass owner check.
     """
-
-    # ── Conversation CRUD ──────────────────────────────────────────────────
 
     @abstractmethod
     def create_conversation(self, user_id: str, title: str) -> Conversation:
@@ -66,8 +36,6 @@ class ConversationRepository(ABC):
     @abstractmethod
     def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
         """Hapus conversation + semua messages-nya (CASCADE). Return True bila berhasil."""
-
-    # ── Messages ───────────────────────────────────────────────────────────
 
     @abstractmethod
     def add_message(self, conversation_id: str, role: str, content: str) -> Message:

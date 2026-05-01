@@ -1,8 +1,3 @@
-"""SQLite adapter untuk ConversationRepository.
-
-Schema-nya di-init di app/core/database.py (init_db).
-Adapter ini hanya read/write — tidak handle migration.
-"""
 from __future__ import annotations
 
 import sqlite3
@@ -11,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from app.services.conversation.repository import (
+from app.services.conversation.Base.repository import (
     Conversation,
     ConversationRepository,
     Message,
@@ -24,7 +19,6 @@ def _parse_ts(value) -> datetime:
         return value
     if value is None:
         return datetime.utcnow()
-    # SQLite CURRENT_TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS'
     try:
         return datetime.fromisoformat(str(value).replace(" ", "T"))
     except ValueError:
@@ -39,15 +33,16 @@ class SQLiteConversationRepository(ConversationRepository):
     def _connect(self):
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
-        # FK enforcement penting untuk ON DELETE CASCADE pada messages.
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
         try:
             yield conn
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
-
-    # ── Conversation CRUD ──────────────────────────────────────────────────
 
     def create_conversation(self, user_id: str, title: str) -> Conversation:
         conv_id = str(uuid.uuid4())
@@ -119,8 +114,6 @@ class SQLiteConversationRepository(ConversationRepository):
             )
             return cursor.rowcount > 0
 
-    # ── Messages ───────────────────────────────────────────────────────────
-
     def add_message(self, conversation_id: str, role: str, content: str) -> Message:
         if role not in ("user", "assistant"):
             raise ValueError(f"Invalid role: {role!r}. Must be 'user' or 'assistant'.")
@@ -164,8 +157,6 @@ class SQLiteConversationRepository(ConversationRepository):
                     (conversation_id, limit),
                 ).fetchall()
         return [self._row_to_message(r) for r in rows]
-
-    # ── Helpers ────────────────────────────────────────────────────────────
 
     @staticmethod
     def _row_to_conversation(row: sqlite3.Row) -> Conversation:

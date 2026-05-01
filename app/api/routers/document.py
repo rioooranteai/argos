@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from app.core.dependencies import get_document_engine
-from app.engines.document_engine import DocumentProcessingEngine
+from app.engines.document_engine.engine import DocumentProcessingEngine
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
 
 router = APIRouter(prefix="/api/v1/document", tags=['Document Processing'])

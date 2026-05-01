@@ -63,7 +63,8 @@ class ChromaProvider(BaseVectorStoreProvider):
             return []
 
         try:
-            self.collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
+            embeddings = self.embedder.embed_documents(documents)
+            self.collection.upsert(ids=ids, documents=documents, embeddings=embeddings,metadatas=metadatas)
             logger.debug(f"Berhasil menyimpan {len(ids)} chunk.")
             return ids
         except Exception as e:

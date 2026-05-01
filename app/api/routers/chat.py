@@ -1,13 +1,3 @@
-"""Chat router — multi-conversation API.
-
-Endpoint surface:
-    GET    /api/v1/chat/conversations         List user's threads (sidebar).
-    POST   /api/v1/chat/conversations         Create empty thread.
-    GET    /api/v1/chat/conversations/{id}    Fetch thread + all messages.
-    PATCH  /api/v1/chat/conversations/{id}    Rename thread.
-    DELETE /api/v1/chat/conversations/{id}    Delete thread.
-    POST   /api/v1/chat/                      Send a message (creates thread if conversation_id is null).
-"""
 from __future__ import annotations
 
 import logging
@@ -26,9 +16,6 @@ from app.services.conversation.service import ConversationService
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
-
-
-# ── Schemas ────────────────────────────────────────────────────────────────
 
 
 class ConversationOut(BaseModel):

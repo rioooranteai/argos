@@ -1,12 +1,11 @@
 import logging
 from pathlib import Path
 
-from pydantic_ai import Agent
-
 from app.core.config import config
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.exceptions import ExtractionAgentError
 from app.services.extraction.models import CompetitorFeature
+from pydantic_ai import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +13,12 @@ _PROMPT_PATH = Path(__file__).resolve().parents[4] / "prompts" / "extraction_age
 
 
 def _load_prompt(path: Path) -> str:
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return (
-            "Kamu adalah AI Data Extraction Specialist. "
-            "Tugasmu: Mengekstrak Nama Kompetitor, Nama Fitur, Harga, dan Kelebihan/Kekurangan "
-            "dari KESELURUHAN dokumen yang diberikan. "
-            "Lakukan cross-referensi jika informasi tersebar. "
-            "Jika tidak ada, kembalikan null. DILARANG MENGARANG."
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Extraction prompt not found at: {path}. "
+            "Ensure 'prompts/extraction_agent.md' exists in the project root."
         )
+    return path.read_text(encoding="utf-8")
 
 
 class PydanticAIExtractionProvider(BaseExtractionProvider):

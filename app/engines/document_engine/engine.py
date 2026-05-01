@@ -8,6 +8,7 @@ from app.services.vector_store.service import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
+
 class DocumentProcessingEngine:
     """Orchestrator yang mengatur aliran data dari PDF -> Vector DB -> SQL DB."""
 
@@ -34,7 +35,7 @@ class DocumentProcessingEngine:
         inserted_ids = self.vector_store_svc.add_chunks(chunks)
 
         # Ambil teks dari Vector DB — engine yang ambil, bukan extraction service
-        chunks_text = [chunk.page_content for chunk in chunks]
+        chunks_text = [chunk.text for chunk in chunks]
 
         # Kirim teks ke ExtractionService → simpan ke SQL DB
         extraction_result = await self.extraction_svc.process_document_texts(

@@ -1,14 +1,3 @@
-"""ConversationService — orchestrates conversation lifecycle on top of the
-ConversationRepository port.
-
-Responsibilities (NOT in repository):
-    - Auto-titling new threads via LLM (best-effort, errors swallowed).
-    - Owner-checked rename / delete / fetch convenience.
-    - Single source of truth for "list messages of a conversation that user X owns".
-
-The service is deliberately thin. The repository handles SQL, the chat engine
-handles the LangGraph flow, and the API router glues everything together.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -16,18 +5,13 @@ import logging
 from dataclasses import dataclass
 
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.conversation.repository import (
-    Conversation,
-    ConversationRepository,
-    Message,
-)
+from app.services.conversation.Base.repository import ConversationRepository
+from app.services.conversation.model import Message, Conversation
 
 logger = logging.getLogger(__name__)
 
-# Title length budget — short enough for sidebar, long enough to be informative.
 _MAX_TITLE_CHARS = 60
 _FALLBACK_TITLE = "New chat"
-
 
 _TITLE_SYSTEM_PROMPT = (
     "Anda generator judul ringkas untuk thread chat. "
@@ -70,20 +54,18 @@ class ConversationWithMessages:
 
 class ConversationService:
     def __init__(
-        self,
-        repository: ConversationRepository,
-        title_llm: BaseLLM | None = None,
+            self,
+            repository: ConversationRepository,
+            title_llm: BaseLLM | None = None,
     ):
         self._repo = repository
         self._title_llm = title_llm
-
-    # ── Conversation lifecycle ─────────────────────────────────────────────
 
     def list_for_user(self, user_id: str, limit: int = 100) -> list[Conversation]:
         return self._repo.list_conversations(user_id, limit=limit)
 
     def get_with_messages(
-        self, conversation_id: str, user_id: str
+            self, conversation_id: str, user_id: str
     ) -> ConversationWithMessages | None:
         conv = self._repo.get_conversation(conversation_id, user_id)
         if conv is None:
@@ -92,7 +74,7 @@ class ConversationService:
         return ConversationWithMessages(conversation=conv, messages=msgs)
 
     def create_for_user(
-        self, user_id: str, first_message: str | None = None
+            self, user_id: str, first_message: str | None = None
     ) -> Conversation:
         """Create a new thread.
 
@@ -114,10 +96,8 @@ class ConversationService:
     def delete(self, conversation_id: str, user_id: str) -> bool:
         return self._repo.delete_conversation(conversation_id, user_id)
 
-    # ── Message persistence ────────────────────────────────────────────────
-
     def append_user_message(
-        self, conversation_id: str, user_id: str, content: str
+            self, conversation_id: str, user_id: str, content: str
     ) -> Message | None:
         """Owner-checked append. Returns None if conversation isn't owned by user."""
         if self._repo.get_conversation(conversation_id, user_id) is None:
@@ -127,7 +107,7 @@ class ConversationService:
         return msg
 
     def append_assistant_message(
-        self, conversation_id: str, content: str
+            self, conversation_id: str, content: str
     ) -> Message:
         """No owner check — caller is the chat router which already verified
         ownership when it accepted the user message."""
@@ -136,7 +116,7 @@ class ConversationService:
         return msg
 
     def get_messages_for_engine(
-        self, conversation_id: str, user_id: str
+            self, conversation_id: str, user_id: str
     ) -> list[Message] | None:
         """Load full message history for feeding the chat engine.
 
@@ -146,13 +126,11 @@ class ConversationService:
             return None
         return self._repo.list_messages(conversation_id)
 
-    # ── Auto-title via LLM ─────────────────────────────────────────────────
-
     async def generate_title_async(
-        self,
-        conversation_id: str,
-        user_id: str,
-        first_user_message: str,
+            self,
+            conversation_id: str,
+            user_id: str,
+            first_user_message: str,
     ) -> None:
         """Generate a conversational title in the background. Best-effort —
         errors are logged but never propagated. Caller should fire-and-forget
@@ -193,10 +171,10 @@ class ConversationService:
             )
 
     def schedule_auto_title(
-        self,
-        conversation_id: str,
-        user_id: str,
-        first_user_message: str,
+            self,
+            conversation_id: str,
+            user_id: str,
+            first_user_message: str,
     ) -> None:
         """Fire-and-forget wrapper. Safe to call from sync or async contexts —
         if no event loop is running, falls back to a no-op (cron / test paths).

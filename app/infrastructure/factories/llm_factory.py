@@ -3,7 +3,6 @@ from app.infrastructure.interface.llm import BaseLLM
 
 from app.infrastructure.providers.llms.openai_llm import OpenAILLM
 
-
 def get_llm(model_type: str = "llm", temperature: float = 0.0) -> BaseLLM:
     provider = config.LLM_PROVIDER.lower()
 
@@ -13,8 +12,6 @@ def get_llm(model_type: str = "llm", temperature: float = 0.0) -> BaseLLM:
         elif model_type == "title":
             selected_model = config.OPENAI_TITLE_MODEL
         else:
-            # "extraction", "chat", or anything else falls back to the
-            # cheaper extraction model — same behavior as before this change.
             selected_model = config.OPENAI_EXTRACTION_MODEL
 
         return OpenAILLM(
