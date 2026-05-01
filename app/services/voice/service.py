@@ -2,7 +2,7 @@ import logging
 
 from app.services.voice.factories.stt_factory import STTFactory
 from app.services.voice.factories.tts_factory import TTSFactory
-from app.services.voice.models import TTSRequest, TTSResult, STTRequest, STTResult
+from app.services.voice.model import TTSRequest, TTSResult, STTRequest, STTResult
 
 logger = logging.getLogger(__name__)
 

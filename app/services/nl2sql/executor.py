@@ -1,8 +1,3 @@
-"""Read-only SQL executor.
-
-Defense-in-depth: even if the validator misses a destructive query, the
-SQLite driver is opened with mode=ro, so writes fail at the driver level.
-"""
 from __future__ import annotations
 
 import logging

@@ -61,3 +61,9 @@ build/
 .eggs/
 
 share
+
+# DATABASE
+chroma_db
+competitor_data.db
+competitor_data.db-shm
+competitor_data.db-wal

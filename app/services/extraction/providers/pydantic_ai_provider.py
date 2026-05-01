@@ -4,7 +4,7 @@ from pathlib import Path
 from app.core.config import config
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.exceptions import ExtractionAgentError
-from app.services.extraction.models import CompetitorFeature
+from app.services.extraction.model import CompetitorFeature
 from pydantic_ai import Agent
 
 logger = logging.getLogger(__name__)

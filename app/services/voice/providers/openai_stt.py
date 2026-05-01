@@ -4,7 +4,7 @@ import io
 from app.core.config import config
 from app.services.voice.base.stt_base import BaseSTTProvider
 from app.services.voice.exceptions import STTError
-from app.services.voice.models import STTRequest, STTResult, STTSegment
+from app.services.voice.model import STTRequest, STTResult, STTSegment
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)

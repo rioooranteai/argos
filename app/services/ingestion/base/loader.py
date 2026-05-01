@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from app.services.ingestion.models import DocumentElement
+from app.services.ingestion.model import DocumentElement
 
 class BaseDocumentLoader(ABC):
     """

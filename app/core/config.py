@@ -36,8 +36,7 @@ class Config(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
 
-    # CORS — comma-separated list di .env, contoh:
-    # ALLOWED_ORIGINS="http://localhost:8000,http://localhost:3000"
+    # ALLOWED_ORIGINS
     ALLOWED_ORIGINS: str = "http://localhost:8000,http://localhost:3000"
 
     @property

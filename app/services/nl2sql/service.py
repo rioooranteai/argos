@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 MAX_RAW_ROWS = 100
 
-# Hint kolom untuk membantu LLM. Kolom yang tidak terdaftar di sini tetap
-# disertakan apa adanya dari PRAGMA table_info — tanpa hint.
 _COLUMN_HINTS: dict[str, str] = {
     "price": "float atau NULL. Harga produk.",
     "price_currency": "ISO 4217 (USD, IDR, EUR, dst) atau NULL.",

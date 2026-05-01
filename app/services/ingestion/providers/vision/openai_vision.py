@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage
 
 from app.core.config import config
 from app.services.ingestion.base.vision import BaseVisionProcessor
-from app.services.ingestion.models import DocumentElement, ElementType
+from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.exceptions import VisionProcessingError
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from app.services.voice.exceptions import UnsupportedFormatError
-from app.services.voice.models import TTSRequest, TTSResult
+from app.services.voice.model import TTSRequest, TTSResult
 
 
 class BaseTTSProvider(ABC):

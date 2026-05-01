@@ -4,27 +4,28 @@ import logging
 from functools import partial
 from typing import Any
 
-from langgraph.graph import END, START, StateGraph
-from langchain_core.messages import AIMessage
-
-from app.infrastructure.interface.llm import BaseLLM
 from app.engines.chat_engine.nodes.router import router_node
 from app.engines.chat_engine.nodes.sql_node import sql_node
 from app.engines.chat_engine.nodes.synthesizer import synthesizer_node
 from app.engines.chat_engine.nodes.vector_node import vector_node
 from app.engines.chat_engine.state import ChatState, RouteDecision
+from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
+from langchain_core.messages import AIMessage
+from langgraph.graph import END, START, StateGraph
 
 logger = logging.getLogger(__name__)
 
-async def _synthesizer_wrapper(state: dict, llm: BaseLLM)-> dict:
+
+async def _synthesizer_wrapper(state: dict, llm: BaseLLM) -> dict:
     result = await synthesizer_node(state, llm=llm)
 
     return {
         **result,
         "messages": [AIMessage(content=result['final_answer'])],
     }
+
 
 def _route_condition(state: ChatState) -> list[str]:
     """
@@ -45,9 +46,9 @@ def _route_condition(state: ChatState) -> list[str]:
 
 
 def build_graph(
-    llm: BaseLLM,
-    nl2sql_svc: NL2SQLService,
-    vector_svc: VectorStoreService,
+        llm: BaseLLM,
+        nl2sql_svc: NL2SQLService,
+        vector_svc: VectorStoreService,
 ) -> Any:
     """
     Build dan compile LangGraph StateGraph untuk ChatEngine.

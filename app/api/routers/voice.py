@@ -2,7 +2,7 @@ import io
 import logging
 
 from app.core.dependencies import get_voice_service
-from app.services.voice.models import STTRequest, TTSRequest
+from app.services.voice.model import STTRequest, TTSRequest
 from app.services.voice.service import VoiceService
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse

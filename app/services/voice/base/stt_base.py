@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from app.services.voice.exceptions import UnsupportedFormatError
 from app.services.voice.exceptions import UnsupportedLanguageError
-from app.services.voice.models import STTRequest, STTResult
+from app.services.voice.model import STTRequest, STTResult
 
 
 class BaseSTTProvider(ABC):

@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.conversation.base.repository import ConversationRepository
+from app.infrastructure.interface.conversation_repository import BaseConversationRepository
 from app.services.conversation.model import Message, Conversation
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class ConversationWithMessages:
 class ConversationService:
     def __init__(
             self,
-            repository: ConversationRepository,
+            repository: BaseConversationRepository,
             title_llm: BaseLLM | None = None,
     ):
         self._repo = repository

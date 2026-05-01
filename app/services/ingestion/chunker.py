@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import List
 
-from app.services.ingestion.models import DocumentElement, Chunk
+from app.services.ingestion.model import DocumentElement, Chunk
 
 logger = logging.getLogger(__name__)
 

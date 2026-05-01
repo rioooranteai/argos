@@ -9,16 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractionFactory:
-
     _providers: dict[str, type[BaseExtractionProvider]] = {
         "pydantic_ai": PydanticAIExtractionProvider,
     }
 
     @classmethod
     def create(
-        cls,
-        provider: str = "pydantic_ai",
-        **kwargs: Any,
+            cls,
+            provider: str = "pydantic_ai",
+            **kwargs: Any,
     ) -> BaseExtractionProvider:
         if provider not in cls._providers:
             raise UnsupportedProviderError(

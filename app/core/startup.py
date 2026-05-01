@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import config
-from app.core.database import DB_PATH, db  # noqa: F401  (DB_PATH used by NL2SQL)
+from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.engine import DocumentProcessingEngine

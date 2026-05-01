@@ -3,7 +3,7 @@ import logging
 from app.core.config import config
 from app.services.voice.base.tts_base import BaseTTSProvider
 from app.services.voice.exceptions import TTSError
-from app.services.voice.models import TTSRequest, TTSResult
+from app.services.voice.model import TTSRequest, TTSResult
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)

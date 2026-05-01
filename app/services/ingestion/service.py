@@ -7,7 +7,7 @@ from typing import List
 from app.services.ingestion.factories.loader_factory import LoaderFactory
 from app.services.ingestion.factories.vision_factory import VisionFactory
 from app.services.ingestion.chunker import ContentAwareChunker
-from app.services.ingestion.models import Chunk, DocumentElement
+from app.services.ingestion.model import Chunk, DocumentElement
 
 logger = logging.getLogger(__name__)
 
