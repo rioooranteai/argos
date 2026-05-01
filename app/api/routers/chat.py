@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 
 from app.core.dependencies import (
     get_chat_engine,
@@ -12,64 +8,26 @@ from app.core.dependencies import (
     get_current_user,
 )
 from app.engines.chat_engine.engine import ChatEngine
+from app.services.conversation.model import (
+    ConversationOut,
+    CreateConversationRequest,
+    ConversationDetailOut,
+    ChatRequest,
+    MessageOut,
+    ChatResponse,
+    RenameConversationRequest
+)
 from app.services.conversation.service import ConversationService
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
 
 
-class ConversationOut(BaseModel):
-    id: str
-    title: str
-    created_at: datetime
-    updated_at: datetime
-
-
-class MessageOut(BaseModel):
-    id: int
-    role: str
-    content: str
-    created_at: datetime
-
-
-class ConversationDetailOut(BaseModel):
-    id: str
-    title: str
-    created_at: datetime
-    updated_at: datetime
-    messages: list[MessageOut]
-
-
-class CreateConversationRequest(BaseModel):
-    title: str | None = Field(default=None, description="Optional initial title.")
-
-
-class RenameConversationRequest(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-
-
-class ChatRequest(BaseModel):
-    question: str = Field(..., min_length=1, description="User message.")
-    conversation_id: str | None = Field(
-        default=None,
-        description="Existing thread ID. If null, a new thread is created and its ID returned.",
-    )
-
-
-class ChatResponse(BaseModel):
-    conversation_id: str
-    question: str
-    answer: str
-    metadata: dict
-
-
-# ── Conversation CRUD ──────────────────────────────────────────────────────
-
-
 @router.get("/conversations", summary="List user's conversations")
 async def list_conversations(
-    user: dict = Depends(get_current_user),
-    svc: ConversationService = Depends(get_conversation_service),
+        user: dict = Depends(get_current_user),
+        svc: ConversationService = Depends(get_conversation_service),
 ) -> list[ConversationOut]:
     convs = svc.list_for_user(user_id=user["sub"])
     return [
@@ -86,9 +44,9 @@ async def list_conversations(
     summary="Create a new conversation",
 )
 async def create_conversation(
-    body: CreateConversationRequest = CreateConversationRequest(),
-    user: dict = Depends(get_current_user),
-    svc: ConversationService = Depends(get_conversation_service),
+        body: CreateConversationRequest = CreateConversationRequest(),
+        user: dict = Depends(get_current_user),
+        svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationOut:
     conv = svc.create_for_user(user_id=user["sub"], first_message=body.title)
     return ConversationOut(
@@ -101,9 +59,9 @@ async def create_conversation(
     summary="Get conversation with full message history",
 )
 async def get_conversation(
-    conversation_id: str,
-    user: dict = Depends(get_current_user),
-    svc: ConversationService = Depends(get_conversation_service),
+        conversation_id: str,
+        user: dict = Depends(get_current_user),
+        svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationDetailOut:
     bundle = svc.get_with_messages(conversation_id, user["sub"])
     if bundle is None:
@@ -127,10 +85,10 @@ async def get_conversation(
     summary="Rename a conversation",
 )
 async def rename_conversation(
-    conversation_id: str,
-    body: RenameConversationRequest,
-    user: dict = Depends(get_current_user),
-    svc: ConversationService = Depends(get_conversation_service),
+        conversation_id: str,
+        body: RenameConversationRequest,
+        user: dict = Depends(get_current_user),
+        svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationOut:
     ok = svc.rename(conversation_id, user["sub"], body.title)
     if not ok:
@@ -151,9 +109,9 @@ async def rename_conversation(
     summary="Delete a conversation",
 )
 async def delete_conversation(
-    conversation_id: str,
-    user: dict = Depends(get_current_user),
-    svc: ConversationService = Depends(get_conversation_service),
+        conversation_id: str,
+        user: dict = Depends(get_current_user),
+        svc: ConversationService = Depends(get_conversation_service),
 ) -> None:
     ok = svc.delete(conversation_id, user["sub"])
     if not ok:
@@ -166,10 +124,10 @@ async def delete_conversation(
 
 @router.post("/", summary="Send a message in a conversation")
 async def chat_with_data(
-    request: ChatRequest,
-    chat_engine: ChatEngine = Depends(get_chat_engine),
-    svc: ConversationService = Depends(get_conversation_service),
-    user: dict = Depends(get_current_user),
+        request: ChatRequest,
+        chat_engine: ChatEngine = Depends(get_chat_engine),
+        svc: ConversationService = Depends(get_conversation_service),
+        user: dict = Depends(get_current_user),
 ) -> ChatResponse:
     """Send a message.
 
