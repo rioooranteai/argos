@@ -598,7 +598,7 @@ body {
 .bubble-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 20px;
   max-width: 68%;
 }
 .user-wrapper .bubble-group { align-items: flex-end; }

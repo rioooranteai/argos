@@ -72,18 +72,6 @@ class BaseSTTProvider(ABC):
         """
         ...
 
-    @abstractmethod
-    async def health_check(self) -> bool:
-        """
-        Verifikasi apakah provider siap digunakan.
-
-        Untuk provider berbasis API  : cek konektivitas & validitas API key
-        Untuk provider model lokal   : cek apakah model sudah ter-load
-
-        Returns:
-            True jika provider sehat, False jika tidak
-        """
-        ...
 
     def validate_language(self, language: str) -> None:
         """Helper validasi bahasa — bisa dipakai langsung di semua provider."""

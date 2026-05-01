@@ -108,11 +108,3 @@ class OpenAISTTProvider(BaseSTTProvider):
         except Exception as e:
             logger.error(f"[OpenAI STT] Error: {e}")
             raise STTError(f"OpenAI STT gagal: {e}") from e
-
-    async def health_check(self) -> bool:
-        try:
-            await self._client.models.retrieve("whisper-1")
-            return True
-        except Exception as e:
-            logger.warning(f"[OpenAI STT] Health check gagal: {e}")
-            return False

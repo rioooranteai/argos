@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 class OpenAITTSProvider(BaseTTSProvider):
     """
     TTS Provider menggunakan OpenAI Text-to-Speech API.
-    Model: tts-1 (cepat) atau tts-1-hd (kualitas tinggi)
-    Docs : https://platform.openai.com/docs/guides/text-to-speech
     """
 
     def __init__(self):
@@ -47,6 +45,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                 input=request.text,
                 response_format=request.format.value,
                 speed=request.speed,
+                instructions="Speak in a cheerful and positive tone."
             )
             return TTSResult(
                 audio_bytes=response.content,
@@ -57,11 +56,3 @@ class OpenAITTSProvider(BaseTTSProvider):
         except Exception as e:
             logger.error(f"[OpenAI TTS] Error: {e}")
             raise TTSError(f"OpenAI TTS gagal: {e}") from e
-
-    async def health_check(self) -> bool:
-        try:
-            await self._client.models.retrieve("tts-1")
-            return True
-        except Exception as e:
-            logger.warning(f"[OpenAI TTS] Health check gagal: {e}")
-            return False

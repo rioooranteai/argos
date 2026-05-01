@@ -3,8 +3,8 @@ import sqlite3
 from pathlib import Path
 
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.nl2sql.executor import execute_readonly_sql
 from app.services.nl2sql.exceptions import InvalidQuestionError
+from app.services.nl2sql.executor import execute_readonly_sql
 from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
 
 logger = logging.getLogger(__name__)
@@ -12,27 +12,23 @@ logger = logging.getLogger(__name__)
 MAX_RAW_ROWS = 100
 
 _COLUMN_HINTS: dict[str, str] = {
-    "price": "float atau NULL. Harga produk.",
-    "price_currency": "ISO 4217 (USD, IDR, EUR, dst) atau NULL.",
-    "advantages": "Kelebihan / metrik positif produk.",
-    "disadvantages": "Kelemahan / metrik negatif produk.",
+    "brand_name": "The manufacturer or brand name (e.g. Toyota, Spotify, Nike). NULL if not determinable from the text.",
+    "product_name": "The specific product or service variant name, excluding the brand prefix (e.g. 'Avanza 1.3E Manual', 'Premium Individual').",
+    "price": "Float or NULL. Direct user-facing price as a numeric value only, no currency symbols.",
+    "price_currency": "ISO 4217 currency code (e.g. USD, IDR, EUR, GBP, SGD) or NULL if no currency indicator is present near the price.",
+    "advantages": "Explicit positive facts about the product stated in the text. Include exact numeric values when present. NULL if none stated.",
+    "disadvantages": "Explicit negative facts about the product stated in the text. Include exact numeric values when present. NULL if none stated.",
 }
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
 
 def _introspect_features_schema(db_path: Path) -> str:
-    """Bangun string CREATE TABLE dari PRAGMA table_info(features).
-
-    Single source of truth: schema selalu mengikuti DB aktual, tidak ada
-    duplikasi konstanta yang bisa basi saat migrasi tambahan.
-    """
     uri = f"file:{db_path}?mode=ro"
     with sqlite3.connect(uri, uri=True) as conn:
         rows = conn.execute("PRAGMA table_info(features)").fetchall()
 
     if not rows:
-        # Fallback aman: jangan crash kalau tabel belum ada (mis. test).
         return "-- Tabel `features` belum tersedia."
 
     column_lines: list[str] = []
@@ -48,7 +44,6 @@ def _introspect_features_schema(db_path: Path) -> str:
         comment = f" -- {_COLUMN_HINTS[name]}" if name in _COLUMN_HINTS else ""
         column_lines.append(f"    {name} {ctype}{constraint_str},{comment}")
 
-    # Trim trailing comma on the last line.
     last = column_lines[-1]
     if " --" in last:
         body, _, comment = last.partition(" --")
@@ -68,28 +63,24 @@ def _load_prompt(filename: str) -> str:
 
 
 _SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md")
-_ANSWER_PROMPT_TEXT = _load_prompt("nl2sql_answer.md")
 
 
 class NL2SQLService:
     def __init__(self, llm_provider: BaseLLM, db_path: Path):
-        """
-        Inisialisasi service menggunakan Dependency Injection.
-
-        Args:
-            llm_provider: Implementasi BaseLLM (OpenAI, Anthropic, lokal, dll).
-            db_path: Path ke SQLite database. Service tidak hardcode lokasinya
-                lagi sehingga mudah dipindah / di-test dengan DB temporer.
-        """
         self.llm = llm_provider
         self._db_path = db_path
 
     def _build_sql_prompt(self, question: str) -> str:
-        """Sisipkan schema (introspeksi runtime) ke dalam pertanyaan user."""
         schema = _introspect_features_schema(self._db_path)
+
+        hints_text = "\n".join(
+            f"- {col}: {hint}" for col, hint in _COLUMN_HINTS.items()
+        )
+
         return (
             f"Schema database:\n{schema}\n\n"
-            f"Pertanyaan: {question}"
+            f"Schema database explanation:\n{hints_text}\n\n"
+            f"Question: {question}"
         )
 
     async def process_query(self, user_question: str) -> dict:
@@ -97,24 +88,27 @@ class NL2SQLService:
             safe_question = sanitize_nl_input(user_question)
             sql = await self._generate_sql(safe_question)
             rows, row_count, is_truncated = self._execute_sql(sql)
-            final_answer = await self._generate_answer(safe_question, rows)
 
             return {
                 "status": "success",
                 "sql_query": sql,
                 "raw_data": rows,
                 "row_count": row_count,
-                "truncated": is_truncated,
-                "answer": final_answer
+                "truncated": is_truncated
             }
 
+
         except InvalidQuestionError as e:
+
             return {
-                "status": "success",
-                "answer": str(e),
+                "status": "error",
+                "message": str(e),
                 "sql_query": None,
-                "raw_data": None
+                "raw_data": None,
+                "row_count": 0,
+                "truncated": False,
             }
+
         except ValueError as ve:
             return {"status": "error", "message": str(ve)}
         except Exception:
@@ -126,6 +120,8 @@ class NL2SQLService:
             prompt=self._build_sql_prompt(question),
             system=_SQL_PROMPT_TEXT
         )
+
+        logger.info(raw_sql)
 
         if raw_sql.strip().upper() == "INVALID_QUESTION":
             raise InvalidQuestionError(
@@ -142,11 +138,3 @@ class NL2SQLService:
         limited_results = query_results[:MAX_RAW_ROWS]
 
         return limited_results, len(query_results), is_truncated
-
-    async def _generate_answer(self, question: str, rows: list) -> str:
-        final_answer = await self.llm.ainvoke(
-            prompt=f"Pertanyaan: {question}\nData SQL: {rows}",
-            system=_ANSWER_PROMPT_TEXT
-        )
-
-        return final_answer

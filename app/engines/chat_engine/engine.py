@@ -3,13 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterable
 
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
-
 from app.engines.chat_engine.graph import build_graph
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.conversation.model import Message
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +55,10 @@ class ChatEngine:
     """
 
     def __init__(
-        self,
-        llm: BaseLLM,
-        nl2sql_svc: NL2SQLService,
-        vector_svc: VectorStoreService,
+            self,
+            llm: BaseLLM,
+            nl2sql_svc: NL2SQLService,
+            vector_svc: VectorStoreService,
     ):
         self._graph = build_graph(
             llm=llm,
@@ -69,9 +68,9 @@ class ChatEngine:
         logger.info("ChatEngine ready (stateless — history owned by ConversationService).")
 
     async def chat(
-        self,
-        user_input: str,
-        history: list[Message] | list[dict] | None = None,
+            self,
+            user_input: str,
+            history: list[Message] | list[dict] | None = None,
     ) -> dict[str, Any]:
         """Run the LangGraph pipeline with the given prior history.
 
@@ -90,7 +89,7 @@ class ChatEngine:
         # that read `state["messages"]` see it. We check the last message to
         # avoid duplicating when the caller already appended it.
         if not prior or not (
-            isinstance(prior[-1], HumanMessage) and prior[-1].content == user_input
+                isinstance(prior[-1], HumanMessage) and prior[-1].content == user_input
         ):
             prior.append(HumanMessage(content=user_input))
 
