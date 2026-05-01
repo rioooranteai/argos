@@ -14,6 +14,17 @@ from app.services.nl2sql.service import NL2SQLService
 _FAKE_DB_PATH = Path("/tmp/argos_test_unused.db")
 
 
+@pytest.fixture(autouse=True)
+def _stub_schema_introspection():
+    """Avoid touching the filesystem for the schema PRAGMA introspection;
+    the actual DDL is irrelevant for these orchestration tests."""
+    with patch(
+        "app.services.nl2sql.service._introspect_features_schema",
+        return_value="CREATE TABLE features (id INTEGER);",
+    ):
+        yield
+
+
 class FakeLLM(BaseLLM):
     """In-memory LLM stub for deterministic testing."""
 
@@ -36,7 +47,8 @@ class FakeLLM(BaseLLM):
 @pytest.fixture
 def fake_rows():
     return [
-        {"competitor_name": "Scopely", "feature_name": "MONOPOLY GO!", "price": None,
+        {"brand_name": "Scopely", "product_name": "MONOPOLY GO!", "price": None,
+         "price_currency": None,
          "advantages": "Top revenue 2023", "disadvantages": None}
     ]
 
@@ -45,7 +57,7 @@ class TestNL2SQLServiceProcessQuery:
     @pytest.mark.asyncio
     async def test_happy_path(self, fake_rows):
         llm = FakeLLM(responses=[
-            "SELECT * FROM features WHERE competitor_name = 'Scopely'",  # SQL gen
+            "SELECT * FROM features WHERE brand_name = 'Scopely'",  # SQL gen
             "Scopely unggul di MONOPOLY GO!",                            # final answer
         ])
         service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
@@ -121,7 +133,7 @@ class TestNL2SQLServiceProcessQuery:
             "Banyak data ditemukan.",
         ])
         service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
-        many_rows = [{"competitor_name": f"X{i}"} for i in range(150)]
+        many_rows = [{"brand_name": f"X{i}"} for i in range(150)]
 
         with patch(
             "app.services.nl2sql.service.execute_readonly_sql",

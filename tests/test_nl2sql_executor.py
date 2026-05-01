@@ -18,17 +18,17 @@ def temp_db(tmp_path: Path) -> Path:
     conn.execute("""
         CREATE TABLE features (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            competitor_name TEXT,
-            feature_name TEXT,
+            brand_name TEXT,
+            product_name TEXT,
             price REAL
         )
     """)
     conn.execute(
-        "INSERT INTO features (competitor_name, feature_name, price) "
+        "INSERT INTO features (brand_name, product_name, price) "
         "VALUES ('Scopely', 'MONOPOLY GO!', 0.0)"
     )
     conn.execute(
-        "INSERT INTO features (competitor_name, feature_name, price) "
+        "INSERT INTO features (brand_name, product_name, price) "
         "VALUES ('King', 'Candy Crush', 0.99)"
     )
     conn.commit()
@@ -40,20 +40,20 @@ class TestExecuteReadonly:
     def test_select_returns_rows(self, temp_db):
         from app.services.nl2sql.executor import execute_readonly_sql
         rows = execute_readonly_sql(
-            "SELECT competitor_name, price FROM features ORDER BY price",
+            "SELECT brand_name, price FROM features ORDER BY price",
             db_path=temp_db,
         )
 
         assert len(rows) == 2
-        assert rows[0]["competitor_name"] == "Scopely"
-        assert rows[1]["competitor_name"] == "King"
+        assert rows[0]["brand_name"] == "Scopely"
+        assert rows[1]["brand_name"] == "King"
         assert rows[1]["price"] == 0.99
 
     def test_write_rejected_at_driver_level(self, temp_db):
         from app.services.nl2sql.executor import execute_readonly_sql
         with pytest.raises(ValueError, match="Query gagal"):
             execute_readonly_sql(
-                "INSERT INTO features (competitor_name) VALUES ('evil')",
+                "INSERT INTO features (brand_name) VALUES ('evil')",
                 db_path=temp_db,
             )
 

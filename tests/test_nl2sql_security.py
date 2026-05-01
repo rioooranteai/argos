@@ -64,8 +64,8 @@ class TestSanitizeNLInput:
 class TestValidateGeneratedSQL:
     @pytest.mark.parametrize("safe_sql", [
         "SELECT * FROM features",
-        "SELECT competitor_name FROM features WHERE price < 100",
-        "SELECT competitor_name, COUNT(*) FROM features GROUP BY competitor_name",
+        "SELECT brand_name FROM features WHERE price < 100",
+        "SELECT brand_name, COUNT(*) FROM features GROUP BY brand_name",
         "select * from features order by price desc limit 10",
     ])
     def test_select_passes(self, safe_sql):
@@ -97,7 +97,7 @@ class TestValidateGeneratedSQL:
         recognized by sqlparse as a value, not a keyword. The validator parses
         SQL semantically rather than via raw substring match.
         """
-        sql = "SELECT * FROM features WHERE feature_name = 'DROP TABLE simulator'"
+        sql = "SELECT * FROM features WHERE product_name = 'DROP TABLE simulator'"
         # Should pass because DROP is inside a string literal, not a keyword
         result = validate_generated_sql(sql)
         assert result == sql

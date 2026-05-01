@@ -57,9 +57,12 @@ class ExtractionService:
         try:
             extracted_features = await self._provider.extract(combined_text)
 
+            # Drop rows that fail the prompt's required-field contract:
+            # `product_name` is required (str, non-empty). `brand_name` may
+            # legitimately be null (e.g. unbranded product family).
             valid_features = [
                 f.model_dump() for f in extracted_features
-                if f.competitor_name and f.feature_name
+                if f.product_name and f.product_name.strip()
             ]
 
             if valid_features:

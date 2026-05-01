@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 from app.engines.chat_engine.graph import build_graph
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.conversation.Base.repository import Message
+from app.services.conversation.base.repository import Message
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
 

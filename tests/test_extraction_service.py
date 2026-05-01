@@ -28,16 +28,18 @@ class FakeFeatureRepository(BaseFeatureRepository):
 def fake_features() -> list[CompetitorFeature]:
     return [
         CompetitorFeature(
-            competitor_name="Scopely",
-            feature_name="MONOPOLY GO!",
+            brand_name="Scopely",
+            product_name="MONOPOLY GO!",
             price=None,
+            price_currency=None,
             advantages="$1.2B revenue 2023",
             disadvantages=None,
         ),
         CompetitorFeature(
-            competitor_name="King",
-            feature_name="Candy Crush",
+            brand_name="King",
+            product_name="Candy Crush",
             price=0.99,
+            price_currency="USD",
             advantages="Massive DAU",
             disadvantages="Ageing IP",
         ),
@@ -86,8 +88,9 @@ class TestExtractionService:
         assert doc_id == "doc-1"
         for f in passed_features:
             assert isinstance(f, dict)
-            assert "competitor_name" in f
-            assert "feature_name" in f
+            assert "brand_name" in f
+            assert "product_name" in f
+            assert "price_currency" in f
 
     @pytest.mark.asyncio
     async def test_skips_short_chunks(self):
@@ -110,9 +113,12 @@ class TestExtractionService:
     ):
         async def _extract(_text):
             return [
-                CompetitorFeature(competitor_name="Valid", feature_name="X"),
-                CompetitorFeature(competitor_name="", feature_name="Y"),  # filtered
-                CompetitorFeature(competitor_name="Z", feature_name=""),  # filtered
+                # Valid: has product_name (brand nullable per Rule 20).
+                CompetitorFeature(brand_name="Valid", product_name="X"),
+                # Valid: brand_name is allowed to be None / empty.
+                CompetitorFeature(brand_name=None, product_name="Y"),
+                # Filtered: empty product_name.
+                CompetitorFeature(brand_name="Z", product_name=""),
             ]
 
         service, repo = _build_service(_extract)
@@ -121,10 +127,11 @@ class TestExtractionService:
             chunks_text=long_chunks,
         )
 
-        assert result["total_features_extracted"] == 1
+        assert result["total_features_extracted"] == 2
         passed_features, _ = repo.calls[0]
-        assert len(passed_features) == 1
-        assert passed_features[0]["competitor_name"] == "Valid"
+        assert len(passed_features) == 2
+        assert passed_features[0]["product_name"] == "X"
+        assert passed_features[1]["product_name"] == "Y"
 
     @pytest.mark.asyncio
     async def test_extraction_error_returns_failed(self, long_chunks):

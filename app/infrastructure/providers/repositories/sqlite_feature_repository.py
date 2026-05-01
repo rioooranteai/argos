@@ -19,15 +19,15 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
             conn.executemany(
                 """
                 INSERT INTO features (
-                    document_id, competitor_name, feature_name,
+                    document_id, brand_name, product_name,
                     price, price_currency, advantages, disadvantages
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
                         document_id,
-                        f.get("competitor_name"),
-                        f.get("feature_name"),
+                        f.get("brand_name"),
+                        f.get("product_name"),
                         f.get("price"),
                         f.get("price_currency"),
                         f.get("advantages"),

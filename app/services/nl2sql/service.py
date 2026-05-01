@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from pathlib import Path
 
 from app.infrastructure.interface.llm import BaseLLM
@@ -10,19 +11,54 @@ logger = logging.getLogger(__name__)
 
 MAX_RAW_ROWS = 100
 
-TABLE_SCHEMA = """
-CREATE TABLE features (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    document_id  TEXT NOT NULL,
-    competitor_name TEXT NOT NULL,
-    feature_name TEXT NOT NULL,
-    price REAL, -- float atau NULL. Harga dalam USD.
-    advantages TEXT, -- Kelebihan, metrik positif
-    disadvantages TEXT -- Kelemahan, metrik menurun
-);
-"""
+# Hint kolom untuk membantu LLM. Kolom yang tidak terdaftar di sini tetap
+# disertakan apa adanya dari PRAGMA table_info — tanpa hint.
+_COLUMN_HINTS: dict[str, str] = {
+    "price": "float atau NULL. Harga produk.",
+    "price_currency": "ISO 4217 (USD, IDR, EUR, dst) atau NULL.",
+    "advantages": "Kelebihan / metrik positif produk.",
+    "disadvantages": "Kelemahan / metrik negatif produk.",
+}
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
+
+
+def _introspect_features_schema(db_path: Path) -> str:
+    """Bangun string CREATE TABLE dari PRAGMA table_info(features).
+
+    Single source of truth: schema selalu mengikuti DB aktual, tidak ada
+    duplikasi konstanta yang bisa basi saat migrasi tambahan.
+    """
+    uri = f"file:{db_path}?mode=ro"
+    with sqlite3.connect(uri, uri=True) as conn:
+        rows = conn.execute("PRAGMA table_info(features)").fetchall()
+
+    if not rows:
+        # Fallback aman: jangan crash kalau tabel belum ada (mis. test).
+        return "-- Tabel `features` belum tersedia."
+
+    column_lines: list[str] = []
+    for _cid, name, ctype, notnull, _dflt, pk in rows:
+        constraints = []
+        if pk:
+            constraints.append("PRIMARY KEY")
+            if ctype.upper() == "INTEGER":
+                constraints.append("AUTOINCREMENT")
+        if notnull and not pk:
+            constraints.append("NOT NULL")
+        constraint_str = (" " + " ".join(constraints)) if constraints else ""
+        comment = f" -- {_COLUMN_HINTS[name]}" if name in _COLUMN_HINTS else ""
+        column_lines.append(f"    {name} {ctype}{constraint_str},{comment}")
+
+    # Trim trailing comma on the last line.
+    last = column_lines[-1]
+    if " --" in last:
+        body, _, comment = last.partition(" --")
+        column_lines[-1] = body.rstrip(",") + " --" + comment
+    else:
+        column_lines[-1] = last.rstrip(",")
+
+    return "CREATE TABLE features (\n" + "\n".join(column_lines) + "\n);"
 
 
 def _load_prompt(filename: str) -> str:
@@ -51,9 +87,10 @@ class NL2SQLService:
         self._db_path = db_path
 
     def _build_sql_prompt(self, question: str) -> str:
-        """Sisipkan schema ke dalam pertanyaan user sebelum dikirim ke LLM."""
+        """Sisipkan schema (introspeksi runtime) ke dalam pertanyaan user."""
+        schema = _introspect_features_schema(self._db_path)
         return (
-            f"Schema database:\n{TABLE_SCHEMA}\n\n"
+            f"Schema database:\n{schema}\n\n"
             f"Pertanyaan: {question}"
         )
 

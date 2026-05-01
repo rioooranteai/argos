@@ -4,17 +4,19 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import config
-from app.core.database import DB_PATH, db
+from app.core.database import DB_PATH, db  # noqa: F401  (DB_PATH used by NL2SQL)
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.engine import DocumentProcessingEngine
 from app.infrastructure.factories.embedder_factory import get_embedder
 from app.infrastructure.factories.llm_factory import get_llm
+from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
+    SQLiteConversationRepository,
+)
 from app.infrastructure.providers.repositories.sqlite_feature_repository import (
     SQLiteFeatureRepository,
 )
 from app.services.conversation.service import ConversationService
-from app.services.conversation.sqlite_repository import SQLiteConversationRepository
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import ContentAwareChunker
 from app.services.ingestion.factories.loader_factory import LoaderFactory
@@ -48,7 +50,7 @@ async def lifespan(app: FastAPI):
 
     # Multi-conversation persistence (replaces the legacy single-row
     # conversation_history store).
-    conversation_repo = SQLiteConversationRepository(db_path=DB_PATH)
+    conversation_repo = SQLiteConversationRepository(database=db)
 
     # --- AI providers ---
     embedder = get_embedder()

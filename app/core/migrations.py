@@ -46,6 +46,31 @@ MIGRATIONS: list[tuple[int, str]] = [
     (3, """
         DROP TABLE IF EXISTS conversation_history;
     """),
+    (4, """
+        -- v4: Switch features schema to brand_name + product_name split,
+        -- aligning with the new extraction prompt and CompetitorFeature model.
+        -- Old data is dropped because the v1 column `competitor_name` cannot
+        -- be deterministically split into (brand_name, product_name) without
+        -- re-running extraction.
+        DROP INDEX IF EXISTS idx_features_competitor;
+        DROP INDEX IF EXISTS idx_features_feature;
+        DROP INDEX IF EXISTS idx_features_document;
+        DROP TABLE IF EXISTS features;
+
+        CREATE TABLE features (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id     TEXT NOT NULL,
+            brand_name      TEXT,
+            product_name    TEXT NOT NULL,
+            price           REAL,
+            price_currency  TEXT,
+            advantages      TEXT,
+            disadvantages   TEXT
+        );
+        CREATE INDEX idx_features_brand    ON features (brand_name);
+        CREATE INDEX idx_features_product  ON features (product_name);
+        CREATE INDEX idx_features_document  ON features (document_id);
+    """),
 ]
 
 

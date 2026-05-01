@@ -1,22 +1,27 @@
 """Tests for SQLiteConversationRepository.
 
 These tests use a fresh tmp database per test so they're fully isolated.
-The schema is initialized via the same `Database.init_db()` the app uses,
-so we exercise the real DDL — not a mocked schema.
+The schema is initialized via `run_migrations` — the same path used in
+production startup — so we exercise the real DDL, not a mocked schema.
 """
 from __future__ import annotations
 
 import pytest
 
 from app.core.database import Database
-from app.services.conversation.sqlite_repository import SQLiteConversationRepository
+from app.core.migrations import run_migrations
+from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
+    SQLiteConversationRepository,
+)
 
 
 @pytest.fixture
 def repo(tmp_path):
     db_path = tmp_path / "test.db"
-    Database(db_path=db_path).init_db()
-    return SQLiteConversationRepository(db_path=db_path)
+    database = Database(db_path=db_path)
+    with database.get_connection() as conn:
+        run_migrations(conn)
+    return SQLiteConversationRepository(database=database)
 
 
 class TestConversationCRUD:

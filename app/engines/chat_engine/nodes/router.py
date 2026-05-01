@@ -13,11 +13,11 @@ Tugasmu adalah memutuskan sumber data mana yang paling tepat untuk menjawab pert
 
 Kamu memiliki dua sumber data:
 1. **SQL (SQLite)** — berisi data TERSTRUKTUR kompetitor:
-   - Harga produk (price)
-   - Nama fitur (feature_name)
+   - Harga produk (price) + mata uang (price_currency)
+   - Nama produk (product_name)
+   - Nama brand / kompetitor (brand_name)
    - Kelebihan / keunggulan (advantages)
    - Kelemahan / kekurangan (disadvantages)
-   - Nama kompetitor (competitor_name)
    Gunakan SQL untuk pertanyaan: perbandingan harga, daftar fitur, ranking, filter spesifik.
 
 2. **Vector Store (ChromaDB)** — berisi data SEMANTIK / KONTEKSTUAL:

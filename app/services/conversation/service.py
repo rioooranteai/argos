@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.conversation.Base.repository import ConversationRepository
+from app.services.conversation.base.repository import ConversationRepository
 from app.services.conversation.model import Message, Conversation
 
 logger = logging.getLogger(__name__)

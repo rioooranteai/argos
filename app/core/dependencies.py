@@ -1,10 +1,7 @@
 from app.core.config import config
-from app.core.database import db
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.engine import DocumentProcessingEngine
-from app.engines.document_engine.sqlite_repository import SQLiteFeatureRepository
 from app.services.conversation.service import ConversationService
-from app.services.conversation.sqlite_repository import SQLiteConversationRepository
 from app.services.nl2sql.service import NL2SQLService
 from app.services.voice.service import VoiceService
 from fastapi import Depends, HTTPException, status
@@ -46,11 +43,3 @@ def get_voice_service(request: Request) -> VoiceService:
 
 def get_conversation_service(request: Request) -> ConversationService:
     return request.app.state.conversation_service
-
-
-def get_feature_repo() -> SQLiteFeatureRepository:
-    return SQLiteFeatureRepository(db)
-
-
-def get_conversation_repo() -> SQLiteConversationRepository:
-    return SQLiteConversationRepository(db.db_path)

@@ -1,4 +1,14 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+class ExtractionResult(BaseModel):
+    """Outcome of one document extraction run."""
+
+    status: Literal["success", "failed"]
+    document_id: str
+    total_features_extracted: int = 0
 
 
 class CompetitorFeature(BaseModel):

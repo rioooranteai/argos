@@ -12,13 +12,16 @@ from typing import Type
 import pytest
 
 from app.core.database import Database
+from app.core.migrations import run_migrations
 from app.infrastructure.interface.llm import BaseLLM
+from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
+    SQLiteConversationRepository,
+)
 from app.services.conversation.service import (
     ConversationService,
     _normalize_title,
     _placeholder_title_from_message,
 )
-from app.services.conversation.sqlite_repository import SQLiteConversationRepository
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -61,8 +64,10 @@ class _RaisingLLM(BaseLLM):
 @pytest.fixture
 def repo(tmp_path):
     db_path = tmp_path / "svc.db"
-    Database(db_path=db_path).init_db()
-    return SQLiteConversationRepository(db_path=db_path)
+    database = Database(db_path=db_path)
+    with database.get_connection() as conn:
+        run_migrations(conn)
+    return SQLiteConversationRepository(database=database)
 
 
 @pytest.fixture

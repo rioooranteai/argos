@@ -1,20 +1,24 @@
+"""SQLite adapter for the conversation persistence port.
+
+Sits next to SQLiteFeatureRepository so all relational adapters live in one
+place. The repository depends on the shared Database class for connection
+management — it does not open SQLite connections directly.
+"""
 from __future__ import annotations
 
 import sqlite3
 import uuid
-from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
 
-from app.services.conversation.Base.repository import (
-    Conversation,
+from app.core.database import Database
+from app.services.conversation.base.repository import (
     ConversationRepository,
-    Message,
 )
+from app.services.conversation.model import Conversation, Message
 
 
 def _parse_ts(value) -> datetime:
-    """SQLite timestamp → datetime. SQLite simpan sebagai string isoformat."""
+    """SQLite stores TIMESTAMP as TEXT (ISO format). Coerce to datetime."""
     if isinstance(value, datetime):
         return value
     if value is None:
@@ -26,27 +30,14 @@ def _parse_ts(value) -> datetime:
 
 
 class SQLiteConversationRepository(ConversationRepository):
-    def __init__(self, db_path: Path):
-        self._db_path = db_path
+    def __init__(self, database: Database) -> None:
+        self._db = database
 
-    @contextmanager
-    def _connect(self):
-        conn = sqlite3.connect(self._db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+    # ── Conversations ──────────────────────────────────────────────────
 
     def create_conversation(self, user_id: str, title: str) -> Conversation:
         conv_id = str(uuid.uuid4())
-        with self._connect() as conn:
+        with self._db.get_connection() as conn:
             conn.execute(
                 """
                 INSERT INTO conversations (id, user_id, title)
@@ -62,7 +53,7 @@ class SQLiteConversationRepository(ConversationRepository):
         return self._row_to_conversation(row)
 
     def list_conversations(self, user_id: str, limit: int = 100) -> list[Conversation]:
-        with self._connect() as conn:
+        with self._db.get_connection() as conn:
             rows = conn.execute(
                 """
                 SELECT id, user_id, title, created_at, updated_at
@@ -75,8 +66,10 @@ class SQLiteConversationRepository(ConversationRepository):
             ).fetchall()
         return [self._row_to_conversation(r) for r in rows]
 
-    def get_conversation(self, conversation_id: str, user_id: str) -> Conversation | None:
-        with self._connect() as conn:
+    def get_conversation(
+        self, conversation_id: str, user_id: str
+    ) -> Conversation | None:
+        with self._db.get_connection() as conn:
             row = conn.execute(
                 """
                 SELECT id, user_id, title, created_at, updated_at
@@ -87,8 +80,10 @@ class SQLiteConversationRepository(ConversationRepository):
             ).fetchone()
         return self._row_to_conversation(row) if row else None
 
-    def update_title(self, conversation_id: str, user_id: str, title: str) -> bool:
-        with self._connect() as conn:
+    def update_title(
+        self, conversation_id: str, user_id: str, title: str
+    ) -> bool:
+        with self._db.get_connection() as conn:
             cursor = conn.execute(
                 """
                 UPDATE conversations
@@ -100,24 +95,30 @@ class SQLiteConversationRepository(ConversationRepository):
             return cursor.rowcount > 0
 
     def touch(self, conversation_id: str) -> None:
-        with self._connect() as conn:
+        with self._db.get_connection() as conn:
             conn.execute(
                 "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (conversation_id,),
             )
 
     def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
-        with self._connect() as conn:
+        with self._db.get_connection() as conn:
             cursor = conn.execute(
                 "DELETE FROM conversations WHERE id = ? AND user_id = ?",
                 (conversation_id, user_id),
             )
             return cursor.rowcount > 0
 
-    def add_message(self, conversation_id: str, role: str, content: str) -> Message:
+    # ── Messages ───────────────────────────────────────────────────────
+
+    def add_message(
+        self, conversation_id: str, role: str, content: str
+    ) -> Message:
         if role not in ("user", "assistant"):
-            raise ValueError(f"Invalid role: {role!r}. Must be 'user' or 'assistant'.")
-        with self._connect() as conn:
+            raise ValueError(
+                f"Invalid role: {role!r}. Must be 'user' or 'assistant'."
+            )
+        with self._db.get_connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO messages (conversation_id, role, content)
@@ -133,8 +134,10 @@ class SQLiteConversationRepository(ConversationRepository):
             ).fetchone()
         return self._row_to_message(row)
 
-    def list_messages(self, conversation_id: str, limit: int | None = None) -> list[Message]:
-        with self._connect() as conn:
+    def list_messages(
+        self, conversation_id: str, limit: int | None = None
+    ) -> list[Message]:
+        with self._db.get_connection() as conn:
             if limit is None:
                 rows = conn.execute(
                     """
@@ -157,6 +160,8 @@ class SQLiteConversationRepository(ConversationRepository):
                     (conversation_id, limit),
                 ).fetchall()
         return [self._row_to_message(r) for r in rows]
+
+    # ── Row mappers ────────────────────────────────────────────────────
 
     @staticmethod
     def _row_to_conversation(row: sqlite3.Row) -> Conversation:
