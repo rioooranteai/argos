@@ -20,14 +20,30 @@
         <!-- Brand Header -->
         <div class="sidebar-header">
             <div class="brand-container">
-                <div class="brand-icon">
-                    <svg fill="none" height="18" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"
-                         width="18">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                </div>
-                <span class="brand-text">Argos</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36"
+                     width="160" height="36" style="display:block;">
+                    <defs>
+                        <linearGradient id="argos-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#e27c4a"/>
+                            <stop offset="100%" stop-color="#d96245"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Icon -->
+                    <rect x="0" y="0" width="36" height="36" rx="9" fill="url(#argos-bg)"/>
+                    <path d="M18 7 L8 30 M18 7 L28 30"
+                          fill="none" stroke="white" stroke-width="1"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="14.5" y1="22" x2="21.5" y2="22"
+                          stroke="white" stroke-width="1" stroke-linecap="round"/>
+                    <circle cx="18" cy="16" r="2.2" fill="white"/>
+                    <!-- Wordmark -->
+                    <text x="46" y="24"
+                          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+                          font-size="23" letter-spacing="-0.5"
+                          fill="currentColor">
+                        <tspan font-weight="600">Argos</tspan><tspan font-weight="300" opacity="0.4">AI</tspan>
+                    </text>
+                </svg>
             </div>
             <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Tutup menu">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
