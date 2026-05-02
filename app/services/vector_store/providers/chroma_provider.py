@@ -77,7 +77,10 @@ class ChromaProvider(BaseVectorStoreProvider):
                 query_embeddings=[query_embedding],
                 n_results=limit,
             )
+
             return results
+
+
         except Exception as e:
             raise VectorStoreSearchError(f"Gagal melakukan pencarian di ChromaDB: {e}") from e
 

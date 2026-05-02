@@ -10,19 +10,29 @@ DEFAULT_VECTOR_LIMIT = 5
 
 async def vector_node(state: dict, vector_svc: VectorStoreService) -> dict:
     user_input = state["user_input"]
-    logger.debug(f"[vector_node] Searching: '{user_input}'")
 
     try:
         raw = vector_svc.search(query=user_input, limit=DEFAULT_VECTOR_LIMIT)
 
-        if isinstance(raw, dict):
-            results = raw.get("results", [])
-        elif isinstance(raw, list):
-            results = raw
-        else:
-            results = []
+        if not raw:
+            logger.info("[vector_node] Ditemukan 0 chunk. - Method 1")
+            return {"vector_result": []}
 
-        logger.info(f"[vector_node] Ditemukan {len(results)} chunk.")
+        docs = raw["documents"][0]
+        metadatas = raw["metadatas"][0]
+        ids = raw["ids"][0]
+        distances = raw["distances"][0]
+
+        results = [
+            {
+                "id": ids[i],
+                "text": docs[i],
+                "metadata": metadatas[i],
+                "distance": distances[i],
+            }
+            for i in range(len(docs))
+        ]
+
         return {"vector_result": results}
 
     except Exception as e:

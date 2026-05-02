@@ -112,7 +112,6 @@ class NL2SQLService:
         except ValueError as ve:
             return {"status": "error", "message": str(ve)}
         except Exception:
-            logger.exception("Kesalahan tidak terduga saat memproses query NL2SQL")
             return {"status": "error", "message": "Terjadi kesalahan sistem."}
 
     async def _generate_sql(self, question: str) -> str:

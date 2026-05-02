@@ -31,15 +31,12 @@ logger = logging.getLogger(__name__)
 
 def init_db() -> None:
     """Run migrations on startup. Called once from lifespan."""
-    logger.info("Running database migrations...")
     with db.get_connection() as conn:
         run_migrations(conn)
-    logger.info("Database ready.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting up...")
 
     # --- Persistence ---
     init_db()
@@ -94,6 +91,4 @@ async def lifespan(app: FastAPI):
         vector_svc=app.state.vector_store_svc,
     )
 
-    logger.info("All services initialized.")
     yield
-    logger.info("Shutting down...")

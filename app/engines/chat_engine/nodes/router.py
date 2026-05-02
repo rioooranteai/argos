@@ -2,46 +2,29 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 from app.infrastructure.interface.llm import BaseLLM
 
 logger = logging.getLogger(__name__)
 
-_ROUTER_SYSTEM = """
-Kamu adalah router untuk sistem competitive intelligence chatbot.
-Tugasmu adalah memutuskan sumber data mana yang paling tepat untuk menjawab pertanyaan user.
+_PROMPT_DIR = Path(__file__).resolve().parents[4] / "prompts"
 
-Kamu memiliki dua sumber data:
-1. **SQL (SQLite)** — berisi data TERSTRUKTUR kompetitor:
-   - Harga produk (price) + mata uang (price_currency)
-   - Nama produk (product_name)
-   - Nama brand / kompetitor (brand_name)
-   - Kelebihan / keunggulan (advantages)
-   - Kelemahan / kekurangan (disadvantages)
-   Gunakan SQL untuk pertanyaan: perbandingan harga, daftar fitur, ranking, filter spesifik.
 
-2. **Vector Store (ChromaDB)** — berisi data SEMANTIK / KONTEKSTUAL:
-   - Isi dokumen lengkap (artikel, laporan, deskripsi produk)
-   - Analisis naratif kompetitor
-   Gunakan Vector Store untuk pertanyaan: penjelasan mendalam, konteks, ringkasan dokumen.
+def _load_prompt(filename: str) -> str:
+    path = _PROMPT_DIR / filename
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}")
 
-3. **Both** — gunakan keduanya jika pertanyaan membutuhkan data terstruktur DAN konteks naratif.
 
-4. **None** — jika pertanyaan sama sekali tidak relevan dengan competitive intelligence.
-
-Balas HANYA dalam format JSON berikut, tanpa preamble atau markdown:
-{
-  "route": "sql" | "vector" | "both" | "none",
-  "reasoning": "alasan singkat dalam satu kalimat"
-}
-""".strip()
+_ROUTER_SYSTEM = _load_prompt("router_agent.md")
 
 
 async def router_node(state: dict, llm: BaseLLM) -> dict:
     user_input = state["user_input"]
     messages = state.get("messages", [])
-
-    logger.debug(f"[router] Memproses: '{user_input}'")
 
     recent_history = messages[-6:] if len(messages) > 6 else messages
     history_text = "\n".join(
@@ -63,12 +46,9 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
         reasoning = parsed.get("reasoning", "")
 
         if route not in ("sql", "vector", "both", "none"):
-            logger.warning(f"[router] Route tidak valid '{route}', fallback ke 'vector'")
             route = "vector"
 
-        logger.info(f"[router] Route: {route} | Alasan: {reasoning}")
         return {"route": route, "router_reasoning": reasoning}
 
     except Exception as e:
-        logger.error(f"[router] Gagal parse response LLM: {e}")
         return {"route": "vector", "router_reasoning": "Fallback karena error parsing router"}

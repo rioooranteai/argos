@@ -65,7 +65,6 @@ class ChatEngine:
             nl2sql_svc=nl2sql_svc,
             vector_svc=vector_svc,
         )
-        logger.info("ChatEngine ready (stateless — history owned by ConversationService).")
 
     async def chat(
             self,
@@ -80,8 +79,6 @@ class ChatEngine:
                 input should already be the last item — but we accept either
                 shape and add it ourselves if missing, to keep callers simple.
         """
-        logger.info("[ChatEngine] input='%s' | history_len=%d",
-                    user_input, len(history or []))
 
         prior = _to_lc_messages(history)
 

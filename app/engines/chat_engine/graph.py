@@ -87,5 +87,5 @@ def build_graph(
     builder.add_edge("synthesizer_node", END)
 
     compiled = builder.compile()
-    logger.info("ChatEngine graph berhasil di-compile.")
+
     return compiled

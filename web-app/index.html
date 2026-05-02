@@ -288,9 +288,20 @@
             const img = document.createElement("img");
             img.src = picture;
             img.alt = fullName || "Profile";
-            img.referrerPolicy = "no-referrer";  // Google CDN tolak request dengan referrer
-            img.onerror = () => { img.remove(); };
-            avatarEl.insertBefore(img, fallbackEl);
+            img.referrerPolicy = "no-referrer";
+
+            img.onload = () => {
+                fallbackEl.style.display = "none";
+            };
+
+            img.onerror = () => {
+                img.remove();
+                fallbackEl.style.display = "flex";
+            };
+
+            avatarEl.prepend(img);
+        } else {
+            fallbackEl.style.display = "flex";
         }
     })();
 

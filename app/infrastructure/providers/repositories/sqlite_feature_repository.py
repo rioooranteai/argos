@@ -36,4 +36,3 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
                     for f in features
                 ],
             )
-            logger.info(f"Batch inserted {len(features)} features for document '{document_id}'")

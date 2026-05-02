@@ -92,7 +92,7 @@ def run_migrations(conn: sqlite3.Connection) -> None:
     for version, sql in MIGRATIONS:
         if version in applied:
             continue
-        logger.info(f"Applying migration v{version}...")
+
         conn.executescript(sql)
         conn.execute(
             "INSERT INTO schema_version (version) VALUES (?)", (version,)
