@@ -14,7 +14,7 @@ The system is designed for **product**, **strategy**, and **business intelligenc
 
 ## 2. System Architecture
 
-ArgosAI is built around four interconnected flows: **authentication**, **document ingestion + extraction**, **multi-conversation chat**, and a **hybrid retrieval graph** that routes each question to SQL, vector search, or both.
+ArgosAI is built around four interconnected flows: **authentication**, **document ingestion + extraction**, **multi-conversation chat**, and a **hybrid retrieval graph** that routes each question to SQL, vector search, or both. Voice input and spoken answers are available on top of the chat.
 
 ```mermaid
 flowchart TD
@@ -32,14 +32,17 @@ flowchart TD
     %% ─── Ingestion + Extraction ───
     DOC["📄 PDF / Markdown"] -->|Upload| ING
     subgraph ING ["⚙️ Ingestion"]
-        DOCLING["Docling parser\n+ contextual chunker"]
+        DOCLING["Docling parser"]
+        VISION["Vision model\n(describes images)"]
+        CHUNKER["Contextual chunker"]
+        DOCLING --> VISION --> CHUNKER
     end
-    DOCLING -->|chunks + metadata| CHROMA[("🗄️ ChromaDB\nvector store")]
+    CHUNKER -->|chunks + metadata| CHROMA[("🗄️ ChromaDB\nvector store")]
 
     subgraph EXT ["🤖 Extraction"]
-        AGENT["LLM Extraction Agent"]
+        AGENT["LLM Extraction Agent\n(Pydantic AI)"]
     end
-    CHROMA -->|retrieve context| AGENT
+    CHUNKER -->|chunk text| AGENT
     AGENT -->|structured rows| FEATURES[("🗃️ SQLite · features")]
 
     %% ─── Conversation persistence ───
@@ -71,10 +74,12 @@ flowchart TD
 ### Component Explanation
 
 - **Authentication.** Users sign in with **Google OAuth 2.0**; the backend issues a **JWT** containing `sub`, `email`, `name`, `given_name`, and `picture`. Every API request must carry the token, and all data is scoped per `user_id`.
-- **Ingestion.** Uploaded **PDF / Markdown** documents are parsed by **Docling**, split into chunks with contextual metadata, and embedded into **ChromaDB**.
-- **Extraction.** An **LLM agent** reads the document via ChromaDB and writes structured rows (`competitor_name`, `feature_name`, `price`, `advantages`, `disadvantages`) into the `features` table in SQLite.
+- **Ingestion.** Uploaded **PDF / Markdown** documents are parsed by **Docling**. Images inside the document (charts, tables saved as pictures) are described by a **vision model**, so their content becomes searchable text. The result is split into chunks with contextual metadata and embedded into **ChromaDB**.
+- **Extraction.** The same chunks are passed to an **LLM extraction agent** (Pydantic AI), which writes structured rows (`brand_name`, `product_name`, `price`, `price_currency`, `advantages`, `disadvantages`) into the `features` table in SQLite.
 - **Conversation persistence.** The `Chat API` talks to a `ConversationService` backed by a **repository port** (SQLite adapter today, swappable later). Each user owns multiple conversations; each conversation owns an ordered list of messages. Titles are generated automatically from the first message via a small LLM call.
 - **Hybrid retrieval graph.** Built with **LangGraph**: a `router_node` classifies the question into `sql`, `vector`, `both`, or `none`. `sql_node` runs an NL→SQL → safe-execute pipeline against `features`. `vector_node` performs semantic search on ChromaDB. Their outputs are merged by `synthesizer_node`, which produces the final natural-language answer in the user's language.
+- **SQL safety.** Before a question reaches the LLM, regex guards reject prompt-injection and destructive patterns. Any generated SQL is then parsed with `sqlparse` and executed only if it is a single `SELECT` with no destructive keywords.
+- **Voice.** `/api/v1/voice/stt` transcribes speech with **OpenAI Whisper**, and `/api/v1/voice/tts` reads answers aloud with **OpenAI TTS**.
 
 ---
 
@@ -125,6 +130,8 @@ http://localhost:8000
 ## 4. Reliability Test
 
 The test was conducted by asking the same question **3 times consecutively** to observe the consistency of the generated SQL and the accuracy of the AI's answers. The test was run in two prompt languages: **Bahasa Indonesia** and **English**.
+
+> The test was run on an earlier version of the `features` schema, which used `competitor_name` and `feature_name`. The current schema uses `brand_name` and `product_name`, so the column names in the SQL below differ from today's table.
 
 ---
 
@@ -177,7 +184,17 @@ The following are limitations of the ArgosAI system that should be understood be
 
 ---
 
-## 6. Screenshots
+## 6. Development
+
+Every push and pull request to `main` or `develop` runs a GitHub Actions pipeline: **ruff** for linting, **mypy** for type checks, **pytest** for the test suite (including the NL→SQL security guards), and a **Docker** build.
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## 7. Screenshots
 
 <div align="center">
 
@@ -198,4 +215,4 @@ The following are limitations of the ArgosAI system that should be understood be
 
 ---
 
-*ArgosAI — Built with FastAPI · LangGraph · LangChain · ChromaDB · SQLite · Google OAuth · OpenAI*
+*ArgosAI — Built with FastAPI · LangGraph · Pydantic AI · ChromaDB · SQLite · Docling · Google OAuth · OpenAI*
