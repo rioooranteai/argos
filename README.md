@@ -68,7 +68,7 @@ flowchart TD
     SQLN <--> FEATURES
     VECN <--> CHROMA
     SYNTH -->|answer + auto-title| CHATAPI
-    CHATAPI -->|stream answer| UI
+    CHATAPI -->|answer| UI
 ```
 
 ### Component Explanation
@@ -256,7 +256,7 @@ The following are limitations of the ArgosAI system that should be understood be
 ### Infrastructure
 
 - **SQLite is not suitable for high-concurrency writes.** For large-scale multi-user usage, migrating to PostgreSQL is strongly advised.
-- **OpenAI API costs are per-request.** Each question can trigger several API calls along the LangGraph pipeline (router → SQL and/or vector → synthesizer, plus an auto-title call on the first turn), so operational costs should be monitored for intensive usage.
+- **OpenAI API costs are per-request.** Each question can trigger several API calls along the LangGraph pipeline (router → SQL and/or vector → synthesizer, plus an auto-title call on the first turn), so operational costs should be monitored for intensive usage. To keep costs down, the router uses a cheaper model (`OPENAI_ROUTER_MODEL`, default `gpt-4o-mini`) than the synthesizer (`OPENAI_CHAT_MODEL`, default `gpt-5.4-mini`); both can be changed in `.env`.
 
 ---
 
