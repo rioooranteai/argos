@@ -11,6 +11,8 @@ env/
 # ENVIRONMENT VARIABLES
 .env
 *.env
+.env.*
+!.env.example
 
 # PYTHON CACHE
 __pycache__/
@@ -25,6 +27,7 @@ __pycache__/
 *.sqlite
 *.sqlite3
 chroma_db/
+chroma_data/
 faiss_index/
 
 # DOCUMENT UPLOADS (runtime files)
@@ -67,3 +70,5 @@ chroma_db
 competitor_data.db
 competitor_data.db-shm
 competitor_data.db-wal
+data/
+temp_uploads/
