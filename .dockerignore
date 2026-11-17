@@ -1,0 +1,39 @@
+# Secrets — jangan pernah masuk ke image (env dimasukkan lewat env_file saat runtime)
+.env
+.env.*
+!.env.example
+
+# Virtual environment (folder project ini juga venv)
+Lib/
+Scripts/
+Include/
+include/
+share/
+pyvenv.cfg
+.venv/
+venv/
+env/
+
+# Data runtime (dipasang lewat volume)
+data/
+*.db
+*.db-shm
+*.db-wal
+chroma_db/
+chroma_data/
+temp_uploads/
+
+# Git, IDE, cache, test
+.git/
+.github/
+.idea/
+.vscode/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+*.log

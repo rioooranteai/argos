@@ -1,30 +1,36 @@
-# Gunakan image Python yang ringan
 FROM python:3.11-slim
 
-# Set direktori kerja di dalam container
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
 WORKDIR /app
 
-# Install system dependencies (kadang dibutuhkan oleh ChromaDB/SQLite)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    sqlite3 \
+# Library sistem:
+#  - build-essential : compile paket yang belum punya wheel
+#  - libgl1, libglib2.0-0 : dibutuhkan OpenCV (dipakai Docling untuk OCR/layout)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        sqlite3 \
+        libgl1 \
+        libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy file requirements.txt
+# Varian PyTorch: "cpu" (default, image lebih kecil) atau "cu129" (GPU NVIDIA)
+ARG TORCH_INDEX=cpu
+
 COPY requirements.txt .
 
-# Install library Python
+# PyTorch dulu sesuai varian, lalu sisa library Python
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 \
+        --index-url https://download.pytorch.org/whl/${TORCH_INDEX} && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy seluruh kode project ke dalam container
 COPY . .
 
-# Buat folder sementara untuk upload di dalam container
-RUN mkdir -p temp_uploads
+RUN mkdir -p temp_uploads data
 
-# Buka port 8000
 EXPOSE 8000
 
-# Jalankan FastAPI di host 0.0.0.0 agar bisa diakses dari luar container
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,17 @@
+# Override untuk menjalankan dengan GPU NVIDIA.
+# Pakai:  docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+# Syarat: driver NVIDIA + Docker Desktop (WSL2) atau NVIDIA Container Toolkit di Linux.
+services:
+  argos-api:
+    build:
+      args:
+        TORCH_INDEX: cu129
+    environment:
+      DOCLING_DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

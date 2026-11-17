@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   argos-api:
     build: .
@@ -7,8 +5,19 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env  
+      - .env
+    environment:
+      # Simpan semua data di /app/data supaya cukup satu volume folder
+      SQLITE_PATH: /app/data/competitor_data.db
+      CHROMA_PATH: /app/data/chroma_db
+      # Cache model Docling/HuggingFace agar tidak download ulang tiap restart
+      HF_HOME: /app/data/hf_cache
     volumes:
-      - ./argos.db:/app/competitor_data.db
-      - ./chroma_data:/app/chroma_db
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     restart: unless-stopped
