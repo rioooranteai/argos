@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import uuid
-from pathlib import Path
 from typing import List
 
 from app.services.ingestion.factories.loader_factory import LoaderFactory
@@ -27,12 +26,11 @@ class IngestionService:
         self.vision_factory = vision_factory
         self.chunker = chunker
 
-    async def process_document(self, file_path: str) -> List[Chunk]:
+    async def process_document(self, file_path: str, document_id: str | None = None) -> List[Chunk]:
         """
         Mengeksekusi siklus penuh (end-to-end) pembacaan satu dokumen.
         """
-        doc_filename = Path(file_path).name
-        document_id = f"doc_{uuid.uuid4().hex[:8]}"
+        document_id = document_id or f"doc_{uuid.uuid4().hex[:8]}"
 
         loader = self.loader_factory.get_loader(file_path)
         # Docling bersifat sinkron & berat; jalankan di thread agar event loop
