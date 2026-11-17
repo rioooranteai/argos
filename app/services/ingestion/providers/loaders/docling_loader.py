@@ -16,6 +16,10 @@ from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
 logger = logging.getLogger(__name__)
 
+# Sisi terpendek gambar (px, images_scale=1.0 ≈ 72 dpi) di bawah ini dianggap
+# logo/ikon dan tidak dikirim ke Vision API.
+MIN_FIGURE_SIDE_PX = 100
+
 _DEVICE_MAP = {
     "auto": AcceleratorDevice.AUTO,
     "cuda": AcceleratorDevice.CUDA,
@@ -141,6 +145,11 @@ class DoclingLoader(BaseDocumentLoader):
 
                     try:
                         pil_image = pic.get_image(doc)
+                        # Logo/ikon kecil tidak berisi data → jangan dikirim ke
+                        # OpenAI Vision (hemat biaya & waktu).
+                        if pil_image and min(pil_image.size) < MIN_FIGURE_SIDE_PX:
+                            logger.debug(f"Gambar {idx + 1} hal. {page_num} terlalu kecil {pil_image.size}, dilewati.")
+                            continue
                         if pil_image:
                             img_byte_arr = io.BytesIO()
                             pil_image.save(img_byte_arr, format='PNG')
