@@ -29,6 +29,13 @@ class Config(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_CHUNK_SIZE: int = 400
 
+    # Docling (PDF parsing) — auto | cuda | cpu | mps
+    # auto = pakai GPU kalau tersedia, kalau tidak otomatis CPU
+    DOCLING_DEVICE: str = "auto"
+    DOCLING_NUM_THREADS: int = 4
+    # true hanya jika sering memproses PDF hasil scan (lebih lambat)
+    DOCLING_OCR: bool = False
+
     # Authentication
     google_client_id: str = ""
     google_client_secret: str = ""

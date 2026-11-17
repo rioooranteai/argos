@@ -35,7 +35,9 @@ class IngestionService:
         document_id = f"doc_{uuid.uuid4().hex[:8]}"
 
         loader = self.loader_factory.get_loader(file_path)
-        elements = loader.load(file_path)
+        # Docling bersifat sinkron & berat; jalankan di thread agar event loop
+        # (chat, health check, request lain) tidak ikut tertahan.
+        elements = await asyncio.to_thread(loader.load, file_path)
 
         if not elements:
             return []

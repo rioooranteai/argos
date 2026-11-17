@@ -1,5 +1,6 @@
 import io
 import logging
+import threading
 
 import tiktoken
 from app.core.config import config
@@ -15,20 +16,60 @@ from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
 logger = logging.getLogger(__name__)
 
+_DEVICE_MAP = {
+    "auto": AcceleratorDevice.AUTO,
+    "cuda": AcceleratorDevice.CUDA,
+    "gpu": AcceleratorDevice.CUDA,
+    "cpu": AcceleratorDevice.CPU,
+    "mps": AcceleratorDevice.MPS,
+}
+
+
+def _resolve_device(name: str) -> AcceleratorDevice:
+    """Ubah nilai DOCLING_DEVICE jadi AcceleratorDevice, turun ke CPU kalau CUDA tidak ada."""
+    key = (name or "auto").strip().lower()
+    device = _DEVICE_MAP.get(key)
+    if device is None:
+        logger.warning("DOCLING_DEVICE=%r tidak dikenal, memakai 'auto'.", name)
+        device = AcceleratorDevice.AUTO
+
+    try:
+        import torch
+
+        cuda_ok = torch.cuda.is_available()
+        gpu_name = torch.cuda.get_device_name(0) if cuda_ok else None
+    except Exception:  # torch belum terpasang / rusak
+        cuda_ok, gpu_name = False, None
+
+    if device == AcceleratorDevice.CUDA and not cuda_ok:
+        logger.warning("DOCLING_DEVICE=cuda tapi CUDA tidak tersedia — beralih ke CPU.")
+        device = AcceleratorDevice.CPU
+
+    if device == AcceleratorDevice.CUDA or (device == AcceleratorDevice.AUTO and cuda_ok):
+        logger.info("Docling memakai GPU: %s", gpu_name)
+    elif device == AcceleratorDevice.AUTO:
+        logger.info("Docling mode auto: CUDA tidak terdeteksi, memakai CPU.")
+    else:
+        logger.info("Docling memakai device: %s", device.value)
+    return device
+
 
 class DoclingLoader(BaseDocumentLoader):
     """
-    Loader PDF Ultimate dengan akselerasi GPU, HybridChunker, dan Image Extraction.
+    Loader PDF dengan HybridChunker dan Image Extraction.
+    Device (GPU/CPU) diatur lewat DOCLING_DEVICE di .env (default: auto).
     """
 
     def __init__(self):
         accel_options = AcceleratorOptions(
-            device=AcceleratorDevice.CUDA,
-            num_threads=4
+            device=_resolve_device(config.DOCLING_DEVICE),
+            num_threads=config.DOCLING_NUM_THREADS,
         )
 
         pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = True
+        # OCR hanya perlu untuk PDF hasil scan. Gambar/grafik sudah dibaca oleh
+        # OpenAI Vision, jadi untuk PDF digital OCR hanya menambah waktu.
+        pipeline_options.do_ocr = config.DOCLING_OCR
         pipeline_options.accelerator_options = accel_options
         pipeline_options.generate_picture_images = True
         pipeline_options.images_scale = 1.0
@@ -52,6 +93,8 @@ class DoclingLoader(BaseDocumentLoader):
             merge_peers=True
         )
 
+        self._convert_lock = threading.Lock()
+
     def supports(self, file_path: str) -> bool:
         return file_path.lower().endswith((".pdf", ".docx", ".md"))
 
@@ -59,7 +102,10 @@ class DoclingLoader(BaseDocumentLoader):
         elements: list[DocumentElement] = []
 
         try:
-            result = self.converter.convert(file_path)
+            # Satu converter dipakai bersama; kunci agar upload paralel tidak
+            # memakai model yang sama secara bersamaan (aman untuk memori GPU).
+            with self._convert_lock:
+                result = self.converter.convert(file_path)
             doc = result.document
 
             docling_chunks = list(self.chunker.chunk(dl_doc=doc))
