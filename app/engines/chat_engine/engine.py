@@ -59,9 +59,11 @@ class ChatEngine:
             llm: BaseLLM,
             nl2sql_svc: NL2SQLService,
             vector_svc: VectorStoreService,
+            router_llm: BaseLLM | None = None,
     ):
         self._graph = build_graph(
             llm=llm,
+            router_llm=router_llm,
             nl2sql_svc=nl2sql_svc,
             vector_svc=vector_svc,
         )

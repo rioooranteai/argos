@@ -26,6 +26,10 @@ class Config(BaseSettings):
     OPENAI_TRANSCRIBE_MODEL: str = "whisper-1"
     OPENAI_EXTRACTION_MODEL: str = "gpt-5.4-mini"
     OPENAI_TITLE_MODEL: str = "gpt-4o-mini"
+    # Model jawaban chat (synthesizer)
+    OPENAI_CHAT_MODEL: str = "gpt-5.4-mini"
+    # Router hanya memilih sql/vector/both/none → cukup model kecil & murah
+    OPENAI_ROUTER_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_CHUNK_SIZE: int = 400
 

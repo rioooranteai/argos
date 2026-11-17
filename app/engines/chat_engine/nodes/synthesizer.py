@@ -19,6 +19,9 @@ def _load_prompt(filename: str) -> str:
 
 _SYNTHESIZER_PROMPT_TEXT = _load_prompt("synthesizer_answer.md")
 
+# Baris SQL maksimum yang dikirim ke LLM penjawab (sisanya hanya diringkas jumlahnya)
+MAX_SQL_ROWS_IN_PROMPT = 30
+
 
 def _format_sql_result(sql_result: dict | None) -> str:
     if not sql_result or sql_result.get("status") == "error":
@@ -28,14 +31,18 @@ def _format_sql_result(sql_result: dict | None) -> str:
     if not rows:
         return ""
 
+    shown = rows[:MAX_SQL_ROWS_IN_PROMPT]
     lines = ["[DATA TERSTRUKTUR (SQL)]"]
-    for row in rows:
-        lines.append(str(row))
+    for row in shown:
+        # Format ringkas "kolom=nilai | ...", kolom kosong dibuang (hemat token)
+        if isinstance(row, dict):
+            lines.append(" | ".join(f"{k}={v}" for k, v in row.items() if v not in (None, "")))
+        else:
+            lines.append(str(row))
 
-    if sql_result.get("truncated"):
-        lines.append(
-            f"... (total {sql_result.get('row_count')} baris, ditampilkan {len(rows)})"
-        )
+    total = sql_result.get("row_count", len(rows))
+    if total > len(shown):
+        lines.append(f"... (total {total} baris, ditampilkan {len(shown)})")
 
     return "\n".join(lines)
 

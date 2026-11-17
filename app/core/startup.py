@@ -87,6 +87,7 @@ async def lifespan(app: FastAPI):
 
     app.state.chat_engine = ChatEngine(
         llm=get_llm(model_type="chat", temperature=0.3),
+        router_llm=get_llm(model_type="router", temperature=0.0),
         nl2sql_svc=app.state.nl2sql_service,
         vector_svc=app.state.vector_store_svc,
     )

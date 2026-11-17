@@ -49,6 +49,7 @@ def build_graph(
         llm: BaseLLM,
         nl2sql_svc: NL2SQLService,
         vector_svc: VectorStoreService,
+        router_llm: BaseLLM | None = None,
 ) -> Any:
     """
     Build dan compile LangGraph StateGraph untuk ChatEngine.
@@ -59,7 +60,8 @@ def build_graph(
     builder = StateGraph(ChatState)
 
     # --- Daftarkan semua node ---
-    builder.add_node("router_node", partial(router_node, llm=llm))
+    # Router cukup model kecil (klasifikasi), synthesizer memakai model chat.
+    builder.add_node("router_node", partial(router_node, llm=router_llm or llm))
     builder.add_node("sql_node", partial(sql_node, nl2sql_svc=nl2sql_svc))
     builder.add_node("vector_node", partial(vector_node, vector_svc=vector_svc))
     builder.add_node("synthesizer_node", partial(_synthesizer_wrapper, llm=llm))
