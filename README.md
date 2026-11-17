@@ -268,6 +268,19 @@ Every push and pull request to `main` or `develop` runs a GitHub Actions pipelin
 pytest tests/ -v
 ```
 
+### Dependencies
+
+- `requirements.in` — the **direct** dependencies (edit this one).
+- `requirements.txt` — cross-platform lock file generated from it. PyTorch is intentionally
+  excluded; `install.py` and the Dockerfile install the CPU or CUDA build.
+
+To add or upgrade a package, edit `requirements.in`, then regenerate the lock
+(requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+python lock.py
+```
+
 ---
 
 ## 7. Screenshots
