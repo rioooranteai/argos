@@ -83,47 +83,123 @@ flowchart TD
 
 ---
 
-## 3. Running with Docker
+## 3. Installation
 
-### Prerequisites
+Pick the path that fits your machine:
 
-- **Docker Desktop** installed and running
-- **OpenAI API Key**
+| Your situation | Recommended path |
+|---|---|
+| Just want it running, any OS | **A. Docker (CPU)** |
+| NVIDIA GPU + Docker | **B. Docker (GPU)** |
+| Developing the code (Windows / Linux / Apple Silicon Mac) | **C. Local Python** |
+| Intel Mac | **A. Docker** (PyTorch 2.8 has no Intel-Mac build) |
 
-### Step 1 — Prepare the `.env` file
-
-Create a `.env` file in the project root directory (same level as `docker-compose.yml`):
-
-```env
-OPENAI_API_KEY=""
-```
-
-> ⚠️ Never commit the `.env` file to your repository. Make sure `.env` is included in `.gitignore`.
-
-### Step 2 — Build and run the container
+### Step 1 — Get the code and prepare `.env` (all paths)
 
 ```bash
-docker-compose up --build
+git clone <repo-url> argos
+cd argos
+cp .env.example .env        # Windows (cmd/PowerShell): copy .env.example .env
 ```
 
-This command will build the image, install all dependencies, and start the FastAPI server on port 8000.
+Open `.env` and fill the values marked **[WAJIB]**:
 
-### Step 3 — Access the application
+| Variable | Where to get it |
+|---|---|
+| `OPENAI_API_KEY` | https://platform.openai.com/api-keys |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth Client ID |
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
 
-Once the container is running, open your browser and go to:
+Everything else has working defaults.
+
+> ⚠️ Never commit `.env`. It is listed in `.gitignore` and `.dockerignore`.
+
+### A. Docker (CPU) — works everywhere
+
+Requires **Docker Desktop** (Windows/macOS) or Docker Engine (Linux).
+
+```bash
+docker compose up -d --build
+```
+
+### B. Docker (GPU) — NVIDIA only
+
+Requires an NVIDIA driver, plus Docker Desktop with the WSL2 backend (Windows) or the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) (Linux).
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+```
+
+Or let the helper detect the GPU and choose A or B for you:
+
+```bash
+python docker_up.py                # detects GPU → CPU or GPU compose
+python docker_up.py --device cpu   # force CPU
+python docker_up.py -- logs -f     # pass any other compose command
+```
+
+All data (SQLite, Chroma, downloaded Docling models) is stored in `./data` on the host,
+so it survives container rebuilds.
+
+### C. Local Python (no Docker)
+
+Requires **Python 3.11 – 3.13**.
+
+```bash
+python -m venv .venv
+# Windows:      .venv\Scripts\activate
+# Linux/macOS:  source .venv/bin/activate
+
+python install.py                  # detects NVIDIA GPU → installs CUDA or CPU PyTorch
+python -m uvicorn app.main:app --reload
+```
+
+`install.py` options: `--device auto` (default), `--device cuda`, `--device cpu`.
+It also creates `.env` from `.env.example` if it does not exist yet, and finishes by
+printing whether PyTorch can see your GPU.
+
+### Step 2 — Open the app
 
 ```
 http://localhost:8000
 ```
 
-### Other Docker Commands
+Health check: `http://localhost:8000/health`
+
+### GPU or CPU at runtime
+
+Docling's device is controlled by `DOCLING_DEVICE` in `.env`:
+
+| Value | Behaviour |
+|---|---|
+| `auto` (default) | GPU if CUDA/MPS is available, otherwise CPU |
+| `cuda` | Force NVIDIA GPU (falls back to CPU with a warning if unavailable) |
+| `cpu` | Always CPU |
+| `mps` | Apple Silicon GPU |
+
+The startup log prints which device Docling uses.
+
+OCR is **off** by default (`DOCLING_OCR=false`): Docling extracts text, layout and tables, while
+figures are described by OpenAI Vision, so OCR is only needed for **scanned PDFs**. Set
+`DOCLING_OCR=true` in `.env` if you process scans (slower, especially on CPU).
+
+### Docker commands
 
 | Command | Description |
 |---|---|
-| `docker-compose up --build` | Rebuild image and run (first time / after code changes) |
-| `docker-compose up -d` | Run in background (detached mode) |
-| `docker-compose down` | Stop and remove containers |
-| `docker-compose logs -f` | View real-time logs |
+| `docker compose up -d --build` | Build and run in the background |
+| `docker compose logs -f` | Follow logs |
+| `docker compose down` | Stop and remove containers (data in `./data` is kept) |
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `install.py` says CUDA not available on an NVIDIA machine | Update the NVIDIA driver (CUDA 12.9 needs ≥ 576.x on Windows), or use `--device cpu` |
+| First PDF upload is slow | Docling downloads its layout/OCR models on first use; later runs use the cache |
+| `ResolutionImpossible` from pip | Use a fresh virtual environment and run `python install.py` (do not `pip install` torch manually) |
+| GPU compose fails with "could not select device driver" | NVIDIA Container Toolkit / WSL2 GPU support is not installed — use path A |
 
 ---
 
