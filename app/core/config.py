@@ -53,5 +53,9 @@ class Config(BaseSettings):
     # Database
     DATABASE_URL: str = ""
 
+    # Lokasi penyimpanan data (kosong = folder root project)
+    SQLITE_PATH: str = ""
+    CHROMA_PATH: str = ""
+
 
 config = Config()
