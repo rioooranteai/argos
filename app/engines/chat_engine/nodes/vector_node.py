@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.services.vector_store.service import VectorStoreService
@@ -12,7 +13,9 @@ async def vector_node(state: dict, vector_svc: VectorStoreService) -> dict:
     user_input = state["user_input"]
 
     try:
-        raw = vector_svc.search(query=user_input, limit=DEFAULT_VECTOR_LIMIT)
+        # search() sinkron (HTTP embedding OpenAI + query Chroma) → jalankan di
+        # thread agar request lain tidak tertahan selama chat diproses.
+        raw = await asyncio.to_thread(vector_svc.search, query=user_input, limit=DEFAULT_VECTOR_LIMIT)
 
         if not raw:
             logger.info("[vector_node] Ditemukan 0 chunk. - Method 1")
