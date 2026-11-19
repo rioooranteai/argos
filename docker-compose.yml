@@ -21,4 +21,6 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 3
+    # Beri worker waktu menyelesaikan tahap yang sedang berjalan (WORKER_SHUTDOWN_GRACE = 20 dtk).
+    stop_grace_period: 30s
     restart: unless-stopped

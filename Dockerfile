@@ -29,8 +29,10 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-RUN mkdir -p temp_uploads data
+RUN mkdir -p data
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# WAJIB satu proses: worker antrean dokumen berjalan di dalam app dan Chroma
+# PersistentClient tidak aman dipakai banyak proses (DESIGN_GROUP_B.md §3.4).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
