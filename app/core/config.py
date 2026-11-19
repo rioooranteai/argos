@@ -126,6 +126,8 @@ class AppConfig:
     UPLOAD_ALLOWED_EXTENSIONS: tuple[str, ...] = (".pdf", ".md")
 
     # ── Worker ───────────────────────────────────────────────────────
+    # Naikkan saat prompt/chunker/model ingestion berubah (A §5 `pipeline_version`).
+    PIPELINE_VERSION: str = "1"
     DOC_WORKERS: int = 2
     VERSION_LEASE_MINUTES: int = 10
     DOC_MAX_ATTEMPTS: int = 3
