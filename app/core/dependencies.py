@@ -10,6 +10,7 @@ from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
+from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser
 from app.services.voice.service import VoiceService
 
@@ -76,3 +77,7 @@ def get_conversation_service(request: Request) -> ConversationService:
 
 def get_notebook_service(request: Request) -> NotebookService:
     return request.app.state.notebook_service
+
+
+def get_admin_service(request: Request) -> AdminService:
+    return request.app.state.admin_service

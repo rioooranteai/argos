@@ -13,3 +13,10 @@ class BaseUserRepository(ABC):
     @abstractmethod
     def get(self, user_id: str) -> User | None:
         """Ambil user berdasarkan id (Google `sub`)."""
+
+    @abstractmethod
+    def list_all(self) -> list[User]:
+        """Semua user, urut nama/email."""
+
+    @abstractmethod
+    def set_active(self, user_id: str, active: bool) -> bool: ...

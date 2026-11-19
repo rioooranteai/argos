@@ -41,6 +41,7 @@ from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.vector_store.service import VectorStoreService
+from app.services.user.admin import AdminService
 from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ async def lifespan(app: FastAPI):
     library_repo = SQLiteLibraryRepository(database=db)
     cache_repo = SQLiteCacheRepository(database=db)
     job_repo = SQLiteJobRepository(database=db)
+    app.state.admin_service = AdminService(users=app.state.user_repo, library=library_repo)
 
     conversation_repo = SQLiteConversationRepository(database=db)
 

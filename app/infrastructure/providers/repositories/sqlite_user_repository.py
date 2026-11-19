@@ -40,6 +40,18 @@ class SQLiteUserRepository(BaseUserRepository):
             row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         return self._to_user(row) if row else None
 
+    def list_all(self) -> list[User]:
+        with self._db.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM users ORDER BY COALESCE(name, email) COLLATE NOCASE"
+            ).fetchall()
+        return [self._to_user(r) for r in rows]
+
+    def set_active(self, user_id: str, active: bool) -> bool:
+        with self._db.get_connection() as conn:
+            cur = conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (int(active), user_id))
+            return cur.rowcount > 0
+
     @staticmethod
     def _to_user(row: sqlite3.Row) -> User:
         return User(
