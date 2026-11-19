@@ -11,7 +11,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 
 from app.infrastructure.interface.cache_repository import BaseCacheRepository
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
@@ -19,6 +19,14 @@ from app.services.extraction.model import ExtractedFeature, FeatureRow
 from app.services.ingestion.model import ExtractionUnit
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ExtractionStats:
+    """Diisi oleh ``extract_units``: berapa unit yang hasilnya diambil dari cache."""
+
+    units: int = 0
+    cached: int = 0
 
 
 class ExtractionService:
@@ -40,16 +48,20 @@ class ExtractionService:
         self,
         units: list[ExtractionUnit],
         on_progress: Callable[[int], Awaitable[None]] | None = None,
+        stats: ExtractionStats | None = None,
     ) -> list[FeatureRow]:
+        stats = stats if stats is not None else ExtractionStats()
+        stats.units += len(units)
         done = 0
         lock = asyncio.Lock()
         results: list[list[FeatureRow]] = [[] for _ in units]
 
         async def one(i: int, unit: ExtractionUnit) -> None:
             nonlocal done
-            results[i] = await self._extract_unit(unit)
+            results[i], from_cache = await self._extract_unit(unit)
             async with lock:
                 done += 1
+                stats.cached += from_cache
                 if on_progress is not None:
                     await on_progress(done)
 
@@ -63,12 +75,13 @@ class ExtractionService:
                 raise outcome
         return [row for rows in results for row in rows]
 
-    async def _extract_unit(self, unit: ExtractionUnit) -> list[FeatureRow]:
+    async def _extract_unit(self, unit: ExtractionUnit) -> tuple[list[FeatureRow], bool]:
+        """Return (baris feature, diambil dari cache?)."""
         cached = await asyncio.to_thread(
             self._cache.get_extraction, unit.unit_hash, self._pipeline_version
         )
         if cached is not None:
-            return [FeatureRow(**row) for row in json.loads(cached)]
+            return [FeatureRow(**row) for row in json.loads(cached)], True
 
         async with self._semaphore:
             features = await asyncio.wait_for(
@@ -82,7 +95,7 @@ class ExtractionService:
             self._pipeline_version,
             json.dumps([asdict(r) for r in rows], ensure_ascii=False),
         )
-        return rows
+        return rows, False
 
     @staticmethod
     def _to_rows(unit: ExtractionUnit, features: list[ExtractedFeature]) -> list[FeatureRow]:

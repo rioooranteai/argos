@@ -47,6 +47,8 @@ class DocumentVersion:
     pipeline_version: str
     error: str | None
     finished_at: datetime | None
+    # {chunks, chunks_reused, units, units_cached, images, images_cached}; None sebelum ready
+    reuse_stats: dict[str, int] | None = None
 
     @property
     def is_final(self) -> bool:
@@ -93,6 +95,7 @@ class VersionOut(BaseModel):
     attempts: int
     error: str | None
     warnings: list[str] = Field(default_factory=list)
+    reuse_stats: dict[str, int] | None = None
 
     @classmethod
     def from_version(cls, v: DocumentVersion) -> VersionOut:
@@ -114,6 +117,7 @@ class VersionOut(BaseModel):
             attempts=v.attempts,
             error=v.error,
             warnings=warnings,
+            reuse_stats=v.reuse_stats,
         )
 
 

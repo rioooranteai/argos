@@ -15,9 +15,10 @@ class BaseFeatureRepository(ABC):
         version_id: str,
         sections: list[Section],
         features: list[FeatureRow],
+        reuse_stats: dict[str, int] | None = None,
     ) -> bool:
-        """Dalam SATU transaksi: tulis bagian & features, tandai versi `ready`, dan
-        perbarui `latest_version_id` dokumen. Sebelum ini selesai, tidak ada data
+        """Dalam SATU transaksi: tulis bagian & features, tandai versi `ready`
+        (beserta statistik pemakaian ulang), dan perbarui `latest_version_id` dokumen. Sebelum ini selesai, tidak ada data
         versi yang terlihat oleh chat.
 
         Return False (tanpa menulis apa pun) jika pembatalan sudah diminta.

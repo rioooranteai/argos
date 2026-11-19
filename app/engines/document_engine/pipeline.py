@@ -8,6 +8,10 @@ Urutan tulis aman (Chroma dan SQLite tidak bisa satu transaksi):
   2. bagian + features + status `ready` ditulis dalam SATU transaksi SQL.
 Gagal di mana pun → worker memanggil `cleanup()`; tidak ada data setengah jadi
 yang terlihat.
+
+Pemakaian ulang untuk versi baru (Tahap 3, A §6.3): gambar lewat cache Vision,
+unit ekstraksi lewat cache ekstraksi, dan vektor chunk yang teksnya identik
+disalin dari versi `ready` terbaru dokumen yang sama (tanpa embedding ulang).
 """
 from __future__ import annotations
 
@@ -22,11 +26,11 @@ from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, PermanentJobError
 from app.infrastructure.interface.feature_repository import BaseFeatureRepository
 from app.infrastructure.interface.library_repository import BaseLibraryRepository
-from app.services.extraction.service import ExtractionService
+from app.services.extraction.service import ExtractionService, ExtractionStats
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
 from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber, figures_in
-from app.services.library.model import DocumentVersion
+from app.services.library.model import STAGE_READY, DocumentVersion, LibraryDocument
 from app.services.library.service import queued_file_path
 from app.services.vector_store.service import VectorStoreService
 
@@ -97,12 +101,15 @@ class DocumentPipeline:
 
         # ── 3. Indexing (embedding + Chroma) ───────────────────────────
         chunks = build_index_chunks(sections, version.document_id, version.id, document.display_name)
+        reuse = await asyncio.to_thread(self._reusable_vectors, document, version)
         size = self._cfg.EMBED_BATCH_SIZE
         batches = [chunks[i : i + size] for i in range(0, len(chunks), size)]
         await ctx.stage("indexing", total=len(batches))
+        chunks_reused = 0
         for i, batch in enumerate(batches, start=1):
             async with self._limits.embedding:
-                await asyncio.to_thread(self._vectors.add_chunks, batch)
+                added = await asyncio.to_thread(self._vectors.add_chunks, batch, reuse)
+            chunks_reused += added.reused
             await ctx.progress(i)
             await ctx.check_cancelled()
 
@@ -114,20 +121,56 @@ class DocumentPipeline:
             self._cfg.EXTRACTION_MAX_UNIT_TOKENS,
         )
         await ctx.stage("extracting", total=len(units))
-        rows = await self._extraction.extract_units(units, on_progress=ctx.progress)
+        extraction_stats = ExtractionStats()
+        rows = await self._extraction.extract_units(
+            units, on_progress=ctx.progress, stats=extraction_stats
+        )
         await ctx.check_cancelled()
 
         # ── 5. Publikasi atomik ────────────────────────────────────────
+        reuse_stats = {
+            "chunks": len(chunks),
+            "chunks_reused": chunks_reused,
+            "units": extraction_stats.units,
+            "units_cached": extraction_stats.cached,
+            "images": outcome.total,
+            "images_cached": outcome.from_cache,
+        }
         published = await asyncio.to_thread(
-            self._features.publish_version, version.document_id, version.id, sections, rows
+            self._features.publish_version,
+            version.document_id, version.id, sections, rows, reuse_stats,
         )
         if not published:
             raise JobCancelled()
         logger.info(
-            "Versi %s ready: %d bagian, %d chunk, %d feature, %d gambar (%d dari cache, %d gagal)",
-            version.id, len(sections), len(chunks), len(rows),
-            outcome.total, outcome.from_cache, outcome.failed,
+            "Versi %s ready: %d bagian, %d feature, %d gagal Vision | dipakai ulang: "
+            "chunk %d/%d, unit %d/%d, gambar %d/%d",
+            version.id, len(sections), len(rows), outcome.failed,
+            chunks_reused, len(chunks), extraction_stats.cached, extraction_stats.units,
+            outcome.from_cache, outcome.total,
         )
+
+    def _reusable_vectors(self, document: LibraryDocument, version: DocumentVersion) -> dict[str, str]:
+        """Teks → ID chunk dari versi `ready` terbaru dokumen ini, bila vektornya kompatibel.
+
+        Hanya optimasi: bila gagal dibaca, versi ini tetap diproses penuh.
+        """
+        previous_id = document.latest_version_id
+        if not previous_id or previous_id == version.id:
+            return {}
+        previous = self._library.get_version(previous_id)
+        # Model embedding ikut tercakup PIPELINE_VERSION: vektor beda model tidak dicampur.
+        if (
+            previous is None
+            or previous.stage != STAGE_READY
+            or previous.pipeline_version != version.pipeline_version
+        ):
+            return {}
+        try:
+            return self._vectors.version_texts(previous_id)
+        except Exception as exc:
+            logger.warning("Vektor versi %s tidak bisa dibaca untuk dipakai ulang: %s", previous_id, exc)
+            return {}
 
     async def cleanup(self, version_id: str) -> None:
         """Hapus semua data milik versi yang belum/tidak jadi dipublikasikan."""

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 
@@ -123,7 +124,7 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
                 UPDATE document_versions SET
                     stage = ?, attempts = 0, error = NULL, next_retry_at = NULL,
                     locked_until = NULL, cancel_requested = 0, vision_failed = 0,
-                    progress_done = 0, progress_total = 0,
+                    progress_done = 0, progress_total = 0, reuse_stats = NULL,
                     started_at = NULL, finished_at = NULL, uploaded_by = ?
                 WHERE id = ?
                 """,
@@ -310,4 +311,5 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
             pipeline_version=row["pipeline_version"],
             error=row["error"],
             finished_at=_ts(row["finished_at"]),
+            reuse_stats=json.loads(row["reuse_stats"]) if row["reuse_stats"] else None,
         )

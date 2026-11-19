@@ -170,6 +170,11 @@ MIGRATIONS: list[tuple[int, str]] = [
             1
         );
     """),
+    (3, """
+        -- Statistik pemakaian ulang per versi (Tahap 3, IMPLEMENTATION_PLAN_AB.md §4):
+        -- JSON {chunks, chunks_reused, units, units_cached, images, images_cached}.
+        ALTER TABLE document_versions ADD COLUMN reuse_stats TEXT;
+    """),
 ]
 
 

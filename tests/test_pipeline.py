@@ -25,6 +25,7 @@ from app.services.extraction.service import ExtractionService
 from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.model import NewVersion
+from app.services.vector_store.model import AddChunksResult
 
 
 class FakeParser:
@@ -62,11 +63,23 @@ class FakeExtractor:
 class FakeVectors:
     def __init__(self):
         self.chunks: dict[str, dict] = {}
+        self.texts: dict[str, str] = {}
+        self.embedded: list[str] = []  # teks yang "dikirim ke API embedding"
 
-    def add_chunks(self, chunks):
+    def add_chunks(self, chunks, reuse=None):
+        reuse = reuse or {}
+        reused = 0
         for c in chunks:
+            if c.text in reuse and reuse[c.text] in self.chunks:
+                reused += 1
+            else:
+                self.embedded.append(c.text)
             self.chunks[c.chunk_id] = c.metadata
-        return [c.chunk_id for c in chunks]
+            self.texts[c.chunk_id] = c.text
+        return AddChunksResult(ids=[c.chunk_id for c in chunks], reused=reused)
+
+    def version_texts(self, version_id):
+        return {self.texts[k]: k for k, m in self.chunks.items() if m["version_id"] == version_id}
 
     def delete_version(self, version_id):
         self.chunks = {k: m for k, m in self.chunks.items() if m["version_id"] != version_id}

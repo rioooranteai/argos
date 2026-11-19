@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 
 from app.core.database import Database
@@ -20,6 +21,7 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
         version_id: str,
         sections: list[Section],
         features: list[FeatureRow],
+        reuse_stats: dict[str, int] | None = None,
     ) -> bool:
         with self._db.get_connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -56,10 +58,10 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
                 """
                 UPDATE document_versions SET
                     stage = 'ready', error = NULL, locked_until = NULL, next_retry_at = NULL,
-                    finished_at = CURRENT_TIMESTAMP
+                    finished_at = CURRENT_TIMESTAMP, reuse_stats = ?
                 WHERE id = ?
                 """,
-                (version_id,),
+                (json.dumps(reuse_stats) if reuse_stats else None, version_id),
             )
             # Versi ready dengan nomor tertinggi — versi lama yang selesai belakangan
             # tidak menimpa versi yang lebih baru.
