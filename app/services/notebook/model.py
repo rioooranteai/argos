@@ -34,6 +34,10 @@ class NotebookSource:
     latest_version_no: int | None
     enabled: bool
     added_at: datetime
+    progress_done: int = 0
+    progress_total: int = 0
+    error: str | None = None
+    vision_failed: int = 0
 
     @property
     def is_ready(self) -> bool:
@@ -82,6 +86,10 @@ class NotebookSourceOut(BaseModel):
     archived: bool
     update_available: bool
     latest_version_no: int | None
+    progress_done: int
+    progress_total: int
+    error: str | None
+    warnings: list[str]
 
     @classmethod
     def from_source(cls, s: NotebookSource) -> NotebookSourceOut:
@@ -97,6 +105,10 @@ class NotebookSourceOut(BaseModel):
             archived=s.document_status == "archived",
             update_available=s.update_available,
             latest_version_no=s.latest_version_no,
+            progress_done=s.progress_done,
+            progress_total=s.progress_total,
+            error=s.error,
+            warnings=[f"{s.vision_failed} gambar tidak terbaca"] if s.vision_failed else [],
         )
 
 

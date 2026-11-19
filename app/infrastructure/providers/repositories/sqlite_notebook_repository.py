@@ -21,6 +21,7 @@ _SOURCES_SQL = """
     SELECT ns.notebook_id, ns.document_id, ns.version_id, ns.enabled, ns.added_at,
            d.display_name, d.status AS document_status, d.latest_version_id,
            v.version_no, v.stage, v.uploaded_at, v.page_count,
+           v.progress_done, v.progress_total, v.error AS version_error, v.vision_failed,
            lv.version_no AS latest_version_no
     FROM notebook_sources ns
     JOIN library_documents d ON d.id = ns.document_id
@@ -197,4 +198,8 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
             latest_version_no=row["latest_version_no"],
             enabled=bool(row["enabled"]),
             added_at=_ts(row["added_at"]),
+            progress_done=row["progress_done"],
+            progress_total=row["progress_total"],
+            error=row["version_error"],
+            vision_failed=row["vision_failed"],
         )
