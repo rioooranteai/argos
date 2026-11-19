@@ -1,3 +1,9 @@
+"""Skema database Argos.
+
+Skema lama (features tanpa versi, conversations tanpa notebook) dihapus total
+(keputusan Q6, DESIGN_GROUP_A.md). Database baru berada di ``DATA_DIR/argos.db``
+sehingga migrasi dimulai lagi dari baseline v1.
+"""
 from __future__ import annotations
 
 import logging
@@ -7,69 +13,152 @@ logger = logging.getLogger(__name__)
 
 MIGRATIONS: list[tuple[int, str]] = [
     (1, """
-        CREATE TABLE IF NOT EXISTS features (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            document_id     TEXT NOT NULL,
-            competitor_name TEXT NOT NULL,
-            feature_name    TEXT NOT NULL,
-            price           REAL,
-            price_currency  TEXT,
-            advantages      TEXT,
-            disadvantages   TEXT
+        -- ── User ────────────────────────────────────────────────────────
+        CREATE TABLE users (
+            id             TEXT PRIMARY KEY,              -- Google `sub`
+            email          TEXT NOT NULL UNIQUE,
+            name           TEXT,
+            picture        TEXT,
+            is_active      INTEGER NOT NULL DEFAULT 1,
+            created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_login_at  TIMESTAMP
         );
-        CREATE INDEX IF NOT EXISTS idx_features_competitor ON features (competitor_name);
-        CREATE INDEX IF NOT EXISTS idx_features_feature    ON features (feature_name);
-        CREATE INDEX IF NOT EXISTS idx_features_document   ON features (document_id);
-    """),
-    (2, """
-        CREATE TABLE IF NOT EXISTS conversations (
-            id         TEXT PRIMARY KEY,
-            user_id    TEXT NOT NULL,
-            title      TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_conversations_user
-            ON conversations (user_id, updated_at DESC);
 
-        CREATE TABLE IF NOT EXISTS messages (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id TEXT NOT NULL,
-            role            TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-            content         TEXT NOT NULL,
-            created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+        -- ── Library ─────────────────────────────────────────────────────
+        CREATE TABLE library_documents (
+            id                 TEXT PRIMARY KEY,
+            display_name       TEXT NOT NULL,
+            owner_id           TEXT NOT NULL REFERENCES users(id),
+            latest_version_id  TEXT,                       -- versi `ready` terbaru
+            status             TEXT NOT NULL DEFAULT 'active'
+                               CHECK (status IN ('active', 'archived')),
+            created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE INDEX IF NOT EXISTS idx_messages_conversation
-            ON messages (conversation_id, created_at);
-    """),
-    (3, """
-        DROP TABLE IF EXISTS conversation_history;
-    """),
-    (4, """
-        -- v4: Switch features schema to brand_name + product_name split,
-        -- aligning with the new extraction prompt and CompetitorFeature model.
-        -- Old data is dropped because the v1 column `competitor_name` cannot
-        -- be deterministically split into (brand_name, product_name) without
-        -- re-running extraction.
-        DROP INDEX IF EXISTS idx_features_competitor;
-        DROP INDEX IF EXISTS idx_features_feature;
-        DROP INDEX IF EXISTS idx_features_document;
-        DROP TABLE IF EXISTS features;
+        CREATE INDEX idx_library_documents_name ON library_documents (display_name);
+
+        CREATE TABLE document_versions (
+            id                 TEXT PRIMARY KEY,
+            document_id        TEXT NOT NULL REFERENCES library_documents(id) ON DELETE CASCADE,
+            version_no         INTEGER NOT NULL,
+            content_hash       TEXT NOT NULL,              -- SHA-256 byte file
+            original_filename  TEXT NOT NULL,
+            file_ext           TEXT NOT NULL,
+            size_bytes         INTEGER NOT NULL,
+            page_count         INTEGER,
+            uploaded_by        TEXT NOT NULL REFERENCES users(id),
+            uploaded_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            -- Versi = job (DESIGN_GROUP_B.md §3.1)
+            stage              TEXT NOT NULL DEFAULT 'queued'
+                               CHECK (stage IN ('queued', 'parsing', 'vision', 'indexing',
+                                                'extracting', 'ready', 'failed', 'cancelled')),
+            progress_done      INTEGER NOT NULL DEFAULT 0,
+            progress_total     INTEGER NOT NULL DEFAULT 0,
+            attempts           INTEGER NOT NULL DEFAULT 0,
+            next_retry_at      TIMESTAMP,
+            locked_until       TIMESTAMP,
+            cancel_requested   INTEGER NOT NULL DEFAULT 0,
+            vision_failed      INTEGER NOT NULL DEFAULT 0,
+            pipeline_version   TEXT NOT NULL,
+            error              TEXT,
+            started_at         TIMESTAMP,
+            finished_at        TIMESTAMP,
+            UNIQUE (content_hash),                         -- kunci idempotensi
+            UNIQUE (document_id, version_no)
+        );
+        CREATE INDEX idx_versions_document ON document_versions (document_id);
+        CREATE INDEX idx_versions_stage    ON document_versions (stage, next_retry_at);
+
+        CREATE TABLE sections (
+            version_id    TEXT NOT NULL REFERENCES document_versions(id) ON DELETE CASCADE,
+            section_hash  TEXT NOT NULL,                   -- hash isi saja
+            heading       TEXT,
+            page_start    INTEGER,
+            ord           INTEGER NOT NULL,
+            PRIMARY KEY (version_id, section_hash)
+        );
 
         CREATE TABLE features (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            document_id     TEXT NOT NULL,
-            brand_name      TEXT,
-            product_name    TEXT NOT NULL,
-            price           REAL,
-            price_currency  TEXT,
-            advantages      TEXT,
-            disadvantages   TEXT
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id      TEXT NOT NULL REFERENCES library_documents(id) ON DELETE CASCADE,
+            version_id       TEXT NOT NULL REFERENCES document_versions(id) ON DELETE CASCADE,
+            section_hash     TEXT NOT NULL,
+            section_heading  TEXT,
+            page_number      INTEGER,
+            brand_name       TEXT,
+            product_name     TEXT NOT NULL,
+            price            REAL,
+            price_currency   TEXT,
+            advantages       TEXT,
+            disadvantages    TEXT
         );
-        CREATE INDEX idx_features_brand    ON features (brand_name);
-        CREATE INDEX idx_features_product  ON features (product_name);
-        CREATE INDEX idx_features_document  ON features (document_id);
+        CREATE INDEX idx_features_version ON features (version_id);
+        CREATE INDEX idx_features_brand   ON features (brand_name);
+        CREATE INDEX idx_features_product ON features (product_name);
+
+        -- ── Notebook ────────────────────────────────────────────────────
+        CREATE TABLE notebooks (
+            id          TEXT PRIMARY KEY,
+            owner_id    TEXT NOT NULL REFERENCES users(id),
+            title       TEXT NOT NULL,
+            created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_notebooks_owner ON notebooks (owner_id, updated_at DESC);
+
+        -- version_id / document_id tanpa CASCADE: versi atau dokumen yang masih
+        -- dipakai notebook tidak bisa terhapus tanpa sengaja (A §6.6-6.7).
+        CREATE TABLE notebook_sources (
+            notebook_id  TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
+            document_id  TEXT NOT NULL REFERENCES library_documents(id),
+            version_id   TEXT NOT NULL REFERENCES document_versions(id),
+            enabled      INTEGER NOT NULL DEFAULT 1,
+            added_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (notebook_id, document_id)
+        );
+        CREATE INDEX idx_notebook_sources_version ON notebook_sources (version_id);
+
+        -- ── Chat ────────────────────────────────────────────────────────
+        -- notebook_id masih boleh NULL sampai rute chat pindah ke notebook
+        -- (IMPLEMENTATION_PLAN_AB.md langkah 7.2); setelah itu diwajibkan di service.
+        CREATE TABLE conversations (
+            id           TEXT PRIMARY KEY,
+            notebook_id  TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
+            user_id      TEXT NOT NULL,
+            title        TEXT NOT NULL,
+            created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_conversations_user     ON conversations (user_id, updated_at DESC);
+        CREATE INDEX idx_conversations_notebook ON conversations (notebook_id, updated_at DESC);
+
+        CREATE TABLE messages (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content          TEXT NOT NULL,
+            created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            source_snapshot  TEXT,                         -- JSON: version_id aktif
+            citations        TEXT                          -- JSON
+        );
+        CREATE INDEX idx_messages_conversation ON messages (conversation_id, created_at);
+
+        -- ── Cache AI (juga berfungsi sebagai checkpoint, B §9) ──────────
+        CREATE TABLE vision_cache (
+            image_hash   TEXT NOT NULL,
+            model        TEXT NOT NULL,
+            description  TEXT NOT NULL,
+            created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (image_hash, model)
+        );
+
+        CREATE TABLE extraction_cache (
+            unit_hash         TEXT NOT NULL,
+            pipeline_version  TEXT NOT NULL,
+            result_json       TEXT NOT NULL,
+            created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (unit_hash, pipeline_version)
+        );
     """),
 ]
 

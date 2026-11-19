@@ -9,6 +9,9 @@ from app.core.config import infra
 
 DB_PATH = infra.sqlite_path
 
+# Worker & request bisa menulis bersamaan; tunggu lock alih-alih langsung gagal.
+BUSY_TIMEOUT_SECONDS = 10
+
 
 class Database:
     """Manages SQLite connection lifecycle only.
@@ -22,10 +25,11 @@ class Database:
 
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=BUSY_TIMEOUT_SECONDS)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA journal_mode = WAL")  # better concurrent read perf
+        conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_SECONDS * 1000}")
         try:
             yield conn
             conn.commit()
