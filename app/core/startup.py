@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from app.core.config import config
+from app.core.config import app_config, infra, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
@@ -38,6 +38,10 @@ def init_db() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
+    # --- Fail-fast: konfigurasi wajib & folder data ---
+    validate_required_config()
+    infra.DATA_DIR.mkdir(parents=True, exist_ok=True)
+
     # --- Persistence ---
     init_db()
 
@@ -69,7 +73,7 @@ async def lifespan(app: FastAPI):
         extraction_svc=ExtractionService(
             repository=feature_repo,
             provider="pydantic_ai",
-            model=config.OPENAI_EXTRACTION_MODEL,
+            model=app_config.OPENAI_EXTRACTION_MODEL,
         ),
     )
 

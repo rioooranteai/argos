@@ -5,14 +5,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
-from app.core.config import config
+from app.core.config import infra
 
-DB_PATH = (
-    Path(config.SQLITE_PATH)
-    if config.SQLITE_PATH
-    else Path(__file__).resolve().parents[2] / "competitor_data.db"
-)
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+DB_PATH = infra.sqlite_path
 
 
 class Database:

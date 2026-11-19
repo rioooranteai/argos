@@ -3,7 +3,7 @@ import logging
 import threading
 
 import tiktoken
-from app.core.config import config
+from app.core.config import app_config, infra
 from app.services.ingestion.base.loader import BaseDocumentLoader
 from app.services.ingestion.exceptions import DocumentLoadError
 from app.services.ingestion.model import DocumentElement, ElementType
@@ -66,14 +66,14 @@ class DoclingLoader(BaseDocumentLoader):
 
     def __init__(self):
         accel_options = AcceleratorOptions(
-            device=_resolve_device(config.DOCLING_DEVICE),
-            num_threads=config.DOCLING_NUM_THREADS,
+            device=_resolve_device(infra.DOCLING_DEVICE),
+            num_threads=app_config.DOCLING_NUM_THREADS,
         )
 
         pipeline_options = PdfPipelineOptions()
         # OCR hanya perlu untuk PDF hasil scan. Gambar/grafik sudah dibaca oleh
         # OpenAI Vision, jadi untuk PDF digital OCR hanya menambah waktu.
-        pipeline_options.do_ocr = config.DOCLING_OCR
+        pipeline_options.do_ocr = app_config.DOCLING_OCR
         pipeline_options.accelerator_options = accel_options
         pipeline_options.generate_picture_images = True
         pipeline_options.images_scale = 1.0
@@ -89,7 +89,7 @@ class DoclingLoader(BaseDocumentLoader):
 
         tokenizer = OpenAITokenizer(
             tokenizer=encoding,
-            max_tokens=config.OPENAI_EMBEDDING_CHUNK_SIZE
+            max_tokens=app_config.OPENAI_EMBEDDING_CHUNK_SIZE
         )
 
         self.chunker = HybridChunker(

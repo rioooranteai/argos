@@ -7,9 +7,10 @@ services:
     env_file:
       - .env
     environment:
-      # Simpan semua data di /app/data supaya cukup satu volume folder
-      SQLITE_PATH: /app/data/competitor_data.db
-      CHROMA_PATH: /app/data/chroma_db
+      # Nilai infrastruktur per mesin (bukan rahasia, tidak di .env).
+      # Semua data (SQLite, Chroma, antrean upload) ada di DATA_DIR.
+      DATA_DIR: /app/data
+      DOCLING_DEVICE: auto
       # Cache model Docling/HuggingFace agar tidak download ulang tiap restart
       HF_HOME: /app/data/hf_cache
     volumes:

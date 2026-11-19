@@ -1,7 +1,7 @@
 import logging
 import io
 
-from app.core.config import config
+from app.core.config import app_config, secrets
 from app.services.voice.base.stt_base import BaseSTTProvider
 from app.services.voice.exceptions import STTError
 from app.services.voice.model import STTRequest, STTResult, STTSegment
@@ -35,7 +35,7 @@ class OpenAISTTProvider(BaseSTTProvider):
     """
 
     def __init__(self):
-        self._client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+        self._client = AsyncOpenAI(api_key=secrets.OPENAI_API_KEY)
 
     @property
     def provider_name(self) -> str:
@@ -56,7 +56,7 @@ class OpenAISTTProvider(BaseSTTProvider):
             request: STTRequest,
     ) -> STTResult:
         self.validate_language(request.language)
-        self._model = config.OPENAI_TRANSCRIBE_MODEL
+        self._model = app_config.OPENAI_TRANSCRIBE_MODEL
 
         try:
             logger.info(

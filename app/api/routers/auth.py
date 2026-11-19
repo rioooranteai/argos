@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from app.core.config import config
+from app.core.config import app_config, secrets
 from app.core.oauth import oauth
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 def create_jwt_token(user_data: dict) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=config.jwt_expire_minutes)
+    expire = datetime.utcnow() + timedelta(minutes=app_config.JWT_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_data["id"]),
         "email": user_data["email"],
@@ -19,7 +19,7 @@ def create_jwt_token(user_data: dict) -> str:
         "picture": user_data.get("picture", ""),
         "exp": expire,
     }
-    return jwt.encode(payload, config.secret_key, algorithm=config.jwt_algorithm)
+    return jwt.encode(payload, secrets.SECRET_KEY, algorithm=app_config.JWT_ALGORITHM)
 
 
 @router.get("/google/login")

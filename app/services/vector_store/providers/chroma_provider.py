@@ -21,10 +21,9 @@ class ChromaProvider(BaseVectorStoreProvider):
         self.embedder = embedder
         self.collection_name = collection_name
 
-        from app.core.config import config
+        from app.core.config import infra
 
-        db_path = db_path or config.CHROMA_PATH or None
-        resolved_path = Path(db_path) if db_path else Path(__file__).resolve().parents[4] / "chroma_db"
+        resolved_path = Path(db_path) if db_path else infra.chroma_path
         resolved_path.mkdir(parents=True, exist_ok=True)
 
         self.client = chromadb.PersistentClient(path=str(resolved_path))

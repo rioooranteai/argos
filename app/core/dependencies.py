@@ -1,4 +1,4 @@
-from app.core.config import config
+from app.core.config import app_config, secrets
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.engine import DocumentProcessingEngine
 from app.services.conversation.service import ConversationService
@@ -16,8 +16,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)
     try:
         payload = jwt.decode(
             credentials.credentials,
-            config.secret_key,
-            algorithms=[config.jwt_algorithm]
+            secrets.SECRET_KEY,
+            algorithms=[app_config.JWT_ALGORITHM]
         )
 
         return payload

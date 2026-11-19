@@ -1,6 +1,6 @@
 import logging
 
-from app.core.config import config
+from app.core.config import app_config, secrets
 from app.services.voice.base.tts_base import BaseTTSProvider
 from app.services.voice.exceptions import TTSError
 from app.services.voice.model import TTSRequest, TTSResult
@@ -15,8 +15,8 @@ class OpenAITTSProvider(BaseTTSProvider):
     """
 
     def __init__(self):
-        self._client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
-        self._model = config.OPENAI_VOICE_MODEL
+        self._client = AsyncOpenAI(api_key=secrets.OPENAI_API_KEY)
+        self._model = app_config.OPENAI_VOICE_MODEL
 
     @property
     def provider_name(self) -> str:

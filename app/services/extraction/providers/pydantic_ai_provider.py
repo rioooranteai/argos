@@ -1,11 +1,13 @@
 import logging
 from pathlib import Path
 
-from app.core.config import config
+from app.core.config import app_config, secrets
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.exceptions import ExtractionAgentError
 from app.services.extraction.model import CompetitorFeature
 from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,15 @@ def _load_prompt(path: Path) -> str:
 class PydanticAIExtractionProvider(BaseExtractionProvider):
 
     def __init__(self, model: str | None = None):
-        resolved_model = model or config.OPENAI_LLM_MODEL
+        resolved_model = model or app_config.OPENAI_LLM_MODEL
         system_prompt = _load_prompt(_PROMPT_PATH)
 
         self._agent = Agent(
-            model=f"openai:{resolved_model}",
+            # API key diberikan eksplisit: .env tidak lagi dimuat ke environment OS.
+            model=OpenAIChatModel(
+                resolved_model,
+                provider=OpenAIProvider(api_key=secrets.OPENAI_API_KEY),
+            ),
             output_type=list[CompetitorFeature],
             system_prompt=system_prompt,
         )
