@@ -16,6 +16,7 @@ from app.infrastructure.providers.repositories.sqlite_conversation_repository im
 from app.infrastructure.providers.repositories.sqlite_feature_repository import (
     SQLiteFeatureRepository,
 )
+from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
 from app.services.conversation.service import ConversationService
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import ContentAwareChunker
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     init_db()
 
     app.state.database = db
+    app.state.user_repo = SQLiteUserRepository(database=db)
 
     feature_repo = SQLiteFeatureRepository(database=db)
 

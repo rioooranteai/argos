@@ -1298,6 +1298,17 @@ body.login-body {
 
 .btn-google-icon svg { display: block; }
 
+.login-error {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.10);
+  color: var(--red);
+  font-size: 13px;
+  text-align: center;
+}
+
 .login-footer {
   margin-top: 20px;
   font-size: 11.5px;

@@ -1,28 +1,56 @@
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+
 from app.core.config import app_config, secrets
+from app.core.errors import AuthenticationError, PermissionDenied
+from app.core.security import is_admin
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.engine import DocumentProcessingEngine
 from app.services.conversation.service import ConversationService
 from app.services.nl2sql.service import NL2SQLService
+from app.services.user.model import CurrentUser
 from app.services.voice.service import VoiceService
-from fastapi import Depends, HTTPException, status
-from fastapi import Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
 
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
+def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> CurrentUser:
+    """Verifikasi JWT, lalu pastikan user masih ada & aktif di database."""
+    if credentials is None:
+        raise AuthenticationError()
     try:
         payload = jwt.decode(
             credentials.credentials,
             secrets.SECRET_KEY,
-            algorithms=[app_config.JWT_ALGORITHM]
+            algorithms=[app_config.JWT_ALGORITHM],
         )
-
-        return payload
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN") from None
+
+    user = request.app.state.user_repo.get(payload.get("sub", ""))
+    if user is None:
+        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN")
+    if not user.is_active:
+        raise PermissionDenied("Akun Anda dinonaktifkan.", code="USER_INACTIVE")
+
+    return CurrentUser(
+        id=user.id,
+        email=user.email,
+        name=user.name or user.email,
+        given_name=payload.get("given_name", ""),
+        picture=user.picture or "",
+        is_admin=is_admin(user.email),
+    )
+
+
+def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    if not user.is_admin:
+        raise PermissionDenied("Hanya admin yang dapat melakukan ini.")
+    return user
 
 
 def get_document_engine(request: Request) -> DocumentProcessingEngine:

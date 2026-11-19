@@ -18,6 +18,7 @@ from app.services.conversation.model import (
     RenameConversationRequest
 )
 from app.services.conversation.service import ConversationService
+from app.services.user.model import CurrentUser
 from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
@@ -26,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 @router.get("/conversations", summary="List user's conversations")
 async def list_conversations(
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
         svc: ConversationService = Depends(get_conversation_service),
 ) -> list[ConversationOut]:
-    convs = svc.list_for_user(user_id=user["sub"])
+    convs = svc.list_for_user(user_id=user.id)
     return [
         ConversationOut(
             id=c.id, title=c.title, created_at=c.created_at, updated_at=c.updated_at
@@ -45,10 +46,10 @@ async def list_conversations(
 )
 async def create_conversation(
         body: CreateConversationRequest = CreateConversationRequest(),
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
         svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationOut:
-    conv = svc.create_for_user(user_id=user["sub"], first_message=body.title)
+    conv = svc.create_for_user(user_id=user.id, first_message=body.title)
     return ConversationOut(
         id=conv.id, title=conv.title, created_at=conv.created_at, updated_at=conv.updated_at
     )
@@ -60,10 +61,10 @@ async def create_conversation(
 )
 async def get_conversation(
         conversation_id: str,
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
         svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationDetailOut:
-    bundle = svc.get_with_messages(conversation_id, user["sub"])
+    bundle = svc.get_with_messages(conversation_id, user.id)
     if bundle is None:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return ConversationDetailOut(
@@ -87,13 +88,13 @@ async def get_conversation(
 async def rename_conversation(
         conversation_id: str,
         body: RenameConversationRequest,
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
         svc: ConversationService = Depends(get_conversation_service),
 ) -> ConversationOut:
-    ok = svc.rename(conversation_id, user["sub"], body.title)
+    ok = svc.rename(conversation_id, user.id, body.title)
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found.")
-    bundle = svc.get_with_messages(conversation_id, user["sub"])
+    bundle = svc.get_with_messages(conversation_id, user.id)
     # Defensive — bundle should exist since rename succeeded.
     if bundle is None:  # pragma: no cover
         raise HTTPException(status_code=404, detail="Conversation not found.")
@@ -110,10 +111,10 @@ async def rename_conversation(
 )
 async def delete_conversation(
         conversation_id: str,
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
         svc: ConversationService = Depends(get_conversation_service),
 ) -> None:
-    ok = svc.delete(conversation_id, user["sub"])
+    ok = svc.delete(conversation_id, user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     return None
@@ -127,7 +128,7 @@ async def chat_with_data(
         request: ChatRequest,
         chat_engine: ChatEngine = Depends(get_chat_engine),
         svc: ConversationService = Depends(get_conversation_service),
-        user: dict = Depends(get_current_user),
+        user: CurrentUser = Depends(get_current_user),
 ) -> ChatResponse:
     """Send a message.
 
@@ -139,7 +140,7 @@ async def chat_with_data(
     - Otherwise the message is appended to the existing conversation. 404 if
       the user doesn't own it.
     """
-    user_id = user["sub"]
+    user_id = user.id
     is_new_conversation = request.conversation_id is None
 
     # Resolve / create conversation.

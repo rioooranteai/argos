@@ -47,11 +47,27 @@
                 </a>
             </div>
 
+            <p class="login-error" id="loginError" role="alert" hidden></p>
+
             <p class="login-footer">
                 Dengan masuk, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi.
             </p>
         </div>
     </main>
 
+<script>
+    (function () {
+        var messages = {
+            DOMAIN_NOT_ALLOWED: "Gunakan akun Google perusahaan untuk masuk.",
+            EMAIL_NOT_VERIFIED: "Email Google Anda belum terverifikasi.",
+            USER_INACTIVE: "Akun Anda dinonaktifkan. Hubungi admin."
+        };
+        var code = new URLSearchParams(window.location.search).get("error");
+        if (!code) return;
+        var el = document.getElementById("loginError");
+        el.textContent = messages[code] || "Login gagal. Silakan coba lagi.";
+        el.hidden = false;
+    })();
+</script>
 </body>
 </html>
