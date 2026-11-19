@@ -6,8 +6,8 @@ from app.core.config import app_config, secrets
 from app.core.errors import AuthenticationError, PermissionDenied
 from app.core.security import is_admin
 from app.engines.chat_engine.engine import ChatEngine
-from app.engines.document_engine.engine import DocumentProcessingEngine
 from app.services.conversation.service import ConversationService
+from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.user.model import CurrentUser
 from app.services.voice.service import VoiceService
@@ -53,8 +53,8 @@ def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     return user
 
 
-def get_document_engine(request: Request) -> DocumentProcessingEngine:
-    return request.app.state.document_engine
+def get_library_service(request: Request) -> LibraryService:
+    return request.app.state.library_service
 
 
 def get_chat_engine(request: Request) -> ChatEngine:

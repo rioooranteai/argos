@@ -7,22 +7,17 @@ from app.core.config import app_config, infra, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
-from app.engines.document_engine.engine import DocumentProcessingEngine
 from app.infrastructure.factories.embedder_factory import get_embedder
 from app.infrastructure.factories.llm_factory import get_llm
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_feature_repository import (
-    SQLiteFeatureRepository,
+from app.infrastructure.providers.repositories.sqlite_library_repository import (
+    SQLiteLibraryRepository,
 )
 from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
 from app.services.conversation.service import ConversationService
-from app.services.extraction.service import ExtractionService
-from app.services.ingestion.chunker import ContentAwareChunker
-from app.services.ingestion.factories.loader_factory import LoaderFactory
-from app.services.ingestion.factories.vision_factory import VisionFactory
-from app.services.ingestion.service import IngestionService
+from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
 from app.services.voice.service import VoiceService
@@ -42,6 +37,7 @@ async def lifespan(app: FastAPI):
     # --- Fail-fast: konfigurasi wajib & folder data ---
     validate_required_config()
     infra.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    infra.upload_queue_dir.mkdir(parents=True, exist_ok=True)
 
     # --- Persistence ---
     init_db()
@@ -49,7 +45,11 @@ async def lifespan(app: FastAPI):
     app.state.database = db
     app.state.user_repo = SQLiteUserRepository(database=db)
 
-    feature_repo = SQLiteFeatureRepository(database=db)
+    app.state.library_service = LibraryService(
+        repository=SQLiteLibraryRepository(database=db),
+        queue_dir=infra.upload_queue_dir,
+        config=app_config,
+    )
 
     # Multi-conversation persistence (replaces the legacy single-row
     # conversation_history store).
@@ -65,19 +65,7 @@ async def lifespan(app: FastAPI):
         collection_name="competitor_knowledge",
     )
 
-    app.state.document_engine = DocumentProcessingEngine(
-        ingestion_svc=IngestionService(
-            loader_factory=LoaderFactory(),
-            vision_factory=VisionFactory(),
-            chunker=ContentAwareChunker(),
-        ),
-        vector_store_svc=app.state.vector_store_svc,
-        extraction_svc=ExtractionService(
-            repository=feature_repo,
-            provider="pydantic_ai",
-            model=app_config.OPENAI_EXTRACTION_MODEL,
-        ),
-    )
+    # Pemrosesan dokumen (worker) ditambahkan di langkah 3 (IMPLEMENTATION_PLAN_AB.md).
 
     app.state.nl2sql_service = NL2SQLService(
         llm_provider=get_llm(model_type="extraction", temperature=0.0),
