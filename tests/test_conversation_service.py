@@ -165,7 +165,7 @@ class TestAutoTitle:
     def test_generate_title_updates_repo(self, service, fake_llm, repo):
         fake_llm.response = "Harga produk kompetitor"
         conv = service.create_for_user("u1", first_message="harga produk X di pasar?")
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             service.generate_title_async(conv.id, "u1", "harga produk X di pasar?")
         )
         refetched = repo.get_conversation(conv.id, "u1")
@@ -177,7 +177,7 @@ class TestAutoTitle:
         conv = svc.create_for_user("u1", first_message="hi")
         original_title = conv.title
         # Should not raise.
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             svc.generate_title_async(conv.id, "u1", "hi")
         )
         # Title untouched.
@@ -187,7 +187,7 @@ class TestAutoTitle:
     def test_generate_title_skipped_without_llm(self, repo):
         svc = ConversationService(repository=repo, title_llm=None)
         conv = svc.create_for_user("u1", first_message="hi")
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             svc.generate_title_async(conv.id, "u1", "hi")
         )
         refetched = repo.get_conversation(conv.id, "u1")

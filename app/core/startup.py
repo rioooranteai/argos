@@ -27,6 +27,9 @@ from app.infrastructure.providers.repositories.sqlite_job_repository import SQLi
 from app.infrastructure.providers.repositories.sqlite_library_repository import (
     SQLiteLibraryRepository,
 )
+from app.infrastructure.providers.repositories.sqlite_notebook_repository import (
+    SQLiteNotebookRepository,
+)
 from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
 from app.services.conversation.service import ConversationService
 from app.services.extraction.providers.pydantic_ai_provider import PydanticAIExtractionProvider
@@ -36,6 +39,7 @@ from app.services.ingestion.providers.loaders.docling_process import DoclingProc
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
+from app.services.notebook.service import NotebookService
 from app.services.vector_store.service import VectorStoreService
 from app.services.voice.service import VoiceService
 
@@ -117,8 +121,16 @@ async def lifespan(app: FastAPI):
         limits=limits,
         count_tokens=_token_counter(),
     )
+    job_repo = SQLiteJobRepository(database=db)
+    app.state.notebook_service = NotebookService(
+        repository=SQLiteNotebookRepository(database=db),
+        library_repo=library_repo,
+        library_service=app.state.library_service,
+        jobs=job_repo,
+        config=app_config,
+    )
     worker = DocumentWorker(
-        jobs=SQLiteJobRepository(database=db),
+        jobs=job_repo,
         process=pipeline.process,
         cleanup=pipeline.cleanup,
         source_path=pipeline.source_path,
@@ -129,8 +141,9 @@ async def lifespan(app: FastAPI):
     app.state.document_worker = worker
 
     app.state.nl2sql_service = NL2SQLService(
-        llm_provider=get_llm(model_type="extraction", temperature=0.0),
+        llm_provider=get_llm(model_type="nl2sql", temperature=0.0),
         db_path=DB_PATH,
+        exec_timeout=app_config.SQL_EXEC_TIMEOUT,
     )
 
     app.state.voice_service = VoiceService()
@@ -145,6 +158,7 @@ async def lifespan(app: FastAPI):
         router_llm=get_llm(model_type="router", temperature=0.0),
         nl2sql_svc=app.state.nl2sql_service,
         vector_svc=app.state.vector_store_svc,
+        total_timeout=app_config.CHAT_TOTAL_TIMEOUT,
     )
 
     warm_up = asyncio.create_task(_warm_up_docling(docling))

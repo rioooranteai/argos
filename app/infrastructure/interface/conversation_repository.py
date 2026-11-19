@@ -14,11 +14,15 @@ class BaseConversationRepository(ABC):
     """
 
     @abstractmethod
-    def create_conversation(self, user_id: str, title: str) -> Conversation:
+    def create_conversation(
+        self, user_id: str, title: str, notebook_id: str | None = None
+    ) -> Conversation:
         """Buat conversation baru. Return entity dengan id (UUID) yang sudah generated."""
 
     @abstractmethod
-    def list_conversations(self, user_id: str, limit: int = 100) -> list[Conversation]:
+    def list_conversations(
+        self, user_id: str, limit: int = 100, notebook_id: str | None = None
+    ) -> list[Conversation]:
         """List semua conversation milik user, terbaru di atas (by updated_at DESC)."""
 
     @abstractmethod
@@ -38,7 +42,14 @@ class BaseConversationRepository(ABC):
         """Hapus conversation + semua messages-nya (CASCADE). Return True bila berhasil."""
 
     @abstractmethod
-    def add_message(self, conversation_id: str, role: str, content: str) -> Message:
+    def add_message(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+        source_snapshot: list[str] | None = None,
+        citations: list[dict] | None = None,
+    ) -> Message:
         """Append 1 message ke conversation. Tidak melakukan owner check di sini —
         caller (ConversationService) wajib sudah memverifikasi ownership."""
 

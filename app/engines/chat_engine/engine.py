@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Iterable
 
+from app.core.errors import UpstreamTimeout
 from app.engines.chat_engine.graph import build_graph
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.conversation.model import Message
+from app.services.notebook.model import ActiveSource
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
@@ -60,7 +63,9 @@ class ChatEngine:
             nl2sql_svc: NL2SQLService,
             vector_svc: VectorStoreService,
             router_llm: BaseLLM | None = None,
+            total_timeout: float = 90,
     ):
+        self._total_timeout = total_timeout
         self._graph = build_graph(
             llm=llm,
             router_llm=router_llm,
@@ -72,6 +77,7 @@ class ChatEngine:
             self,
             user_input: str,
             history: list[Message] | list[dict] | None = None,
+            sources: list[ActiveSource] | None = None,
     ) -> dict[str, Any]:
         """Run the LangGraph pipeline with the given prior history.
 
@@ -80,7 +86,13 @@ class ChatEngine:
             history: Prior messages in chronological order. The CURRENT user
                 input should already be the last item — but we accept either
                 shape and add it ourselves if missing, to keep callers simple.
+            sources: Sumber aktif notebook (dicentang & ready). SQL dan vector
+                search HANYA membaca data milik versi-versi ini.
+
+        Raises:
+            UpstreamTimeout: seluruh proses melewati CHAT_TOTAL_TIMEOUT.
         """
+        sources = sources or []
 
         prior = _to_lc_messages(history)
 
@@ -101,9 +113,18 @@ class ChatEngine:
             "vector_result": None,
             "final_answer": "",
             "error": None,
+            "active_versions": [src.version_id for src in sources],
+            "sources": sources,
+            "citations": [],
         }
 
-        final_state = await self._graph.ainvoke(initial_state)
+        try:
+            final_state = await asyncio.wait_for(
+                self._graph.ainvoke(initial_state), timeout=self._total_timeout
+            )
+        except TimeoutError:
+            logger.warning("Chat melewati batas %s detik.", self._total_timeout)
+            raise UpstreamTimeout("Jawaban terlalu lama dibuat. Coba lagi.", code="CHAT_TIMEOUT") from None
 
         return {
             "answer": final_state["final_answer"],
@@ -112,4 +133,5 @@ class ChatEngine:
             "sql_result": final_state["sql_result"],
             "vector_result": final_state["vector_result"],
             "error": final_state.get("error"),
+            "citations": final_state.get("citations", []),
         }

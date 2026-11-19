@@ -6,6 +6,7 @@ management — it does not open SQLite connections directly.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 import uuid
 from datetime import datetime
@@ -33,34 +34,38 @@ class SQLiteConversationRepository(BaseConversationRepository):
 
     # ── Conversations ──────────────────────────────────────────────────
 
-    def create_conversation(self, user_id: str, title: str) -> Conversation:
+    def create_conversation(
+        self, user_id: str, title: str, notebook_id: str | None = None
+    ) -> Conversation:
         conv_id = str(uuid.uuid4())
         with self._db.get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO conversations (id, user_id, title)
-                VALUES (?, ?, ?)
+                INSERT INTO conversations (id, user_id, title, notebook_id)
+                VALUES (?, ?, ?, ?)
                 """,
-                (conv_id, user_id, title),
+                (conv_id, user_id, title, notebook_id),
             )
             row = conn.execute(
-                "SELECT id, user_id, title, created_at, updated_at "
+                "SELECT id, user_id, title, notebook_id, created_at, updated_at "
                 "FROM conversations WHERE id = ?",
                 (conv_id,),
             ).fetchone()
         return self._row_to_conversation(row)
 
-    def list_conversations(self, user_id: str, limit: int = 100) -> list[Conversation]:
+    def list_conversations(
+        self, user_id: str, limit: int = 100, notebook_id: str | None = None
+    ) -> list[Conversation]:
+        where = "user_id = ?"
+        params: list = [user_id]
+        if notebook_id is not None:
+            where += " AND notebook_id = ?"
+            params.append(notebook_id)
         with self._db.get_connection() as conn:
             rows = conn.execute(
-                """
-                SELECT id, user_id, title, created_at, updated_at
-                FROM conversations
-                WHERE user_id = ?
-                ORDER BY updated_at DESC
-                LIMIT ?
-                """,
-                (user_id, limit),
+                "SELECT id, user_id, title, notebook_id, created_at, updated_at "
+                f"FROM conversations WHERE {where} ORDER BY updated_at DESC LIMIT ?",
+                (*params, limit),
             ).fetchall()
         return [self._row_to_conversation(r) for r in rows]
 
@@ -70,7 +75,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
         with self._db.get_connection() as conn:
             row = conn.execute(
                 """
-                SELECT id, user_id, title, created_at, updated_at
+                SELECT id, user_id, title, notebook_id, created_at, updated_at
                 FROM conversations
                 WHERE id = ? AND user_id = ?
                 """,
@@ -110,7 +115,12 @@ class SQLiteConversationRepository(BaseConversationRepository):
     # ── Messages ───────────────────────────────────────────────────────
 
     def add_message(
-        self, conversation_id: str, role: str, content: str
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+        source_snapshot: list[str] | None = None,
+        citations: list[dict] | None = None,
     ) -> Message:
         if role not in ("user", "assistant"):
             raise ValueError(
@@ -119,15 +129,20 @@ class SQLiteConversationRepository(BaseConversationRepository):
         with self._db.get_connection() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO messages (conversation_id, role, content)
-                VALUES (?, ?, ?)
+                INSERT INTO messages (conversation_id, role, content, source_snapshot, citations)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (conversation_id, role, content),
+                (
+                    conversation_id,
+                    role,
+                    content,
+                    json.dumps(source_snapshot) if source_snapshot is not None else None,
+                    json.dumps(citations, ensure_ascii=False, default=str) if citations else None,
+                ),
             )
             msg_id = cursor.lastrowid
             row = conn.execute(
-                "SELECT id, conversation_id, role, content, created_at "
-                "FROM messages WHERE id = ?",
+                "SELECT * FROM messages WHERE id = ?",
                 (msg_id,),
             ).fetchone()
         return self._row_to_message(row)
@@ -139,7 +154,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
             if limit is None:
                 rows = conn.execute(
                     """
-                    SELECT id, conversation_id, role, content, created_at
+                    SELECT *
                     FROM messages
                     WHERE conversation_id = ?
                     ORDER BY created_at ASC, id ASC
@@ -149,7 +164,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
             else:
                 rows = conn.execute(
                     """
-                    SELECT id, conversation_id, role, content, created_at
+                    SELECT *
                     FROM messages
                     WHERE conversation_id = ?
                     ORDER BY created_at ASC, id ASC
@@ -169,6 +184,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
             title=row["title"],
             created_at=_parse_ts(row["created_at"]),
             updated_at=_parse_ts(row["updated_at"]),
+            notebook_id=row["notebook_id"],
         )
 
     @staticmethod
@@ -179,4 +195,6 @@ class SQLiteConversationRepository(BaseConversationRepository):
             role=row["role"],
             content=row["content"],
             created_at=_parse_ts(row["created_at"]),
+            source_snapshot=json.loads(row["source_snapshot"]) if row["source_snapshot"] else None,
+            citations=json.loads(row["citations"]) if row["citations"] else [],
         )

@@ -1,0 +1,76 @@
+"""Sitasi bernomor yang diambil dari data, bukan dikarang LLM (DESIGN_GROUP_A.md §8.4).
+
+Setiap kombinasi (versi dokumen, halaman) yang muncul di data yang diambil
+mendapat label `[n]`. LLM hanya boleh merujuk label yang diberikan; respons
+API hanya menyertakan label yang benar-benar dipakai di jawaban.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import asdict, dataclass
+
+from app.services.notebook.model import ActiveSource
+
+_LABEL_RE = re.compile(r"\[(\d{1,3})\]")
+
+
+@dataclass(frozen=True)
+class Citation:
+    label: int
+    version_id: str
+    document_id: str
+    display_name: str
+    version_no: int
+    uploaded_at: str  # YYYY-MM-DD
+    page_number: int | None
+    section_heading: str | None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+class CitationRegistry:
+    def __init__(self, sources: list[ActiveSource]) -> None:
+        self._sources = {s.version_id: s for s in sources}
+        self._by_key: dict[tuple[str, int | None], Citation] = {}
+
+    def label_for(
+        self, version_id: str | None, page_number: int | None, section_heading: str | None = None
+    ) -> str:
+        """Label `[n]` untuk sebuah fakta; string kosong bila versinya bukan sumber aktif."""
+        source = self._sources.get(version_id or "")
+        if source is None:
+            return ""
+        page = int(page_number) if page_number not in (None, "") else None
+        key = (source.version_id, page)
+        citation = self._by_key.get(key)
+        if citation is None:
+            citation = Citation(
+                label=len(self._by_key) + 1,
+                version_id=source.version_id,
+                document_id=source.document_id,
+                display_name=source.display_name,
+                version_no=source.version_no,
+                uploaded_at=source.uploaded_at.date().isoformat() if source.uploaded_at else "",
+                page_number=page,
+                section_heading=section_heading or None,
+            )
+            self._by_key[key] = citation
+        return f"[{citation.label}]"
+
+    def legend(self) -> str:
+        """Daftar label untuk prompt synthesizer."""
+        lines = []
+        for c in self._by_key.values():
+            where = f", hal. {c.page_number}" if c.page_number else ""
+            lines.append(f"[{c.label}] {c.display_name} v{c.version_no} (diunggah {c.uploaded_at}{where})")
+        return "\n".join(lines)
+
+    def coverage(self) -> str:
+        names = [f"{s.display_name} v{s.version_no}" for s in self._sources.values()]
+        return f"{len(names)} sumber ({', '.join(names)})"
+
+    def used_in(self, answer: str) -> list[Citation]:
+        by_label = {c.label: c for c in self._by_key.values()}
+        used = sorted({int(m) for m in _LABEL_RE.findall(answer)} & by_label.keys())
+        return [by_label[n] for n in used]

@@ -12,7 +12,11 @@ class ChatState(TypedDict):
     user_input: str
     route: RouteDecision
     router_reasoning: str
-    sql_result: dict[str, Any] | None
+    sql_result: Any  # NL2SQLResult | None
     vector_result: list[dict[str, Any]] | None
     final_answer: str
     error: str | None
+    # Sumber aktif notebook (dicentang & ready) — membatasi SQL & vector
+    active_versions: list[str]
+    sources: list[Any]  # list[ActiveSource]
+    citations: list[dict[str, Any]]

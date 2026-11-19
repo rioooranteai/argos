@@ -73,8 +73,11 @@ class ConversationService:
         msgs = self._repo.list_messages(conversation_id)
         return ConversationWithMessages(conversation=conv, messages=msgs)
 
+    def list_for_notebook(self, user_id: str, notebook_id: str, limit: int = 100) -> list[Conversation]:
+        return self._repo.list_conversations(user_id, limit=limit, notebook_id=notebook_id)
+
     def create_for_user(
-            self, user_id: str, first_message: str | None = None
+            self, user_id: str, first_message: str | None = None, notebook_id: str | None = None
     ) -> Conversation:
         """Create a new thread.
 
@@ -87,7 +90,7 @@ class ConversationService:
             if first_message
             else _FALLBACK_TITLE
         )
-        return self._repo.create_conversation(user_id=user_id, title=title)
+        return self._repo.create_conversation(user_id=user_id, title=title, notebook_id=notebook_id)
 
     def rename(self, conversation_id: str, user_id: str, new_title: str) -> bool:
         cleaned = _normalize_title(new_title)
@@ -97,21 +100,29 @@ class ConversationService:
         return self._repo.delete_conversation(conversation_id, user_id)
 
     def append_user_message(
-            self, conversation_id: str, user_id: str, content: str
+            self,
+            conversation_id: str,
+            user_id: str,
+            content: str,
+            source_snapshot: list[str] | None = None,
     ) -> Message | None:
         """Owner-checked append. Returns None if conversation isn't owned by user."""
         if self._repo.get_conversation(conversation_id, user_id) is None:
             return None
-        msg = self._repo.add_message(conversation_id, role="user", content=content)
+        msg = self._repo.add_message(
+            conversation_id, role="user", content=content, source_snapshot=source_snapshot
+        )
         self._repo.touch(conversation_id)
         return msg
 
     def append_assistant_message(
-            self, conversation_id: str, content: str
+            self, conversation_id: str, content: str, citations: list[dict] | None = None
     ) -> Message:
         """No owner check — caller is the chat router which already verified
         ownership when it accepted the user message."""
-        msg = self._repo.add_message(conversation_id, role="assistant", content=content)
+        msg = self._repo.add_message(
+            conversation_id, role="assistant", content=content, citations=citations
+        )
         self._repo.touch(conversation_id)
         return msg
 

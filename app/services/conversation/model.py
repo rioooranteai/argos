@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -13,6 +13,7 @@ class Conversation:
     title: str
     created_at: datetime
     updated_at: datetime
+    notebook_id: str | None = None
 
 
 @dataclass
@@ -24,6 +25,8 @@ class Message:
     role: str  # 'user' | 'assistant'
     content: str
     created_at: datetime
+    source_snapshot: list[str] | None = None  # version_id aktif saat pesan dikirim
+    citations: list[dict] = field(default_factory=list)
 
 
 class ConversationOut(BaseModel):
@@ -38,6 +41,7 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime
+    citations: list[dict] = Field(default_factory=list)
 
 
 class ConversationDetailOut(BaseModel):
@@ -68,4 +72,5 @@ class ChatResponse(BaseModel):
     conversation_id: str
     question: str
     answer: str
+    citations: list[dict] = Field(default_factory=list)
     metadata: dict

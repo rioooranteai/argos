@@ -9,6 +9,7 @@ from app.engines.chat_engine.engine import ChatEngine
 from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
+from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 from app.services.voice.service import VoiceService
 
@@ -71,3 +72,7 @@ def get_voice_service(request: Request) -> VoiceService:
 
 def get_conversation_service(request: Request) -> ConversationService:
     return request.app.state.conversation_service
+
+
+def get_notebook_service(request: Request) -> NotebookService:
+    return request.app.state.notebook_service
