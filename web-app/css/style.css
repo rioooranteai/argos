@@ -2053,6 +2053,62 @@ button.history-item {
 .pick-item.is-error .pick-status { color: var(--red); }
 .pick-item.is-ok .pick-status { color: var(--green); }
 
+/* Upload yang mirip dokumen Library: satu-satunya baris yang meminta keputusan. */
+.pick-item.is-similar {
+  border-color: rgba(244,124,60,0.32);
+  background: var(--accent-glow);
+  row-gap: 8px;
+}
+.pick-item.is-similar .icon,
+.pick-item.is-similar .pick-status { color: var(--accent); }
+
+.similar-choice {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-left: 26px; /* sejajar dengan nama file, bukan ikon */
+}
+.similar-text {
+  margin: 0;
+  flex: 1 1 220px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.similar-text strong { color: var(--text-primary); font-weight: 600; }
+.similar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.similar-btn {
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.similar-btn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.similar-btn--accent {
+  border-color: rgba(244,124,60,0.45);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.similar-btn--accent:hover { color: #fff; border-color: var(--accent); background: rgba(244,124,60,0.24); }
+.similar-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(244,124,60,0.22); }
+.similar-btn:disabled { opacity: 0.45; cursor: progress; }
+
+@media (max-width: 480px) {
+  .similar-choice { padding-left: 0; }
+  .similar-actions { width: 100%; }
+  .similar-btn { flex: 1; }
+}
+
 .pick-remove {
   display: grid;
   place-content: center;
@@ -2250,6 +2306,12 @@ button.history-item {
 .user-row-meta { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .version-delete { opacity: 1; }
+
+.version-reuse {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
 
 .panel-actions {
   display: flex;

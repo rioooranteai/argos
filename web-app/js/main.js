@@ -617,6 +617,34 @@ function closeSourceModal() {
     sm.root.hidden = true;
     document.removeEventListener("keydown", sourceModalKeys);
     if (sm.returnFocus) sm.returnFocus.focus();
+    // File mirip yang belum diputuskan → dokumen terpisah (default, A §6.3).
+    const undecided = (sm.results || []).filter((r) => r.status === "similar");
+    sm.results = null;
+    if (undecided.length) resolveUndecided(undecided);
+}
+
+async function resolveUndecided(results) {
+    let added = 0;
+    for (const r of results) {
+        try {
+            const out = await resolvePendingRequest(r.pending_id, "separate");
+            state.notebook.sources = out.sources;
+            added += 1;
+        } catch (err) {
+            toast(`${r.filename}: ${errorText(err)}`, "error");
+        }
+    }
+    if (added) {
+        renderSources();
+        schedulePoll();
+        toast(`${added} file yang mirip disimpan sebagai dokumen terpisah.`, "success");
+    }
+}
+
+function resolvePendingRequest(pendingId, action) {
+    return api(`/notebooks/${state.notebook.id}/sources/pending/${pendingId}/resolve`, {
+        method: "POST", json: { action },
+    });
 }
 
 function sourceModalKeys(e) {
@@ -705,14 +733,82 @@ const RESULT_TEXT = {
     existing: "Sudah ada di Library, langsung dipakai",
 };
 
+function resultRow(r) {
+    if (r.status !== "similar") {
+        return h("li", { class: `pick-item is-${r.status === "rejected" ? "error" : "ok"}` },
+            fileIcon(),
+            h("span", { class: "pick-name", text: r.filename }),
+            h("span", { class: "pick-status", text: r.status === "rejected" ? r.error_message : (r.doneText || RESULT_TEXT[r.status]) }));
+    }
+    // Mirip dokumen Library: user memilih versi baru atau dokumen terpisah.
+    const percent = Math.round((r.similarity || 0) * 100);
+    const label = `Pilihan untuk ${r.filename}`;
+    return h("li", { class: "pick-item is-similar" },
+        fileIcon(),
+        h("span", { class: "pick-name", text: r.filename }),
+        h("span", { class: "pick-status", text: r.busy ? "Menyimpan…" : `${percent}% mirip` }),
+        h("div", { class: "similar-choice", role: "group", "aria-label": label },
+            h("p", { class: "similar-text" },
+                r.candidateGone ? r.error_message : ["Isinya mirip dengan ", h("strong", { text: r.similar_document_name }),
+                    " di Library. Simpan sebagai versi barunya?"]),
+            h("div", { class: "similar-actions" },
+                r.candidateGone ? null : h("button", {
+                    type: "button", class: "similar-btn similar-btn--accent", disabled: r.busy,
+                    onclick: () => resolveSimilar(r, "new_version"),
+                }, "Jadikan versi baru"),
+                h("button", {
+                    type: "button", class: "similar-btn", disabled: r.busy,
+                    onclick: () => resolveSimilar(r, "separate"),
+                }, "Dokumen terpisah"))));
+}
+
+async function resolveSimilar(r, action) {
+    r.busy = true;
+    renderSourceModal(true);
+    try {
+        const out = await resolvePendingRequest(r.pending_id, action);
+        const [res] = out.results;
+        const name = r.similar_document_name;
+        Object.assign(r, res, {
+            busy: false,
+            doneText: action === "new_version" ? `Disimpan sebagai versi baru ${name}` : "Disimpan sebagai dokumen baru",
+        });
+        state.notebook.sources = out.sources;
+        renderSources();
+        schedulePoll();
+    } catch (err) {
+        r.busy = false;
+        if (err.code === "SIMILAR_DOCUMENT_GONE") {
+            r.candidateGone = true;
+            r.error_message = err.message;
+        } else if (err.code === "PENDING_UPLOAD_NOT_FOUND") {
+            Object.assign(r, { status: "rejected", error_message: err.message });
+        } else {
+            toast(errorText(err), "error");
+        }
+    }
+    renderSourceModal(true);
+    updateUploadNote();
+}
+
+function updateUploadNote() {
+    if (!sm.results) return;
+    const added = sm.results.filter((r) => r.status === "queued" || r.status === "existing").length;
+    const waiting = sm.results.filter((r) => r.status === "similar").length;
+    delete sm.note.dataset.kind;
+    if (waiting) {
+        sm.note.textContent = `${waiting} file mirip dokumen yang sudah ada. Pilih cara menyimpannya; `
+            + "jika jendela ini ditutup, file disimpan sebagai dokumen terpisah.";
+    } else {
+        sm.note.textContent = added
+            ? `${added} sumber ditambahkan. Anda bisa menutup jendela ini; proses berjalan di background.`
+            : "Tidak ada file yang ditambahkan.";
+    }
+}
+
 function renderUploadList() {
     if (sm.results) {
-        sm.uploadList.replaceChildren(...sm.results.map((r) =>
-            h("li", { class: `pick-item is-${r.status === "rejected" ? "error" : "ok"}` },
-                fileIcon(),
-                h("span", { class: "pick-name", text: r.filename }),
-                h("span", { class: "pick-status", text: r.status === "rejected" ? r.error_message : RESULT_TEXT[r.status] })),
-        ));
+        sm.uploadList.replaceChildren(...sm.results.map(resultRow));
         return;
     }
     sm.uploadList.replaceChildren(...sm.files.map((f, i) =>
@@ -727,6 +823,17 @@ function renderUploadList() {
     ));
 }
 
+function reuseLine(stats) {
+    // Hanya ditampilkan bila ada hasil versi sebelumnya yang dipakai ulang (Tahap 3).
+    if (!stats) return null;
+    const parts = [];
+    if (stats.chunks_reused) parts.push(`${stats.chunks_reused} dari ${stats.chunks} potongan teks`);
+    if (stats.units_cached) parts.push(`${stats.units_cached} dari ${stats.units} bagian analisis AI`);
+    if (stats.images_cached) parts.push(`${stats.images_cached} dari ${stats.images} gambar`);
+    if (!parts.length) return null;
+    return h("span", { class: "version-reuse", text: `Dipakai ulang dari versi sebelumnya: ${parts.join(", ")}` });
+}
+
 async function submitUpload() {
     const valid = validUploads();
     const form = new FormData();
@@ -739,10 +846,7 @@ async function submitUpload() {
         state.notebook.sources = out.sources;
         renderSources();
         schedulePoll();
-        const okCount = out.results.filter((r) => r.status !== "rejected").length;
-        sm.note.textContent = okCount
-            ? `${okCount} sumber ditambahkan. Anda bisa menutup jendela ini; proses berjalan di background.`
-            : "Tidak ada file yang ditambahkan.";
+        updateUploadNote();
     } catch (err) {
         sm.note.textContent = errorText(err);
         sm.note.dataset.kind = "error";
@@ -1392,7 +1496,8 @@ async function openDocumentManager(documentId) {
                         v.original_filename,
                         latest ? h("span", { class: "version-badge", text: "Terbaru" }) : null),
                     h("span", { class: "version-meta",
-                        text: `${formatDate(v.uploaded_at)}, ${v.page_count ? `${v.page_count} halaman, ` : ""}${status}` })),
+                        text: `${formatDate(v.uploaded_at)}, ${v.page_count ? `${v.page_count} halaman, ` : ""}${status}` }),
+                    reuseLine(v.reuse_stats)),
                 isOwner && doc.versions.length > 1
                     ? h("button", {
                         type: "button", class: "source-remove version-delete", title: `Hapus versi ${v.version_no}`,
