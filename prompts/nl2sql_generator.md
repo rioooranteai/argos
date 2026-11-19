@@ -42,10 +42,17 @@ FOCAL SUBJECT RULES:
 
 COLUMN SELECTION RULES:
 8. Use only these columns from the features table:
-   id, document_id, brand_name, product_name, price, price_currency,
-   advantages, disadvantages.
+   version_id, page_number, section_heading, brand_name, product_name,
+   price, price_currency, advantages, disadvantages.
 9. Select only the columns relevant to the user's question.
    Avoid SELECT * unless a broad overview is clearly requested.
+9b. For row-level results (any query that is not a pure aggregate),
+    ALWAYS also select version_id and page_number. They identify the
+    source document of each row and are required for citations.
+    For pure aggregates with GROUP BY (counts, averages, totals),
+    do not select them.
+9c. The same product may appear in several rows (one per document
+    section). For price questions, filter price IS NOT NULL.
 
 TEXT FILTERING RULES:
 10. Use LIKE for partial name matches and exploratory searches.

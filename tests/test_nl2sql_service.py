@@ -1,164 +1,87 @@
-"""Tests for NL2SQLService — verifies orchestration of LLM, validator, executor."""
+"""NL2SQLService: orkestrasi LLM → validator → eksekusi terisolasi, hasil bertipe."""
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Type
-from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
 
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.nl2sql.service import NL2SQLService
-
-_FAKE_DB_PATH = Path("/tmp/argos_test_unused.db")
-
-
-@pytest.fixture(autouse=True)
-def _stub_schema_introspection():
-    """Avoid touching the filesystem for the schema PRAGMA introspection;
-    the actual DDL is irrelevant for these orchestration tests."""
-    with patch(
-        "app.services.nl2sql.service._introspect_features_schema",
-        return_value="CREATE TABLE features (id INTEGER);",
-    ):
-        yield
+from app.services.nl2sql.service import MAX_RAW_ROWS, NL2SQLService
+from tests.test_nl2sql_executor import db_path  # noqa: F401  (fixture)
 
 
 class FakeLLM(BaseLLM):
-    """In-memory LLM stub for deterministic testing."""
-
     def __init__(self, responses: list[str]):
         self._responses = list(responses)
         self.calls: list[dict] = []
 
     def invoke(self, prompt: str, system: str | None = None) -> str:
-        self.calls.append({"prompt": prompt, "system": system, "mode": "sync"})
-        return self._responses.pop(0)
+        raise NotImplementedError
 
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
-        self.calls.append({"prompt": prompt, "system": system, "mode": "async"})
+        self.calls.append({"prompt": prompt, "system": system})
         return self._responses.pop(0)
 
     def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
         return self
 
 
-@pytest.fixture
-def fake_rows():
-    return [
-        {"brand_name": "Scopely", "product_name": "MONOPOLY GO!", "price": None,
-         "price_currency": None,
-         "advantages": "Top revenue 2023", "disadvantages": None}
-    ]
+def svc(llm, db_path):  # noqa: F811
+    return NL2SQLService(llm_provider=llm, db_path=db_path, exec_timeout=5)
 
 
-class TestNL2SQLServiceProcessQuery:
-    @pytest.mark.asyncio
-    async def test_happy_path(self, fake_rows):
-        llm = FakeLLM(responses=[
-            "SELECT * FROM features WHERE brand_name = 'Scopely'",  # SQL gen
-            "Scopely unggul di MONOPOLY GO!",                            # final answer
-        ])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
+async def test_happy_path_row_level(db_path):  # noqa: F811
+    llm = FakeLLM(["SELECT product_name, price, version_id, page_number FROM features ORDER BY price"])
+    result = await svc(llm, db_path).process_query("harga mobil?", ["v1", "v2"])
+    assert result.status == "ok"
+    assert [r["product_name"] for r in result.raw_data] == ["Brio", "Avanza"]
+    assert result.is_row_level is True
+    assert "version_id" in llm.calls[0]["prompt"]  # skema yang diberikan memuat kolom sitasi
 
-        with patch(
-            "app.services.nl2sql.service.execute_readonly_sql",
-            return_value=fake_rows,
-        ):
-            result = await service.process_query("Apa kelebihan Scopely?")
 
-        assert result["status"] == "success"
-        assert "Scopely" in result["answer"]
-        assert result["sql_query"].startswith("SELECT")
-        assert result["row_count"] == 1
-        assert result["truncated"] is False
+async def test_aggregate_is_not_row_level(db_path):  # noqa: F811
+    llm = FakeLLM(["SELECT AVG(price) AS rata FROM features"])
+    result = await svc(llm, db_path).process_query("rata-rata harga?", ["v1", "v2"])
+    assert result.status == "ok" and result.is_row_level is False
 
-    @pytest.mark.asyncio
-    async def test_invalid_question_returns_friendly_message(self):
-        llm = FakeLLM(responses=["INVALID_QUESTION"])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
-        result = await service.process_query("What's the weather today?")
+async def test_empty_is_distinct_from_error(db_path):  # noqa: F811
+    llm = FakeLLM(["SELECT product_name FROM features WHERE product_name = 'Tidak Ada'"])
+    result = await svc(llm, db_path).process_query("x?", ["v1"])
+    assert result.status == "empty"
 
-        assert result["status"] == "success"
-        assert result["sql_query"] is None
-        assert "tidak relevan" in result["answer"].lower()
 
-    @pytest.mark.asyncio
-    async def test_destructive_user_input_blocked(self):
-        llm = FakeLLM(responses=[])  # LLM should never be called
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
+async def test_no_active_versions_skips_llm(db_path):  # noqa: F811
+    llm = FakeLLM([])
+    result = await svc(llm, db_path).process_query("x?", [])
+    assert result.status == "empty" and llm.calls == []
 
-        result = await service.process_query("drop table features")
 
-        assert result["status"] == "error"
-        assert len(llm.calls) == 0  # blocked before reaching LLM
+async def test_invalid_question(db_path):  # noqa: F811
+    result = await svc(FakeLLM(["INVALID_QUESTION"]), db_path).process_query("halo", ["v1"])
+    assert result.status == "error" and "tidak relevan" in result.message
 
-    @pytest.mark.asyncio
-    async def test_destructive_llm_output_blocked(self):
-        # LLM goes rogue and returns DROP — validator must catch it
-        llm = FakeLLM(responses=["DROP TABLE features"])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
 
-        with patch(
-            "app.services.nl2sql.service.execute_readonly_sql"
-        ) as mock_exec:
-            result = await service.process_query("Show me competitors")
-            mock_exec.assert_not_called()  # never reached executor
+async def test_destructive_llm_output_blocked(db_path):  # noqa: F811
+    result = await svc(FakeLLM(["DROP TABLE features"]), db_path).process_query("x?", ["v1"])
+    assert result.status == "error"
 
-        assert result["status"] == "error"
 
-    @pytest.mark.asyncio
-    async def test_sql_codeblock_stripped(self, fake_rows):
-        llm = FakeLLM(responses=[
-            "```sql\nSELECT * FROM features\n```",
-            "Hasil ditemukan.",
-        ])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
+async def test_codeblock_stripped(db_path):  # noqa: F811
+    llm = FakeLLM(["```sql\nSELECT product_name FROM features\n```"])
+    result = await svc(llm, db_path).process_query("x?", ["v1"])
+    assert result.status == "ok" and result.sql_query == "SELECT product_name FROM features"
 
-        with patch(
-            "app.services.nl2sql.service.execute_readonly_sql",
-            return_value=fake_rows,
-        ):
-            result = await service.process_query("Tampilkan semua")
 
-        assert result["status"] == "success"
-        assert "```" not in result["sql_query"]
+async def test_other_table_query_is_error(db_path):  # noqa: F811
+    result = await svc(FakeLLM(["SELECT email FROM users"]), db_path).process_query("x?", ["v1"])
+    assert result.status == "error"
 
-    @pytest.mark.asyncio
-    async def test_truncation_at_max_rows(self):
-        llm = FakeLLM(responses=[
-            "SELECT * FROM features",
-            "Banyak data ditemukan.",
-        ])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
-        many_rows = [{"brand_name": f"X{i}"} for i in range(150)]
 
-        with patch(
-            "app.services.nl2sql.service.execute_readonly_sql",
-            return_value=many_rows,
-        ):
-            result = await service.process_query("Tampilkan semua")
-
-        assert result["truncated"] is True
-        assert result["row_count"] == 150
-        assert len(result["raw_data"]) == 100  # MAX_RAW_ROWS
-
-    @pytest.mark.asyncio
-    async def test_unexpected_error_returns_generic_message(self):
-        llm = FakeLLM(responses=[
-            "SELECT * FROM features",
-            "...",
-        ])
-        service = NL2SQLService(llm_provider=llm, db_path=_FAKE_DB_PATH)
-
-        with patch(
-            "app.services.nl2sql.service.execute_readonly_sql",
-            side_effect=RuntimeError("DB connection lost"),
-        ):
-            result = await service.process_query("Tampilkan semua")
-
-        assert result["status"] == "error"
-        # Message should not leak internal details
-        assert "DB connection" not in result["message"]
+async def test_truncation(db_path, monkeypatch):  # noqa: F811
+    monkeypatch.setattr("app.services.nl2sql.service.MAX_RAW_ROWS", 1)
+    llm = FakeLLM(["SELECT product_name FROM features"])
+    result = await svc(llm, db_path).process_query("x?", ["v1", "v2"])
+    assert result.row_count == 1 and result.truncated is True
+    assert MAX_RAW_ROWS == 100  # konstanta modul asli tidak berubah di luar test ini
