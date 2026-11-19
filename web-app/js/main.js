@@ -120,6 +120,7 @@ const state = {
     pollTimer: null,
     sending: false,
     citedVersion: null,      // versi yang sedang disorot oleh chip sitasi
+    me: null,                // {id, email, is_admin} dari /users/me
 };
 
 // ---------------------------------------------------------------------------
@@ -479,6 +480,7 @@ function renderSourceItem(s) {
     const meta = [];
     if (ready) {
         meta.push(h("span", { text: `Versi ${s.version_no}, ${formatDate(s.uploaded_at)}` }));
+        if (s.archived) meta.push(h("span", { class: "source-warn", text: "Diarsipkan oleh pengunggah" }));
         if (s.warnings.length) meta.push(h("span", { class: "source-warn", text: s.warnings[0] }));
     } else if (processing) {
         meta.push(h("span", { class: "source-stage" }, h("span", { class: "spinner", "aria-hidden": "true" }), stageText(s)));
@@ -618,6 +620,7 @@ function closeSourceModal() {
 }
 
 function sourceModalKeys(e) {
+    if (panel.root) return;  // panel kelola dokumen sedang terbuka di atasnya
     if (e.key === "Escape") { e.preventDefault(); closeSourceModal(); }
     else if (e.key === "Tab") trapFocus(e, sm.root);
 }
@@ -792,7 +795,11 @@ function renderLibraryList() {
             h("label", { for: id, class: "library-body" },
                 h("span", { class: "pick-name", text: d.display_name }),
                 h("span", { class: "pick-status",
-                    text: already ? "Sudah ada di notebook ini" : [status, d.owner_name && `diunggah ${d.owner_name}`].filter(Boolean).join(", ") })));
+                    text: already ? "Sudah ada di notebook ini" : [status, d.owner_name && `diunggah ${d.owner_name}`].filter(Boolean).join(", ") })),
+            h("button", {
+                type: "button", class: "btn-manage", text: "Kelola",
+                "aria-label": `Kelola ${d.display_name}`, onclick: () => openDocumentManager(d.id),
+            }));
     }));
 }
 
@@ -1307,7 +1314,229 @@ function closeSidebarOnMobile() {
 }
 
 // ---------------------------------------------------------------------------
+// Panel modal generik (kelola dokumen, kelola pengguna)
+// ---------------------------------------------------------------------------
+
+const panel = { root: null, returnFocus: null, onClose: null };
+
+function openPanel({ title, subtitle = "", onClose = null }) {
+    closePanel();
+    panel.returnFocus = document.activeElement;
+    panel.onClose = onClose;
+    const titleId = "panelTitle";
+    const body = h("div", { class: "panel-body" });
+    const sub = h("p", { class: "source-modal-slots", text: subtitle });
+    const card = h("div", { class: "modal-card source-modal panel-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": titleId },
+        h("header", { class: "source-modal-header" },
+            h("div", {}, h("h2", { class: "source-modal-title", id: titleId, text: title }), sub),
+            h("button", { type: "button", class: "btn-modal-close", "aria-label": "Tutup", onclick: closePanel }, iconX())),
+        body);
+    panel.root = h("div", { class: "modal-overlay panel-overlay", onclick: (e) => { if (e.target === panel.root) closePanel(); } }, card);
+    document.body.append(panel.root);
+    document.addEventListener("keydown", panelKeys);
+    setTimeout(() => card.querySelector(".btn-modal-close").focus(), 30);
+    return { body, setSubtitle: (t) => { sub.textContent = t; } };
+}
+
+function closePanel() {
+    if (!panel.root) return;
+    panel.root.remove();
+    panel.root = null;
+    document.removeEventListener("keydown", panelKeys);
+    if (panel.returnFocus && document.contains(panel.returnFocus)) panel.returnFocus.focus();
+    const cb = panel.onClose;
+    panel.onClose = null;
+    if (cb) cb();
+}
+
+function panelKeys(e) {
+    if (!modal.root.hidden) return;  // dialog konfirmasi sedang terbuka di atas panel
+    if (e.key === "Escape") { e.preventDefault(); closePanel(); }
+    else if (e.key === "Tab") trapFocus(e, panel.root);
+}
+
+// ── Kelola dokumen: riwayat versi, versi baru, hapus ──
+
+async function openDocumentManager(documentId) {
+    let changed = false;
+    const { body, setSubtitle } = openPanel({
+        title: "Kelola dokumen",
+        onClose: () => {
+            if (!changed) return;
+            if (!sm.root.hidden) loadLibrary();
+            refreshNotebook();
+        },
+    });
+    const markChanged = () => { changed = true; };
+
+    async function render() {
+        body.replaceChildren(h("p", { class: "pick-empty", text: "Memuat…" }));
+        let doc;
+        try {
+            doc = await api(`/library/documents/${documentId}`);
+        } catch (err) {
+            body.replaceChildren(h("p", { class: "pick-empty", text: errorText(err) }));
+            return;
+        }
+        const isOwner = state.me && (doc.owner_id === state.me.id);
+        setSubtitle(`${doc.display_name}, pemilik ${isOwner ? "Anda" : (doc.owner_name || "pengguna lain")}`);
+
+        const versionRows = doc.versions.map((v) => {
+            const status = v.stage === "ready" ? "Siap"
+                : FINAL_STAGES.has(v.stage) ? (v.error || STAGE_LABEL[v.stage]) : stageText(v);
+            const latest = doc.latest_version && doc.latest_version.id === v.id;
+            return h("li", { class: "version-row" },
+                h("span", { class: "version-no", text: `v${v.version_no}` }),
+                h("span", { class: "version-body" },
+                    h("span", { class: "version-title" },
+                        v.original_filename,
+                        latest ? h("span", { class: "version-badge", text: "Terbaru" }) : null),
+                    h("span", { class: "version-meta",
+                        text: `${formatDate(v.uploaded_at)}, ${v.page_count ? `${v.page_count} halaman, ` : ""}${status}` })),
+                isOwner && doc.versions.length > 1
+                    ? h("button", {
+                        type: "button", class: "source-remove version-delete", title: `Hapus versi ${v.version_no}`,
+                        "aria-label": `Hapus versi ${v.version_no}`, onclick: () => deleteVersion(doc, v),
+                    }, iconX())
+                    : null);
+        });
+
+        const fileInput = h("input", { type: "file", accept: ".pdf,.md", class: "visually-hidden",
+            onchange: (e) => uploadVersion(doc, e.target.files[0]) });
+
+        body.replaceChildren(
+            h("h3", { class: "panel-heading", text: "Riwayat versi" }),
+            h("ol", { class: "version-list" }, ...versionRows),
+            h("div", { class: "panel-actions" },
+                h("label", { class: "modal-btn modal-btn--ghost btn-file" }, fileInput, "Upload versi baru"),
+                isOwner ? h("button", { type: "button", class: "modal-btn modal-btn--danger",
+                    text: "Hapus dokumen", onclick: () => deleteDocument(doc) }) : null),
+            h("p", { class: "panel-note", text: isOwner
+                ? "Versi yang masih dipakai notebook tidak bisa dihapus. Menghapus dokumen yang masih dipakai notebook orang lain akan mengarsipkannya."
+                : "Siapa pun di tim boleh mengunggah versi baru. Hanya pengunggah yang bisa menghapus." }),
+        );
+    }
+
+    async function uploadVersion(doc, file) {
+        if (!file) return;
+        const problem = validateFile(file);
+        if (problem) { toast(problem, "error"); return; }
+        const form = new FormData();
+        form.append("file", file);
+        try {
+            const r = await api(`/library/documents/${doc.id}/versions`, { method: "POST", form });
+            markChanged();
+            toast(r.status === "existing" ? "File ini sudah ada sebagai salah satu versi." : "Versi baru sedang diproses.", "success");
+            render();
+        } catch (err) { toast(errorText(err), "error"); }
+    }
+
+    async function deleteVersion(doc, v) {
+        const ok = await openModal({
+            title: `Hapus versi ${v.version_no}?`,
+            subtitle: "Data versi ini dihapus permanen. Nomor versinya tidak akan dipakai lagi.",
+            icon: "danger", confirmLabel: "Hapus versi", danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api(`/library/documents/${doc.id}/versions/${v.id}`, { method: "DELETE" });
+            markChanged();
+            toast(`Versi ${v.version_no} dihapus.`, "success");
+            render();
+        } catch (err) { modalAlert("Versi tidak dihapus", errorText(err)); }
+    }
+
+    async function deleteDocument(doc) {
+        const ok = await openModal({
+            title: `Hapus "${doc.display_name}"?`,
+            subtitle: "Dokumen dilepas dari notebook Anda. Jika masih dipakai notebook orang lain, dokumen diarsipkan dan baru terhapus setelah tidak dipakai lagi.",
+            icon: "danger", confirmLabel: "Hapus dokumen", danger: true,
+        });
+        if (!ok) return;
+        try {
+            const r = await api(`/library/documents/${doc.id}`, { method: "DELETE" });
+            markChanged();
+            toast(r.result === "archived" ? "Dokumen diarsipkan karena masih dipakai notebook lain." : "Dokumen dihapus.", "success");
+            closePanel();
+        } catch (err) { modalAlert("Dokumen tidak dihapus", errorText(err)); }
+    }
+
+    render();
+}
+
+async function refreshNotebook() {
+    if (!state.notebook) return;
+    try {
+        const detail = await api(`/notebooks/${state.notebook.id}`);
+        state.notebook.sources = detail.sources;
+        renderSources();
+        schedulePoll();
+    } catch { /* tetap tampilkan data lama */ }
+}
+
+// ── Kelola pengguna (admin) ──
+
+async function openUserManager() {
+    const { body } = openPanel({ title: "Kelola pengguna", subtitle: "Pengguna nonaktif tidak bisa masuk. Dokumen miliknya dialihkan ke Anda." });
+
+    async function render() {
+        let users;
+        try {
+            users = await api("/admin/users");
+        } catch (err) {
+            body.replaceChildren(h("p", { class: "pick-empty", text: errorText(err) }));
+            return;
+        }
+        body.replaceChildren(h("ul", { class: "user-list" }, ...users.map((u) => {
+            const id = `user-${u.id}`;
+            return h("li", { class: "user-row" + (u.is_active ? "" : " is-inactive") },
+                h("span", { class: "user-row-body" },
+                    h("span", { class: "user-row-name", text: u.name || u.email }),
+                    h("span", { class: "user-row-meta",
+                        text: `${u.email}${u.is_admin ? ", admin" : ""}${u.last_login_at ? `, terakhir masuk ${formatRelative(u.last_login_at)}` : ""}` })),
+                u.is_admin ? h("span", { class: "user-row-state", text: "Aktif" })
+                    : h("label", { class: "switch", for: id },
+                        h("input", { type: "checkbox", id, role: "switch", checked: u.is_active,
+                            "aria-label": `${u.is_active ? "Nonaktifkan" : "Aktifkan"} ${u.email}`,
+                            onchange: (e) => setActive(u, e.target.checked, e.target) }),
+                        h("span", { class: "switch-track", "aria-hidden": "true" }),
+                        h("span", { class: "user-row-state", text: u.is_active ? "Aktif" : "Nonaktif" })));
+        })));
+    }
+
+    async function setActive(u, active, input) {
+        if (!active) {
+            const ok = await openModal({
+                title: `Nonaktifkan ${u.name || u.email}?`,
+                subtitle: "Pengguna langsung tidak bisa masuk. Dokumen miliknya dialihkan ke Anda; notebook-nya tetap disimpan.",
+                icon: "danger", confirmLabel: "Nonaktifkan", danger: true,
+            });
+            if (!ok) { input.checked = true; return; }
+        }
+        try {
+            const r = await api(`/admin/users/${u.id}`, { method: "PATCH", json: { is_active: active } });
+            toast(active ? "Pengguna diaktifkan kembali."
+                : `Pengguna dinonaktifkan; ${r.documents_transferred} dokumen dialihkan ke Anda.`, "success");
+        } catch (err) { toast(errorText(err), "error"); }
+        render();
+    }
+
+    body.replaceChildren(h("p", { class: "pick-empty", text: "Memuat…" }));
+    render();
+}
+
+$("manageUsersBtn").addEventListener("click", () => { $("userMenu").hidden = true; openUserManager(); });
+
+async function loadMe() {
+    try {
+        state.me = await api("/users/me");
+        $("manageUsersBtn").hidden = !state.me.is_admin;
+    } catch { /* menu admin tetap tersembunyi */ }
+}
+
+// ---------------------------------------------------------------------------
 // Mulai
 // ---------------------------------------------------------------------------
 
+loadMe();
 handleRoute();
