@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Argos — Competitive Intelligence</title>
     <link href="/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap"
           rel="stylesheet">
 </head>
@@ -21,14 +21,13 @@
         <div class="sidebar-header">
             <div class="brand-container">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36"
-                     width="160" height="36" style="display:block;">
+                     width="160" height="36" style="display:block;" aria-label="ArgosAI">
                     <defs>
                         <linearGradient id="argos-bg" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#e27c4a"/>
                             <stop offset="100%" stop-color="#d96245"/>
                         </linearGradient>
                     </defs>
-                    <!-- Icon -->
                     <rect x="0" y="0" width="36" height="36" rx="9" fill="url(#argos-bg)"/>
                     <path d="M18 7 L8 30 M18 7 L28 30"
                           fill="none" stroke="white" stroke-width="1"
@@ -36,7 +35,6 @@
                     <line x1="14.5" y1="22" x2="21.5" y2="22"
                           stroke="white" stroke-width="1" stroke-linecap="round"/>
                     <circle cx="18" cy="16" r="2.2" fill="white"/>
-                    <!-- Wordmark -->
                     <text x="46" y="24"
                           font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
                           font-size="23" letter-spacing="-0.5"
@@ -45,67 +43,90 @@
                     </text>
                 </svg>
             </div>
-            <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Tutup menu">
+            <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Tutup menu" aria-label="Tutup menu">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                     <path d="M9 18l6-6-6-6"/>
                 </svg>
             </button>
         </div>
 
-        <!-- New Chat Button -->
-        <div class="new-chat-section">
-            <button class="btn-new-chat" id="newChatBtn" title="Mulai percakapan baru">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="14">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
+        <!-- Notebook switcher -->
+        <div class="notebook-switcher">
+            <button type="button" class="notebook-current" id="notebookBtn"
+                    aria-haspopup="menu" aria-expanded="false">
+                <svg class="notebook-glyph" fill="none" height="16" stroke="currentColor" stroke-width="1.8"
+                     viewBox="0 0 24 24" width="16" aria-hidden="true">
+                    <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/>
+                    <path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/>
                 </svg>
-                New chat
+                <span class="notebook-current-title" id="notebookTitle">Memuat notebook…</span>
+                <svg class="notebook-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2"
+                     viewBox="0 0 24 24" width="14" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/>
+                </svg>
             </button>
-        </div>
-
-        <!-- Threads (multi-conversation) -->
-        <div class="history-section">
-            <div class="history-section-header">
-                <span class="history-title">Conversations</span>
-                <span class="history-count" id="historyCount">0</span>
-            </div>
-            <div class="history-list" id="historyList">
-                <div class="history-empty" id="historyEmpty">Belum ada percakapan.</div>
-            </div>
-        </div>
-
-        <!-- Upload Section -->
-        <div class="upload-section">
-            <p class="upload-title">Dokumen</p>
-            <div class="upload-card">
-                <div class="upload-icon-wrap">
-                    <svg fill="none" height="22" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"
-                         width="22">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" x2="12" y1="3" y2="15"/>
+            <div class="notebook-menu" id="notebookMenu" role="menu" hidden>
+                <div class="notebook-menu-list" id="notebookMenuList"></div>
+                <div class="user-menu-divider"></div>
+                <button type="button" class="user-menu-item" id="newNotebookBtn" role="menuitem">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                </div>
-                <p class="upload-desc">Unggah PDF atau Markdown</p>
-                <input accept=".pdf,.md" id="fileInput" multiple style="display:none;" type="file">
-                <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
-                    Pilih File
+                    Notebook baru
                 </button>
-                <div class="file-list-text" id="file-list"></div>
-                <button class="btn btn-primary" id="uploadBtn" style="display:none;">
-                    Ekstrak ke DB
+                <button type="button" class="user-menu-item" id="renameNotebookBtn" role="menuitem">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                    </svg>
+                    Ganti nama notebook
                 </button>
-                <div id="upload-status"></div>
+                <button type="button" class="user-menu-item user-menu-item--danger" id="deleteNotebookBtn" role="menuitem">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                    Hapus notebook
+                </button>
             </div>
         </div>
 
-        <!-- Sidebar Footer — user profile pill (Perplexity-style) -->
+        <!-- Sources -->
+        <section class="sources-section" aria-labelledby="sourcesHeading">
+            <div class="section-header">
+                <h2 class="section-title" id="sourcesHeading">Sumber</h2>
+                <span class="section-count" id="sourceCount">0/10</span>
+                <button type="button" class="btn-add-source" id="addSourceBtn">
+                    <svg fill="none" height="13" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="13">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Tambah
+                </button>
+            </div>
+            <ul class="source-list" id="sourceList" aria-describedby="sourceHint"></ul>
+            <p class="source-hint" id="sourceHint">Hanya sumber yang dicentang yang dipakai untuk menjawab.</p>
+        </section>
+
+        <!-- Conversations -->
+        <section class="history-section" aria-labelledby="historyHeading">
+            <div class="history-section-header">
+                <h2 class="history-title" id="historyHeading">Percakapan</h2>
+                <button type="button" class="btn-new-thread" id="newChatBtn" title="Mulai percakapan baru">
+                    <svg fill="none" height="13" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="13">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Chat baru
+                </button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+        </section>
+
+        <!-- Sidebar Footer — user profile -->
         <div class="sidebar-footer">
             <button type="button" class="user-pill" id="userPillBtn" aria-haspopup="menu" aria-expanded="false">
                 <div class="user-pill-avatar" id="userAvatar">
                     <span class="user-pill-avatar-fallback" id="userAvatarFallback">U</span>
                 </div>
-                <span class="user-pill-name" id="userName">Loading...</span>
+                <span class="user-pill-name" id="userName">Memuat…</span>
                 <svg class="user-pill-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2"
                      viewBox="0 0 24 24" width="14">
                     <circle cx="12" cy="5"  r="1.4"/>
@@ -114,7 +135,6 @@
                 </svg>
             </button>
 
-            <!-- Dropdown menu (toggled by JS) -->
             <div class="user-menu" id="userMenu" role="menu" hidden>
                 <div class="user-menu-header">
                     <div class="user-menu-name"  id="userMenuName">User</div>
@@ -127,7 +147,7 @@
                         <polyline points="16 17 21 12 16 7"/>
                         <line x1="21" x2="9" y1="12" y2="12"/>
                     </svg>
-                    Log out
+                    Keluar
                 </button>
             </div>
         </div>
@@ -139,30 +159,24 @@
         <!-- Header -->
         <div class="chat-header">
             <div class="header-left">
-                <button class="btn-menu-toggle" onclick="toggleSidebar()" title="Buka menu">
+                <button class="btn-menu-toggle" onclick="toggleSidebar()" title="Buka menu" aria-label="Buka menu">
                     <svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18">
                         <line x1="3" x2="21" y1="6" y2="6"/>
                         <line x1="3" x2="21" y1="12" y2="12"/>
                         <line x1="3" x2="21" y1="18" y2="18"/>
                     </svg>
                 </button>
-                <span class="header-title" id="chatHeaderTitle">AI Chat Helper</span>
+                <span class="header-title" id="chatHeaderTitle">Chat baru</span>
             </div>
             <div class="header-actions">
-                <div class="header-search">
-                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <input class="header-search-input" placeholder="Search" type="text">
-                </div>
-                <button class="header-icon-btn" id="renameThreadBtn" title="Ganti nama" style="display:none;">
+                <span class="header-scope" id="headerScope"></span>
+                <button class="header-icon-btn" id="renameThreadBtn" title="Ganti nama percakapan" aria-label="Ganti nama percakapan" hidden>
                     <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                         <path d="M12 20h9"/>
                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
                     </svg>
                 </button>
-                <button class="header-icon-btn" id="deleteThreadBtn" title="Hapus percakapan" style="display:none;">
+                <button class="header-icon-btn" id="deleteThreadBtn" title="Hapus percakapan" aria-label="Hapus percakapan" hidden>
                     <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -171,33 +185,32 @@
             </div>
         </div>
 
-        <!-- Welcome screen (shown when no conversation is loaded) -->
+        <!-- Welcome / empty states (isi diatur JS sesuai kondisi sumber) -->
         <div class="welcome-screen" id="welcomeScreen">
-            <div class="welcome-icon">
-                <svg fill="none" height="32" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="32">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
+            <div class="welcome-icon" aria-hidden="true">
+                <svg fill="none" height="30" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="30">
+                    <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/>
+                    <path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/>
                 </svg>
             </div>
-            <h1 class="welcome-title">Selamat datang di Argos</h1>
-            <p class="welcome-subtitle">
-                Tanyakan apa saja seputar harga, fitur, atau metrik kompetitor Anda.
-            </p>
-            <div class="welcome-suggestions">
-                <button class="welcome-suggestion" data-prompt="Bandingkan harga semua kompetitor di database.">
-                    Bandingkan harga kompetitor
+            <h1 class="welcome-title" id="welcomeTitle">Selamat datang di Argos</h1>
+            <p class="welcome-subtitle" id="welcomeSubtitle"></p>
+            <button type="button" class="welcome-cta" id="welcomeCta" hidden>Tambah sumber</button>
+            <div class="welcome-suggestions" id="welcomeSuggestions" hidden>
+                <button class="welcome-suggestion" data-prompt="Bandingkan harga semua produk di sumber yang dipilih.">
+                    Bandingkan harga produk
                 </button>
-                <button class="welcome-suggestion" data-prompt="Apa kelemahan utama kompetitor terbesar kami?">
-                    Cari kelemahan kompetitor
+                <button class="welcome-suggestion" data-prompt="Apa kelemahan utama produk-produk di sumber ini?">
+                    Cari kelemahan produk
                 </button>
-                <button class="welcome-suggestion" data-prompt="Ringkas fitur unggulan dari semua produk.">
+                <button class="welcome-suggestion" data-prompt="Ringkas fitur unggulan dari semua produk di sumber ini.">
                     Ringkas fitur unggulan
                 </button>
             </div>
         </div>
 
         <!-- Chat messages -->
-        <div class="chat-box" id="chatBox" style="display:none;"></div>
+        <div class="chat-box" id="chatBox" hidden aria-live="polite"></div>
 
         <!-- Typing indicator -->
         <div class="loading-container" id="chatLoading">
@@ -209,13 +222,14 @@
         <!-- Input area -->
         <div class="input-container">
             <div class="input-wrapper">
-                <button class="btn-icon btn-attach" title="Lampirkan file">
+                <button class="btn-icon btn-attach" id="attachBtn" title="Tambah sumber" aria-label="Tambah sumber">
                     <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
                         <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                     </svg>
                 </button>
-                <input autocomplete="off" id="chatInput" placeholder="Tulis pesan..." type="text">
-                <button class="btn-icon btn-mic" id="micBtn" title="Rekam suara">
+                <input autocomplete="off" id="chatInput" placeholder="Tanyakan sesuatu tentang sumber Anda…" type="text"
+                       aria-label="Pesan">
+                <button class="btn-icon btn-mic" id="micBtn" title="Rekam suara" aria-label="Rekam suara">
                     <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -223,37 +237,90 @@
                         <line x1="8" x2="16" y1="23" y2="23"/>
                     </svg>
                 </button>
-                <button class="btn-icon btn-send" id="sendBtn" title="Kirim">
+                <button class="btn-icon btn-send" id="sendBtn" title="Kirim" aria-label="Kirim">
                     <svg fill="none" height="15" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="15">
                         <line x1="22" x2="11" y1="2" y2="13"/>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                     </svg>
                 </button>
             </div>
-            <p class="input-disclaimer">Argos dapat membuat kesalahan. Periksa informasi penting.</p>
+            <p class="input-disclaimer">Argos dapat membuat kesalahan. Periksa sumber pada setiap jawaban.</p>
         </div>
 
     </main>
 
 </div>
 
+<!-- ── Modal: Tambah sumber ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="sourceModal" hidden>
+    <div class="modal-card source-modal" role="dialog" aria-modal="true" aria-labelledby="sourceModalTitle">
+        <header class="source-modal-header">
+            <div>
+                <h2 class="source-modal-title" id="sourceModalTitle">Tambah sumber</h2>
+                <p class="source-modal-slots" id="sourceModalSlots"></p>
+            </div>
+            <button type="button" class="btn-modal-close" id="sourceModalClose" aria-label="Tutup">
+                <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </header>
+
+        <div class="source-tabs" role="tablist" aria-label="Cara menambah sumber">
+            <button type="button" class="source-tab" role="tab" id="tabUpload" aria-controls="panelUpload"
+                    aria-selected="true">Upload baru</button>
+            <button type="button" class="source-tab" role="tab" id="tabLibrary" aria-controls="panelLibrary"
+                    aria-selected="false" tabindex="-1">Dari Library</button>
+        </div>
+
+        <!-- Upload -->
+        <div class="source-panel" role="tabpanel" id="panelUpload" aria-labelledby="tabUpload">
+            <label class="dropzone" id="dropzone">
+                <input type="file" id="uploadInput" accept=".pdf,.md" multiple class="visually-hidden">
+                <svg fill="none" height="22" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="22" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" x2="12" y1="3" y2="15"/>
+                </svg>
+                <span class="dropzone-title">Tarik file ke sini atau <u>pilih dari komputer</u></span>
+                <span class="dropzone-limits" id="dropzoneLimits">PDF atau Markdown, maks. 10 MB per file, 5 file sekaligus</span>
+            </label>
+            <ul class="pick-list" id="uploadList"></ul>
+        </div>
+
+        <!-- Library -->
+        <div class="source-panel" role="tabpanel" id="panelLibrary" aria-labelledby="tabLibrary" hidden>
+            <div class="library-search">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="search" id="librarySearch" placeholder="Cari dokumen di Library" aria-label="Cari dokumen">
+            </div>
+            <ul class="pick-list library-list" id="libraryList"></ul>
+        </div>
+
+        <footer class="source-modal-footer">
+            <p class="source-modal-note" id="sourceModalNote" role="status"></p>
+            <div class="source-modal-actions">
+                <button type="button" class="modal-btn modal-btn--ghost" id="sourceModalCancel">Batal</button>
+                <button type="button" class="modal-btn modal-btn--primary" id="sourceModalSubmit" disabled>Tambah</button>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- ── Modal umum: konfirmasi / prompt / info ───────────────────────── -->
 <div class="modal-overlay" id="appModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-header">
-            <div class="modal-icon" id="modalIcon">
-                <!-- icon injected by JS -->
-            </div>
+            <div class="modal-icon" id="modalIcon"></div>
             <h2 class="modal-title" id="modalTitle">Title</h2>
             <p class="modal-subtitle" id="modalSubtitle"></p>
         </div>
-
         <div class="modal-divider"></div>
-
         <div class="modal-body" id="modalBody">
-            <!-- input field (only shown for prompt-type) -->
             <input class="modal-input" id="modalInput" type="text" autocomplete="off" hidden>
         </div>
-
         <div class="modal-actions">
             <button type="button" class="modal-btn modal-btn--ghost" id="modalCancelBtn">Batal</button>
             <button type="button" class="modal-btn modal-btn--primary" id="modalConfirmBtn">OK</button>
@@ -261,11 +328,17 @@
     </div>
 </div>
 
+<!-- Popover sitasi (satu elemen, diposisikan oleh JS) -->
+<div class="cite-popover" id="citePopover" role="tooltip" hidden></div>
+
+<!-- Notifikasi singkat -->
+<div class="toast" id="toast" role="status" hidden></div>
+
 <script>
-    // Decode JWT payload (no verification — display only)
+    // Decode JWT payload (tanpa verifikasi — hanya untuk tampilan)
     function parseJwt(token) {
         try {
-            return JSON.parse(atob(token.split(".")[1]));
+            return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
         } catch {
             return null;
         }
@@ -280,75 +353,30 @@
         const token   = localStorage.getItem("access_token");
         const payload = token ? parseJwt(token) : null;
 
-        const pillNameEl  = document.getElementById("userName");
-        const avatarEl    = document.getElementById("userAvatar");
-        const fallbackEl  = document.getElementById("userAvatarFallback");
-        const menuNameEl  = document.getElementById("userMenuName");
-        const menuEmailEl = document.getElementById("userMenuEmail");
-
         const fullName  = (payload && payload.name)       || "";
         const firstName = (payload && payload.given_name) || fullName.split(" ")[0] || "User";
         const email     = (payload && payload.email)      || "";
         const picture   = (payload && payload.picture)    || "";
 
-        // Pill: nama depan saja
-        pillNameEl.textContent = firstName;
+        document.getElementById("userName").textContent      = firstName;
+        document.getElementById("userMenuName").textContent  = fullName || firstName;
+        document.getElementById("userMenuEmail").textContent = email;
 
-        // Dropdown header: nama lengkap + email
-        menuNameEl.textContent  = fullName || firstName;
-        menuEmailEl.textContent = email;
-
-        // Avatar: gambar Google atau fallback inisial
+        const avatarEl   = document.getElementById("userAvatar");
+        const fallbackEl = document.getElementById("userAvatarFallback");
         fallbackEl.textContent = getInitial(fullName, email);
         if (picture) {
             const img = document.createElement("img");
             img.src = picture;
-            img.alt = fullName || "Profile";
+            img.alt = fullName || "Profil";
             img.referrerPolicy = "no-referrer";
-
-            img.onload = () => {
-                fallbackEl.style.display = "none";
-            };
-
-            img.onerror = () => {
-                img.remove();
-                fallbackEl.style.display = "flex";
-            };
-
+            img.onload  = () => { fallbackEl.style.display = "none"; };
+            img.onerror = () => { img.remove(); fallbackEl.style.display = "flex"; };
             avatarEl.prepend(img);
         } else {
             fallbackEl.style.display = "flex";
         }
     })();
-
-    // Dropdown toggle
-    (function setupUserMenu() {
-        const pillBtn = document.getElementById("userPillBtn");
-        const menu    = document.getElementById("userMenu");
-        if (!pillBtn || !menu) return;
-
-        function open()  { menu.hidden = false; pillBtn.setAttribute("aria-expanded", "true");  pillBtn.classList.add("is-open"); }
-        function close() { menu.hidden = true;  pillBtn.setAttribute("aria-expanded", "false"); pillBtn.classList.remove("is-open"); }
-        function toggle(){ menu.hidden ? open() : close(); }
-
-        pillBtn.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
-
-        // Click di luar menu → close
-        document.addEventListener("click", (e) => {
-            if (menu.hidden) return;
-            if (!menu.contains(e.target) && !pillBtn.contains(e.target)) close();
-        });
-
-        // Esc → close
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape" && !menu.hidden) close();
-        });
-    })();
-
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-        localStorage.removeItem("access_token");
-        window.location.href = "/login";
-    });
 </script>
 
 <script src="/js/main.js"></script>
