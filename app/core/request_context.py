@@ -1,0 +1,76 @@
+"""Request ID per request (DESIGN_GROUP_C.md §7).
+
+- Diterima dari header ``X-Request-ID`` (jika aman) atau dibuat baru.
+- Disimpan di ``request.state`` dan contextvar, dikembalikan di header respons,
+  dan disisipkan ke setiap baris log lewat ``RequestIDLogFilter``.
+"""
+from __future__ import annotations
+
+import logging
+import re
+import uuid
+from contextvars import ContextVar
+
+from starlette.datastructures import MutableHeaders
+from starlette.requests import Request
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+REQUEST_ID_HEADER = "X-Request-ID"
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+_request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
+
+
+def get_request_id() -> str | None:
+    return _request_id_var.get()
+
+
+def request_id_from(request: Request) -> str | None:
+    """Ambil request ID dari request.state (tetap ada walau contextvar sudah di-reset)."""
+    return getattr(request.state, "request_id", None) or get_request_id()
+
+
+def _new_request_id() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+class RequestIDMiddleware:
+    """Middleware ASGI murni (tidak membungkus body seperti BaseHTTPMiddleware)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        incoming = None
+        for name, value in scope.get("headers", []):
+            if name.lower() == REQUEST_ID_HEADER.lower().encode():
+                incoming = value.decode("latin-1")
+                break
+        rid = incoming if incoming and _SAFE_ID.match(incoming) else _new_request_id()
+
+        scope.setdefault("state", {})["request_id"] = rid
+        token = _request_id_var.set(rid)
+
+        async def send_with_id(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                if REQUEST_ID_HEADER not in headers:
+                    headers.append(REQUEST_ID_HEADER, rid)
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            _request_id_var.reset(token)
+
+
+class RequestIDLogFilter(logging.Filter):
+    """Menambahkan atribut ``request_id`` ke setiap LogRecord."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = get_request_id() or "-"
+        return True

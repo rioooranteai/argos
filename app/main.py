@@ -1,13 +1,21 @@
 import logging
 
-from app.api.router import register_routers
-from app.core.middleware import register_middleware
-from app.core.startup import lifespan
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-logging.basicConfig(level=logging.INFO)
+from app.api.router import register_routers
+from app.core.errors import register_exception_handlers
+from app.core.middleware import register_middleware
+from app.core.request_context import RequestIDLogFilter
+from app.core.startup import lifespan
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",
+)
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(RequestIDLogFilter())
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -18,6 +26,7 @@ app = FastAPI(
 )
 
 register_middleware(app)
+register_exception_handlers(app)
 register_routers(app)
 
 app.mount("/css", StaticFiles(directory="web-app/css"), name="css")
