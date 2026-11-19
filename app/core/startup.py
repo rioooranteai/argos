@@ -101,6 +101,7 @@ async def lifespan(app: FastAPI):
         jobs=job_repo,
         users=app.state.user_repo,
     )
+    app.state.library_service.purge_expired_pending()
 
     # --- Pipeline dokumen & worker (DESIGN_GROUP_B.md) ---
     docling = DoclingProcess()

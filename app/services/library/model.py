@@ -67,6 +67,24 @@ class NewVersion:
     page_count: int | None
     uploaded_by: str
     pipeline_version: str
+    fingerprint: bytes | None = None
+
+
+@dataclass(frozen=True)
+class PendingUpload:
+    """Upload yang mirip dokumen Library dan menunggu keputusan user (A §6.3)."""
+
+    id: str
+    user_id: str
+    original_filename: str
+    file_ext: str
+    size_bytes: int
+    content_hash: str
+    page_count: int | None
+    fingerprint: bytes | None
+    candidate_document_id: str
+    score: float
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -156,16 +174,25 @@ class UploadFileResult(BaseModel):
     """Hasil per file dalam satu batch upload."""
 
     filename: str
-    status: Literal["queued", "existing", "rejected"]
+    status: Literal["queued", "existing", "rejected", "similar"]
     document_id: str | None = None
     version_id: str | None = None
     stage: str | None = None
     error_code: str | None = None
     error_message: str | None = None
+    # status "similar": file disimpan sementara, menunggu POST .../pending/{id}/resolve
+    pending_id: str | None = None
+    similar_document_id: str | None = None
+    similar_document_name: str | None = None
+    similarity: float | None = None
 
 
 class UploadBatchOut(BaseModel):
     results: list[UploadFileResult]
+
+
+class ResolvePendingRequest(BaseModel):
+    action: Literal["new_version", "separate"]
 
 
 class RenameDocumentRequest(BaseModel):

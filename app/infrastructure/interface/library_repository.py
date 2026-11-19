@@ -7,6 +7,7 @@ from app.services.library.model import (
     DocumentVersion,
     LibraryDocument,
     NewVersion,
+    PendingUpload,
 )
 
 
@@ -84,3 +85,23 @@ class BaseLibraryRepository(ABC):
     @abstractmethod
     def transfer_ownership(self, from_user_id: str, to_user_id: str) -> int:
         """Pindahkan kepemilikan semua dokumen. Return jumlah dokumen."""
+
+    # ── Tahap 3: saran kemiripan ────────────────────────────────────────
+
+    @abstractmethod
+    def list_fingerprints(self) -> list[tuple[str, str, bytes]]:
+        """(document_id, display_name, sidik) dari versi terbaru yang punya sidik,
+        untuk setiap dokumen aktif. Versi failed/cancelled dilewati."""
+
+    @abstractmethod
+    def create_pending(self, pending: PendingUpload) -> None: ...
+
+    @abstractmethod
+    def get_pending(self, pending_id: str) -> PendingUpload | None: ...
+
+    @abstractmethod
+    def delete_pending(self, pending_id: str) -> bool:
+        """Return False bila sudah tidak ada (mis. diselesaikan request lain)."""
+
+    @abstractmethod
+    def list_expired_pending(self, older_than_minutes: int) -> list[PendingUpload]: ...

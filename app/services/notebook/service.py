@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Literal
 
 from fastapi import UploadFile
 
@@ -104,6 +105,27 @@ class NotebookService:
                     # Kalah balapan dengan penambahan lain: dokumen tetap ada di Library.
                     logger.info("Notebook %s penuh; %s tidak dipasang.", notebook_id, r.document_id)
         return results, self._repo.list_sources(notebook_id)
+
+    async def resolve_pending(
+        self,
+        user: CurrentUser,
+        notebook_id: str,
+        pending_id: str,
+        action: Literal["new_version", "separate"],
+    ) -> tuple[UploadFileResult, list[NotebookSource]]:
+        """Selesaikan upload yang mirip dokumen Library, lalu pasang hasilnya ke notebook.
+
+        Bila dokumen sudah ada di notebook (pilihan "versi baru"), pin lama dipertahankan;
+        badge "versi baru tersedia" muncul setelah versi baru siap (A §6.3–6.4).
+        """
+        self.get(user, notebook_id)
+        result = await self._library_svc.resolve_pending(user, pending_id, action)
+        if result.document_id and result.version_id:
+            try:
+                self._add(notebook_id, result.document_id, result.version_id)
+            except ValidationError:
+                logger.info("Notebook %s penuh; %s tidak dipasang.", notebook_id, result.document_id)
+        return result, self._repo.list_sources(notebook_id)
 
     def update_source(
         self,

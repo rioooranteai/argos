@@ -3,9 +3,14 @@
 Pemrosesan dokumen TIDAK terjadi di sini. Upload hanya menyimpan file ke
 folder antrean (``<queue>/<version_id><ext>``) dan mencatat versi berstatus
 ``queued``; worker (DESIGN_GROUP_B.md §3) yang memprosesnya.
+
+Upload dokumen baru yang isinya mirip dokumen Library (Tahap 3, A §6.3) tidak
+langsung didaftarkan: file disimpan sebagai *pending* (``<queue>/pending-<id><ext>``)
+sampai user memilih "versi baru" atau "dokumen terpisah".
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import sqlite3
@@ -33,8 +38,10 @@ from app.services.library.model import (
     DocumentListItem,
     DocumentVersion,
     NewVersion,
+    PendingUpload,
     UploadFileResult,
 )
+from app.services.library.similarity import SimilarDocument, extract_text, fingerprint, most_similar
 from app.services.library.upload import ReceivedFile, count_pages, receive_upload
 from app.services.user.model import CurrentUser
 
@@ -50,6 +57,11 @@ class _VectorDeleter(Protocol):
 def queued_file_path(queue_dir: Path, version_id: str, ext: str) -> Path:
     """Lokasi file asli sebuah versi selama menunggu/diproses worker."""
     return queue_dir / f"{version_id}{ext}"
+
+
+def pending_file_path(queue_dir: Path, pending_id: str, ext: str) -> Path:
+    """Lokasi file upload yang menunggu keputusan "versi baru / dokumen terpisah"."""
+    return queue_dir / f"pending-{pending_id}{ext}"
 
 
 class LibraryService:
@@ -87,6 +99,7 @@ class LibraryService:
             raise ValidationError(
                 f"Maksimal {limit} file per upload.", code="TOO_MANY_FILES"
             )
+        self.purge_expired_pending()
 
         results: list[UploadFileResult] = []
         per_file = self._cfg.UPLOAD_MAX_FILE_MB * _MB
@@ -111,7 +124,7 @@ class LibraryService:
                         raise batch_error from None
                     raise
                 batch_bytes += received.size_bytes
-                results.append(self._register_new_document(user, received))
+                results.append(await self._register_new_document(user, received))
             except ArgosError as exc:
                 results.append(
                     UploadFileResult(
@@ -134,7 +147,7 @@ class LibraryService:
         self._check_extension(filename)
         received = await receive_upload(file, self._queue_dir, self._cfg.UPLOAD_MAX_FILE_MB * _MB)
         try:
-            page_count = self._validate_pages(received)
+            page_count = await asyncio.to_thread(self._validate_pages, received)
             existing = self._repo.find_version_by_hash(received.sha256)
             if existing is not None:
                 if existing.document_id != document_id:
@@ -144,16 +157,72 @@ class LibraryService:
                         details={"document_id": existing.document_id},
                     )
                 return self._handle_existing(user, existing, received)
-
-            new = self._new_version(user, received, page_count)
-            version = self._repo.create_next_version(document_id, new)
-            if version is None:  # kalah balapan dengan upload identik
-                return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
-            self._move_to_queue(received, version)
-            logger.info("Versi baru v%s untuk dokumen %s (%s)", version.version_no, document_id, version.id)
-            return self._result(received, "queued", version)
+            # Upload versi eksplisit tidak dicek kemiripannya, tetapi sidiknya disimpan
+            # agar versi ini menjadi pembanding upload berikutnya.
+            sketch = await asyncio.to_thread(self._fingerprint, received)
+            return self._create_version(user, document_id, received, page_count, sketch)
         finally:
             received.path.unlink(missing_ok=True)
+
+    # ── Upload yang mirip dokumen Library (Tahap 3, A §6.3) ──────────────
+
+    async def resolve_pending(
+        self, user: CurrentUser, pending_id: str, action: Literal["new_version", "separate"]
+    ) -> UploadFileResult:
+        """Selesaikan upload *pending*: jadikan versi baru dokumen kandidat, atau dokumen terpisah."""
+        self.purge_expired_pending()
+        pending = self._repo.get_pending(pending_id)
+        if pending is None or pending.user_id != user.id:
+            raise NotFoundError(
+                "Upload ini sudah kedaluwarsa atau sudah diproses. Upload ulang file-nya.",
+                code="PENDING_UPLOAD_NOT_FOUND",
+            )
+        if action == "new_version":
+            target = self._repo.get_document(pending.candidate_document_id)
+            if target is None or target.status != "active":
+                raise ConflictError(
+                    "Dokumen yang mirip sudah dihapus. Simpan sebagai dokumen terpisah.",
+                    code="SIMILAR_DOCUMENT_GONE",
+                )
+        # Klaim: hanya satu request yang bisa menyelesaikan pending ini.
+        if not self._repo.delete_pending(pending_id):
+            raise NotFoundError(
+                "Upload ini sudah diproses.", code="PENDING_UPLOAD_NOT_FOUND"
+            )
+        path = pending_file_path(self._queue_dir, pending.id, pending.file_ext)
+        if not path.exists():
+            raise NotFoundError(
+                "File upload sudah tidak ada. Upload ulang file-nya.", code="PENDING_UPLOAD_NOT_FOUND"
+            )
+        received = ReceivedFile(
+            path=path,
+            original_filename=pending.original_filename,
+            ext=pending.file_ext,
+            size_bytes=pending.size_bytes,
+            sha256=pending.content_hash,
+        )
+        try:
+            existing = self._repo.find_version_by_hash(pending.content_hash)
+            if existing is not None:  # file identik masuk lewat jalur lain sementara menunggu
+                return self._handle_existing(user, existing, received)
+            if action == "separate":
+                return self._create_document(user, received, pending.page_count, pending.fingerprint)
+            return self._create_version(
+                user, pending.candidate_document_id, received, pending.page_count, pending.fingerprint
+            )
+        finally:
+            path.unlink(missing_ok=True)
+
+    def purge_expired_pending(self) -> int:
+        """Hapus upload *pending* yang tidak diputuskan dalam batas waktu (file + baris)."""
+        purged = 0
+        for pending in self._repo.list_expired_pending(self._cfg.PENDING_UPLOAD_TTL_MINUTES):
+            if self._repo.delete_pending(pending.id):
+                pending_file_path(self._queue_dir, pending.id, pending.file_ext).unlink(missing_ok=True)
+                purged += 1
+        if purged:
+            logger.info("%d upload pending kedaluwarsa dihapus.", purged)
+        return purged
 
     # ── Query ──────────────────────────────────────────────────────────
 
@@ -305,28 +374,102 @@ class LibraryService:
             )
         return pages
 
-    def _register_new_document(self, user: CurrentUser, received: ReceivedFile) -> UploadFileResult:
+    async def _register_new_document(self, user: CurrentUser, received: ReceivedFile) -> UploadFileResult:
         try:
-            page_count = self._validate_pages(received)
+            page_count = await asyncio.to_thread(self._validate_pages, received)
             existing = self._repo.find_version_by_hash(received.sha256)
             if existing is not None:
                 return self._handle_existing(user, existing, received)
 
-            new = self._new_version(user, received, page_count)
-            display_name = PurePath(received.original_filename).stem or received.original_filename
-            version = self._repo.create_document_with_version(
-                document_id=str(uuid.uuid4()),
-                display_name=display_name,
-                owner_id=user.id,
-                version=new,
-            )
-            if version is None:  # upload identik lain menang lebih dulu
-                return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
-            self._move_to_queue(received, version)
-            logger.info("Dokumen baru %s (versi %s) masuk antrean", version.document_id, version.id)
-            return self._result(received, "queued", version)
+            sketch = await asyncio.to_thread(self._fingerprint, received)
+            similar = await asyncio.to_thread(self._find_similar, sketch)
+            if similar is not None:
+                return self._hold_pending(user, received, page_count, sketch, similar)
+            return self._create_document(user, received, page_count, sketch)
         finally:
-            received.path.unlink(missing_ok=True)
+            received.path.unlink(missing_ok=True)  # no-op bila file sudah dipindah
+
+    def _create_document(
+        self, user: CurrentUser, received: ReceivedFile, page_count: int | None, sketch: bytes | None
+    ) -> UploadFileResult:
+        new = self._new_version(user, received, page_count, sketch)
+        display_name = PurePath(received.original_filename).stem or received.original_filename
+        version = self._repo.create_document_with_version(
+            document_id=str(uuid.uuid4()),
+            display_name=display_name,
+            owner_id=user.id,
+            version=new,
+        )
+        if version is None:  # upload identik lain menang lebih dulu
+            return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
+        self._move_to_queue(received, version)
+        logger.info("Dokumen baru %s (versi %s) masuk antrean", version.document_id, version.id)
+        return self._result(received, "queued", version)
+
+    def _create_version(
+        self,
+        user: CurrentUser,
+        document_id: str,
+        received: ReceivedFile,
+        page_count: int | None,
+        sketch: bytes | None,
+    ) -> UploadFileResult:
+        new = self._new_version(user, received, page_count, sketch)
+        version = self._repo.create_next_version(document_id, new)
+        if version is None:  # kalah balapan dengan upload identik
+            return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
+        self._move_to_queue(received, version)
+        logger.info("Versi baru v%s untuk dokumen %s (%s)", version.version_no, document_id, version.id)
+        return self._result(received, "queued", version)
+
+    def _fingerprint(self, received: ReceivedFile) -> bytes | None:
+        return fingerprint(
+            extract_text(received.path, received.ext), self._cfg.SIMILARITY_MIN_SHINGLES
+        )
+
+    def _find_similar(self, sketch: bytes | None) -> SimilarDocument | None:
+        if sketch is None:
+            return None
+        return most_similar(sketch, self._repo.list_fingerprints(), self._cfg.SIMILARITY_THRESHOLD)
+
+    def _hold_pending(
+        self,
+        user: CurrentUser,
+        received: ReceivedFile,
+        page_count: int | None,
+        sketch: bytes | None,
+        similar: SimilarDocument,
+    ) -> UploadFileResult:
+        pending = PendingUpload(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            original_filename=received.original_filename,
+            file_ext=received.ext,
+            size_bytes=received.size_bytes,
+            content_hash=received.sha256,
+            page_count=page_count,
+            fingerprint=sketch,
+            candidate_document_id=similar.document_id,
+            score=similar.score,
+        )
+        self._repo.create_pending(pending)
+        try:
+            os.replace(received.path, pending_file_path(self._queue_dir, pending.id, received.ext))
+        except OSError:
+            self._repo.delete_pending(pending.id)
+            raise
+        logger.info(
+            "Upload %r mirip dokumen %s (skor %.3f); menunggu keputusan user.",
+            received.original_filename, similar.document_id, similar.score,
+        )
+        return UploadFileResult(
+            filename=received.original_filename,
+            status="similar",
+            pending_id=pending.id,
+            similar_document_id=similar.document_id,
+            similar_document_name=similar.display_name,
+            similarity=similar.score,
+        )
 
     def _handle_existing(
         self, user: CurrentUser, existing: DocumentVersion | None, received: ReceivedFile
@@ -342,7 +485,13 @@ class LibraryService:
         # Sudah ready atau sedang diproses → pakai yang ada, tanpa biaya.
         return self._result(received, "existing", existing)
 
-    def _new_version(self, user: CurrentUser, received: ReceivedFile, page_count: int | None) -> NewVersion:
+    def _new_version(
+        self,
+        user: CurrentUser,
+        received: ReceivedFile,
+        page_count: int | None,
+        sketch: bytes | None = None,
+    ) -> NewVersion:
         return NewVersion(
             id=str(uuid.uuid4()),
             content_hash=received.sha256,
@@ -352,6 +501,7 @@ class LibraryService:
             page_count=page_count,
             uploaded_by=user.id,
             pipeline_version=self._cfg.PIPELINE_VERSION,
+            fingerprint=sketch,
         )
 
     def _move_to_queue(self, received: ReceivedFile, version: DocumentVersion) -> None:

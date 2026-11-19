@@ -12,6 +12,7 @@ from app.services.library.model import (
     DocumentVersion,
     LibraryDocument,
     NewVersion,
+    PendingUpload,
 )
 
 
@@ -24,8 +25,8 @@ def _ts(value) -> datetime | None:
 _INSERT_VERSION = """
     INSERT INTO document_versions (
         id, document_id, version_no, content_hash, original_filename, file_ext,
-        size_bytes, page_count, uploaded_by, pipeline_version, stage
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        size_bytes, page_count, uploaded_by, pipeline_version, stage, fingerprint
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 _LIST_SQL = """
@@ -44,6 +45,7 @@ def _version_params(document_id: str, version_no: int, v: NewVersion) -> tuple:
     return (
         v.id, document_id, version_no, v.content_hash, v.original_filename, v.file_ext,
         v.size_bytes, v.page_count, v.uploaded_by, v.pipeline_version, STAGE_QUEUED,
+        v.fingerprint,
     )
 
 
@@ -263,6 +265,77 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
             return cur.rowcount
 
     # ── Mapper ─────────────────────────────────────────────────────────
+
+    # ── Tahap 3: saran kemiripan ────────────────────────────────────────
+
+    def list_fingerprints(self) -> list[tuple[str, str, bytes]]:
+        with self._db.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT d.id, d.display_name, v.fingerprint
+                FROM library_documents d
+                JOIN document_versions v ON v.id = (
+                    SELECT id FROM document_versions
+                    WHERE document_id = d.id AND fingerprint IS NOT NULL
+                      AND stage NOT IN ('failed', 'cancelled')
+                    ORDER BY version_no DESC LIMIT 1
+                )
+                WHERE d.status = 'active'
+                """
+            ).fetchall()
+        return [(r[0], r[1], bytes(r[2])) for r in rows]
+
+    def create_pending(self, pending: PendingUpload) -> None:
+        with self._db.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO pending_uploads (
+                    id, user_id, original_filename, file_ext, size_bytes, content_hash,
+                    page_count, fingerprint, candidate_document_id, score
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    pending.id, pending.user_id, pending.original_filename, pending.file_ext,
+                    pending.size_bytes, pending.content_hash, pending.page_count,
+                    pending.fingerprint, pending.candidate_document_id, pending.score,
+                ),
+            )
+
+    def get_pending(self, pending_id: str) -> PendingUpload | None:
+        with self._db.get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM pending_uploads WHERE id = ?", (pending_id,)
+            ).fetchone()
+        return self._to_pending(row) if row else None
+
+    def delete_pending(self, pending_id: str) -> bool:
+        with self._db.get_connection() as conn:
+            cur = conn.execute("DELETE FROM pending_uploads WHERE id = ?", (pending_id,))
+            return cur.rowcount > 0
+
+    def list_expired_pending(self, older_than_minutes: int) -> list[PendingUpload]:
+        with self._db.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM pending_uploads WHERE created_at <= datetime('now', ?)",
+                (f"-{int(older_than_minutes)} minutes",),
+            ).fetchall()
+        return [self._to_pending(r) for r in rows]
+
+    @staticmethod
+    def _to_pending(row: sqlite3.Row) -> PendingUpload:
+        return PendingUpload(
+            id=row["id"],
+            user_id=row["user_id"],
+            original_filename=row["original_filename"],
+            file_ext=row["file_ext"],
+            size_bytes=row["size_bytes"],
+            content_hash=row["content_hash"],
+            page_count=row["page_count"],
+            fingerprint=bytes(row["fingerprint"]) if row["fingerprint"] is not None else None,
+            candidate_document_id=row["candidate_document_id"],
+            score=row["score"],
+            created_at=_ts(row["created_at"]),
+        )
 
     def _to_item(self, conn: sqlite3.Connection, row: sqlite3.Row) -> DocumentListItem:
         version = None

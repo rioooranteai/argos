@@ -125,6 +125,12 @@ class AppConfig:
     UPLOAD_MAX_BATCH_MB: int = 30
     UPLOAD_ALLOWED_EXTENSIONS: tuple[str, ...] = (".pdf", ".md")
 
+    # ── Saran kemiripan saat upload (A §6.3, Tahap 3) ────────────────
+    # Dikalibrasi pada data/eval_corpus: produk berbeda tertinggi 0,894; versi baru ≥ 0,913.
+    SIMILARITY_THRESHOLD: float = 0.9
+    SIMILARITY_MIN_SHINGLES: int = 200     # teks lebih sedikit (mis. PDF scan) → tanpa saran
+    PENDING_UPLOAD_TTL_MINUTES: int = 60   # pilihan yang tidak diputuskan → file dihapus
+
     # ── Worker ───────────────────────────────────────────────────────
     # Naikkan saat prompt/chunker/model ingestion berubah (A §5 `pipeline_version`).
     PIPELINE_VERSION: str = "1"

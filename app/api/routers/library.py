@@ -8,6 +8,7 @@ from app.services.library.model import (
     DocumentDetailOut,
     DocumentOut,
     RenameDocumentRequest,
+    ResolvePendingRequest,
     UploadBatchOut,
     UploadFileResult,
     VersionOut,
@@ -29,8 +30,23 @@ async def upload_documents(
     svc: LibraryService = Depends(get_library_service),
 ) -> UploadBatchOut:
     """Hasil per file: `queued` (masuk antrean), `existing` (file identik sudah ada,
-    dipakai tanpa diproses ulang), atau `rejected` (beserta alasannya)."""
+    dipakai tanpa diproses ulang), `similar` (mirip dokumen Library, menunggu
+    keputusan lewat `POST /pending/{pending_id}/resolve`), atau `rejected`."""
     return UploadBatchOut(results=await svc.upload_documents(user, files))
+
+
+@router.post(
+    "/pending/{pending_id}/resolve",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload yang mirip: jadikan versi baru dokumen yang mirip, atau dokumen terpisah",
+)
+async def resolve_pending(
+    pending_id: str,
+    body: ResolvePendingRequest,
+    user: CurrentUser = Depends(get_current_user),
+    svc: LibraryService = Depends(get_library_service),
+) -> UploadFileResult:
+    return await svc.resolve_pending(user, pending_id, body.action)
 
 
 @router.post(

@@ -37,6 +37,7 @@ from app.services.notebook.model import (
     SourceUploadOut,
     UpdateSourceRequest,
 )
+from app.services.library.model import ResolvePendingRequest
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 
@@ -142,6 +143,22 @@ async def upload_sources(
 ) -> SourceUploadOut:
     results, sources = await svc.upload(user, notebook_id, files)
     return SourceUploadOut(results=results, sources=_sources_out(sources))
+
+
+@router.post(
+    "/{notebook_id}/sources/pending/{pending_id}/resolve",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload yang mirip dokumen Library: pilih versi baru / dokumen terpisah, lalu pasang",
+)
+async def resolve_pending_source(
+    notebook_id: str,
+    pending_id: str,
+    body: ResolvePendingRequest,
+    user: CurrentUser = Depends(get_current_user),
+    svc: NotebookService = Depends(get_notebook_service),
+) -> SourceUploadOut:
+    result, sources = await svc.resolve_pending(user, notebook_id, pending_id, body.action)
+    return SourceUploadOut(results=[result], sources=_sources_out(sources))
 
 
 @router.patch("/{notebook_id}/sources/{document_id}", summary="Centang/hapus centang atau pakai versi terbaru")

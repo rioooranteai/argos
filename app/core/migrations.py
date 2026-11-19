@@ -175,6 +175,26 @@ MIGRATIONS: list[tuple[int, str]] = [
         -- JSON {chunks, chunks_reused, units, units_cached, images, images_cached}.
         ALTER TABLE document_versions ADD COLUMN reuse_stats TEXT;
     """),
+    (4, """
+        -- Saran kemiripan saat upload (Tahap 3): sidik teks bottom-k per versi, dan
+        -- upload yang menunggu keputusan user "versi baru" / "dokumen terpisah".
+        ALTER TABLE document_versions ADD COLUMN fingerprint BLOB;
+
+        CREATE TABLE pending_uploads (
+            id                     TEXT PRIMARY KEY,
+            user_id                TEXT NOT NULL REFERENCES users(id),
+            original_filename      TEXT NOT NULL,
+            file_ext               TEXT NOT NULL,
+            size_bytes             INTEGER NOT NULL,
+            content_hash           TEXT NOT NULL,
+            page_count             INTEGER,
+            fingerprint            BLOB,
+            candidate_document_id  TEXT NOT NULL,         -- tanpa FK: kandidat boleh terhapus
+            score                  REAL NOT NULL,
+            created_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_pending_uploads_created ON pending_uploads (created_at);
+    """),
 ]
 
 
