@@ -1,14 +1,6 @@
-from typing import Literal
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
-
-
-class ExtractionResult(BaseModel):
-    """Outcome of one document extraction run."""
-
-    status: Literal["success", "failed"]
-    document_id: str
-    total_features_extracted: int = 0
 
 
 class CompetitorFeature(BaseModel):
@@ -57,3 +49,27 @@ class CompetitorFeature(BaseModel):
             "Null if none stated."
         ),
     )
+
+
+class ExtractedFeature(CompetitorFeature):
+    """Output LLM: feature + label bagian asalnya (DESIGN_GROUP_B.md §7)."""
+
+    section_ref: str = Field(
+        default="",
+        description="Label bagian sumber, mis. 'S1'. Harus salah satu label di input.",
+    )
+
+
+@dataclass(frozen=True)
+class FeatureRow:
+    """Feature siap simpan, sudah terikat ke bagian dokumen (asal-usul)."""
+
+    section_hash: str
+    section_heading: str
+    page_number: int | None
+    brand_name: str | None
+    product_name: str
+    price: float | None
+    price_currency: str | None
+    advantages: str | None
+    disadvantages: str | None

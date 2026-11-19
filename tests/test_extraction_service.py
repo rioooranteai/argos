@@ -1,150 +1,151 @@
-"""Tests for ExtractionService.
-
-Notably regression-tests the f.model_dump bug (method ref vs call) that
-silently broke feature persistence before this refactor.
-"""
+"""ExtractionService: per unit, section_ref → bagian, cache, timeout, concurrency."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
 
 import pytest
 
-from app.infrastructure.interface.feature_repository import BaseFeatureRepository
-from app.services.extraction.model import CompetitorFeature
+from app.core.database import Database
+from app.core.migrations import run_migrations
+from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
+from app.services.extraction.model import ExtractedFeature
 from app.services.extraction.service import ExtractionService
+from app.services.ingestion.chunker import build_sections, build_units
+from app.services.ingestion.model import DocumentElement, ElementType
 
 
-class FakeFeatureRepository(BaseFeatureRepository):
-    """In-memory repository for deterministic tests."""
+class FakeProvider:
+    def __init__(self, fn):
+        self.fn = fn
+        self.calls: list[str] = []
+        self.active = 0
+        self.max_active = 0
 
-    def __init__(self):
-        self.calls: list[tuple[list[dict], str]] = []
+    async def extract(self, text: str):
+        self.calls.append(text)
+        self.active += 1
+        self.max_active = max(self.max_active, self.active)
+        try:
+            return await self.fn(text)
+        finally:
+            self.active -= 1
 
-    def insert_batch(self, features: list[dict], document_id: str) -> None:
-        self.calls.append((features, document_id))
 
-
-@pytest.fixture
-def fake_features() -> list[CompetitorFeature]:
-    return [
-        CompetitorFeature(
-            brand_name="Scopely",
-            product_name="MONOPOLY GO!",
-            price=None,
-            price_currency=None,
-            advantages="$1.2B revenue 2023",
-            disadvantages=None,
-        ),
-        CompetitorFeature(
-            brand_name="King",
-            product_name="Candy Crush",
-            price=0.99,
-            price_currency="USD",
-            advantages="Massive DAU",
-            disadvantages="Ageing IP",
-        ),
+def _units(n: int = 1):
+    elements = [
+        DocumentElement(
+            element_type=ElementType.TEXT, content=f"isi bagian {i} " * 200, page_number=i + 1,
+            section_heading=f"H{i}", metadata={"headings": [f"Root{i}", f"H{i}"]},
+        )
+        for i in range(n)
     ]
+    sections = build_sections(elements)
+    return sections, build_units(sections, lambda t: len(t.split()), 10, 4000)
 
 
 @pytest.fixture
-def long_chunks():
-    base = "Scopely menerbitkan banyak game dengan revenue tinggi di 2023. " * 3
-    return [base, base, base]
+def cache(tmp_path):
+    db = Database(db_path=tmp_path / "t.db")
+    with db.get_connection() as conn:
+        run_migrations(conn)
+    return SQLiteCacheRepository(db)
 
 
-def _build_service(extract_fn) -> tuple[ExtractionService, FakeFeatureRepository]:
-    provider_mock = MagicMock()
-    provider_mock.extract = extract_fn
-    repo = FakeFeatureRepository()
-    with patch(
-        "app.services.extraction.service.ExtractionFactory.create",
-        return_value=provider_mock,
-    ):
-        service = ExtractionService(repository=repo, provider="pydantic_ai")
-    return service, repo
+def _svc(provider, cache, timeout=5.0, limit=3):
+    return ExtractionService(provider, cache, asyncio.Semaphore(limit), "p1", timeout)
 
 
-class TestExtractionService:
+async def test_section_ref_maps_to_section(cache):
+    sections, units = _units(1)
 
-    @pytest.mark.asyncio
-    async def test_persists_extracted_features_as_dicts(
-        self, fake_features, long_chunks
-    ):
-        """Regression: previously `f.model_dump` (method ref, no parens) was
-        passed to the persistence layer. Verify dicts are passed instead."""
-        async def _extract(_text):
-            return fake_features
+    async def extract(_):
+        return [ExtractedFeature(brand_name="Toyota", product_name=" Avanza ", price=230.0, section_ref="S1")]
 
-        service, repo = _build_service(_extract)
-        result = await service.process_document_texts(
-            document_id="doc-1",
-            chunks_text=long_chunks,
-        )
+    [row] = await _svc(FakeProvider(extract), cache).extract_units(units)
+    assert row.section_hash == sections[0].section_hash
+    assert row.section_heading == "H0"
+    assert row.page_number == 1
+    assert row.product_name == "Avanza"
 
-        assert result["status"] == "success"
-        assert result["total_features_extracted"] == 2
-        assert len(repo.calls) == 1
-        passed_features, doc_id = repo.calls[0]
-        assert doc_id == "doc-1"
-        for f in passed_features:
-            assert isinstance(f, dict)
-            assert "brand_name" in f
-            assert "product_name" in f
-            assert "price_currency" in f
 
-    @pytest.mark.asyncio
-    async def test_skips_short_chunks(self):
-        async def _extract(_text):
-            return []
+async def test_invalid_ref_falls_back_and_empty_product_dropped(cache):
+    sections, units = _units(1)
 
-        service, repo = _build_service(_extract)
-        result = await service.process_document_texts(
-            document_id="doc-2",
-            chunks_text=["short", "  ", ""],
-        )
+    async def extract(_):
+        return [
+            ExtractedFeature(product_name="X", section_ref="S9"),
+            ExtractedFeature(product_name="Y", section_ref="[S1]"),
+            ExtractedFeature(product_name="  ", section_ref="S1"),
+        ]
 
-        assert result["status"] == "failed"
-        assert result["total_features_extracted"] == 0
-        assert repo.calls == []
+    rows = await _svc(FakeProvider(extract), cache).extract_units(units)
+    assert [r.product_name for r in rows] == ["X", "Y"]
+    assert all(r.section_hash == sections[0].section_hash for r in rows)
 
-    @pytest.mark.asyncio
-    async def test_filters_features_with_missing_required_fields(
-        self, long_chunks
-    ):
-        async def _extract(_text):
-            return [
-                # Valid: has product_name (brand nullable per Rule 20).
-                CompetitorFeature(brand_name="Valid", product_name="X"),
-                # Valid: brand_name is allowed to be None / empty.
-                CompetitorFeature(brand_name=None, product_name="Y"),
-                # Filtered: empty product_name.
-                CompetitorFeature(brand_name="Z", product_name=""),
-            ]
 
-        service, repo = _build_service(_extract)
-        result = await service.process_document_texts(
-            document_id="doc-3",
-            chunks_text=long_chunks,
-        )
+async def test_no_truncation_every_unit_extracted(cache):
+    _, units = _units(5)
 
-        assert result["total_features_extracted"] == 2
-        passed_features, _ = repo.calls[0]
-        assert len(passed_features) == 2
-        assert passed_features[0]["product_name"] == "X"
-        assert passed_features[1]["product_name"] == "Y"
+    async def extract(_):
+        return []
 
-    @pytest.mark.asyncio
-    async def test_extraction_error_returns_failed(self, long_chunks):
-        """Regression: previously returned status=success even on failure."""
-        async def _boom(_text):
-            raise RuntimeError("LLM exploded")
+    provider = FakeProvider(extract)
+    await _svc(provider, cache).extract_units(units)
+    assert len(provider.calls) == len(units) == 5
 
-        service, repo = _build_service(_boom)
-        result = await service.process_document_texts(
-            document_id="doc-4",
-            chunks_text=long_chunks,
-        )
 
-        assert result["status"] == "failed"
-        assert result["total_features_extracted"] == 0
-        assert repo.calls == []
+async def test_cache_skips_llm_on_second_run(cache):
+    _, units = _units(2)
+
+    async def extract(_):
+        return [ExtractedFeature(product_name="Z", section_ref="S1")]
+
+    provider = FakeProvider(extract)
+    first = await _svc(provider, cache).extract_units(units)
+    second = await _svc(provider, cache).extract_units(units)
+    assert len(provider.calls) == 2
+    assert first == second
+
+
+async def test_timeout_raises(cache):
+    _, units = _units(1)
+
+    async def slow(_):
+        await asyncio.sleep(2)
+        return []
+
+    with pytest.raises(TimeoutError):
+        await _svc(FakeProvider(slow), cache, timeout=0.05).extract_units(units)
+
+
+async def test_error_propagates_and_completed_units_cached(cache):
+    _, units = _units(2)
+    target = units[1].prompt_text()
+
+    async def flaky(text):
+        if text == target:
+            raise RuntimeError("LLM down")
+        return []
+
+    provider = FakeProvider(flaky)
+    with pytest.raises(RuntimeError):
+        await _svc(provider, cache, limit=1).extract_units(units)
+
+    async def ok(_):
+        return []
+
+    provider2 = FakeProvider(ok)
+    await _svc(provider2, cache).extract_units(units)
+    assert provider2.calls == [target]  # unit pertama dari cache
+
+
+async def test_concurrency_limited(cache):
+    _, units = _units(6)
+
+    async def extract(_):
+        await asyncio.sleep(0.02)
+        return []
+
+    provider = FakeProvider(extract)
+    await _svc(provider, cache, limit=2).extract_units(units)
+    assert provider.max_active <= 2

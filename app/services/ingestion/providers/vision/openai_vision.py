@@ -24,7 +24,7 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
                 api_key=secrets.OPENAI_API_KEY,
                 temperature=0.0,
                 max_tokens=1500,
-                timeout=45,
+                timeout=app_config.VISION_TIMEOUT,
                 max_retries=2,
             )
         except Exception as e:

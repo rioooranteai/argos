@@ -1,69 +1,104 @@
+"""Deskripsi gambar dengan Vision: dibatasi, di-cache, dan kegagalan tercatat.
+
+(DESIGN_GROUP_B.md §6, audit poin 10.)
+"""
+from __future__ import annotations
+
 import asyncio
 import logging
-import uuid
-from typing import List
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
-from app.services.ingestion.factories.loader_factory import LoaderFactory
-from app.services.ingestion.factories.vision_factory import VisionFactory
-from app.services.ingestion.chunker import ContentAwareChunker
-from app.services.ingestion.model import Chunk, DocumentElement
+from app.infrastructure.interface.cache_repository import BaseCacheRepository
+from app.services.ingestion.base.vision import BaseVisionProcessor
+from app.services.ingestion.model import DocumentElement, ElementType, Section
 
 logger = logging.getLogger(__name__)
 
-class IngestionService:
-    """
-    Service khusus untuk menangani proses ekstraksi dokumen mentah (PDF/MD)
-    menjadi potongan-potongan teks (Chunks) yang siap di-embed.
-    """
+FAILED_IMAGE_TEXT = "[GAMBAR TIDAK TERBACA]"
+DESCRIPTION_PREFIX = "[DESKRIPSI VISUAL GRAFIK/GAMBAR]: "
 
+
+@dataclass(frozen=True)
+class VisionOutcome:
+    total: int
+    described: int
+    from_cache: int
+    failed: int
+
+
+def figures_in(sections: list[Section]) -> list[DocumentElement]:
+    return [
+        el
+        for s in sections
+        for el in s.elements
+        if el.element_type == ElementType.FIGURE and el.image_bytes
+    ]
+
+
+class FigureDescriber:
     def __init__(
-            self,
-            loader_factory: LoaderFactory,
-            vision_factory: VisionFactory,
-            chunker: ContentAwareChunker,
-    ):
-        self.loader_factory = loader_factory
-        self.vision_factory = vision_factory
-        self.chunker = chunker
+        self,
+        processor: BaseVisionProcessor,
+        cache: BaseCacheRepository,
+        model_name: str,
+        semaphore: asyncio.Semaphore,
+    ) -> None:
+        self._processor = processor
+        self._cache = cache
+        self._model = model_name
+        self._semaphore = semaphore
 
-    async def process_document(self, file_path: str, document_id: str | None = None) -> List[Chunk]:
-        """
-        Mengeksekusi siklus penuh (end-to-end) pembacaan satu dokumen.
-        """
-        document_id = document_id or f"doc_{uuid.uuid4().hex[:8]}"
+    async def describe_all(
+        self,
+        sections: list[Section],
+        on_progress: Callable[[int], Awaitable[None]] | None = None,
+    ) -> VisionOutcome:
+        """Isi `content` setiap gambar dengan deskripsi. Gambar yang gagal setelah
+        retry diberi penanda dan dihitung, tidak menggagalkan dokumen."""
+        figures = figures_in(sections)
+        done = 0
+        stats = {"cache": 0, "ok": 0, "failed": 0}
+        lock = asyncio.Lock()
 
-        loader = self.loader_factory.get_loader(file_path)
-        # Docling bersifat sinkron & berat; jalankan di thread agar event loop
-        # (chat, health check, request lain) tidak ikut tertahan.
-        elements = await asyncio.to_thread(loader.load, file_path)
+        async def one(el: DocumentElement) -> None:
+            nonlocal done
+            kind = await self._describe(el)
+            async with lock:
+                stats[kind] += 1
+                done += 1
+                if on_progress is not None:
+                    await on_progress(done)
 
-        if not elements:
-            return []
-
-        vision_processor = self.vision_factory.get_processor()
-        vision_tasks = []
-
-        for el in elements:
-            if vision_processor.supports(el):
-                task = self._process_single_image(vision_processor, el)
-                vision_tasks.append(task)
-
-        if vision_tasks:
-            await asyncio.gather(*vision_tasks)
-
-        chunks = self.chunker.process_elements(
-            elements=elements,
-            document_id=document_id
+        await asyncio.gather(*(one(el) for el in figures))
+        return VisionOutcome(
+            total=len(figures),
+            described=stats["ok"],
+            from_cache=stats["cache"],
+            failed=stats["failed"],
         )
 
-        return chunks
+    async def _describe(self, el: DocumentElement) -> str:
+        key = el.metadata.get("image_hash", "")
+        cached = await asyncio.to_thread(self._cache.get_vision, key, self._model) if key else None
+        if cached is not None:
+            el.content = DESCRIPTION_PREFIX + cached
+            el.image_bytes = None
+            return "cache"
 
-    async def _process_single_image(self, processor, element: DocumentElement):
-        """Fungsi pembantu internal untuk memanggil Vision API."""
         try:
-            deskripsi = await processor.describe_image(element)
-            element.content = f"[DESKRIPSI VISUAL GRAFIK/GAMBAR]: {deskripsi}"
-            element.image_bytes = None
-        except Exception as e:
-            element.content = "[GAMBAR GAGAL DIPROSES OLEH AI]"
-            element.image_bytes = None
+            async with self._semaphore:
+                description = await self._processor.describe_image(el)
+        except Exception as exc:
+            logger.warning(
+                "Vision gagal untuk gambar hal. %s (%s): %s", el.page_number, key[:12], exc
+            )
+            el.content = FAILED_IMAGE_TEXT
+            el.image_bytes = None
+            return "failed"
+
+        if key:
+            await asyncio.to_thread(self._cache.put_vision, key, self._model, description)
+        el.content = DESCRIPTION_PREFIX + description
+        el.image_bytes = None
+        return "ok"

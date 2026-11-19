@@ -1,13 +1,15 @@
 import logging
 from pathlib import Path
 
-from app.core.config import app_config, secrets
-from app.services.extraction.base.extraction_base import BaseExtractionProvider
-from app.services.extraction.exceptions import ExtractionAgentError
-from app.services.extraction.model import CompetitorFeature
+from openai import AsyncOpenAI
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+
+from app.core.config import app_config, secrets
+from app.services.extraction.base.extraction_base import BaseExtractionProvider
+from app.services.extraction.exceptions import ExtractionAgentError
+from app.services.extraction.model import ExtractedFeature
 
 logger = logging.getLogger(__name__)
 
@@ -24,24 +26,25 @@ def _load_prompt(path: Path) -> str:
 
 
 class PydanticAIExtractionProvider(BaseExtractionProvider):
-
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, timeout: float | None = None, max_retries: int = 2):
         resolved_model = model or app_config.OPENAI_LLM_MODEL
         system_prompt = _load_prompt(_PROMPT_PATH)
 
+        # Klien OpenAI eksplisit: API key dari Secrets (.env tidak dimuat ke env OS),
+        # timeout & retry HTTP (timeout/429/5xx) diatur di sini, tidak memakai default 600 dtk.
+        client = AsyncOpenAI(
+            api_key=secrets.OPENAI_API_KEY,
+            timeout=timeout or app_config.EXTRACTION_TIMEOUT,
+            max_retries=max_retries,
+        )
         self._agent = Agent(
-            # API key diberikan eksplisit: .env tidak lagi dimuat ke environment OS.
-            model=OpenAIChatModel(
-                resolved_model,
-                provider=OpenAIProvider(api_key=secrets.OPENAI_API_KEY),
-            ),
-            output_type=list[CompetitorFeature],
+            model=OpenAIChatModel(resolved_model, provider=OpenAIProvider(openai_client=client)),
+            output_type=list[ExtractedFeature],
             system_prompt=system_prompt,
         )
-
         logger.info(f"PydanticAIExtractionProvider siap dengan model: '{resolved_model}'")
 
-    async def extract(self, text: str) -> list[CompetitorFeature]:
+    async def extract(self, text: str) -> list[ExtractedFeature]:
         try:
             result = await self._agent.run(text)
             return result.output

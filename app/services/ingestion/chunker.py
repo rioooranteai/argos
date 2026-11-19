@@ -1,63 +1,221 @@
+"""Bagian dokumen, unit ekstraksi, dan chunk vector (DESIGN_GROUP_A.md §3, B §7).
+
+Alur:
+    elemen Docling → build_sections()      bagian per heading + section_hash isi-saja
+                   → build_units()         bagian kecil digabung → unit ekstraksi
+                   → build_index_chunks()  satu chunk per elemen untuk vector store
+"""
+from __future__ import annotations
+
 import hashlib
-import logging
-from pathlib import Path
-from typing import List
+import re
+from collections.abc import Callable
 
-from app.services.ingestion.model import DocumentElement, Chunk
+from app.services.ingestion.model import (
+    DocumentElement,
+    ElementType,
+    ExtractionUnit,
+    IndexChunk,
+    Section,
+)
 
-logger = logging.getLogger(__name__)
+_WS = re.compile(r"\s+")
 
-class ContentAwareChunker:
+
+def _normalize(text: str) -> str:
+    return _WS.sub(" ", text).strip().lower()
+
+
+def image_hash(image_bytes: bytes) -> str:
+    return hashlib.sha256(image_bytes).hexdigest()
+
+
+def _element_fingerprint(el: DocumentElement) -> str:
+    if el.element_type == ElementType.FIGURE:
+        # Deskripsi Vision tidak deterministik → identitas gambar = hash byte-nya.
+        return "img:" + (el.metadata.get("image_hash") or "")
+    return _normalize(el.content)
+
+
+def _section_hash(heading: str, elements: list[DocumentElement]) -> str:
+    digest = hashlib.sha256()
+    digest.update(_normalize(heading).encode())
+    for el in elements:
+        digest.update(b"\x1f")
+        digest.update(_element_fingerprint(el).encode())
+    return digest.hexdigest()
+
+
+def _headings(el: DocumentElement) -> list[str]:
+    heads = el.metadata.get("headings")
+    if heads:
+        return [str(h) for h in heads]
+    return [el.section_heading] if el.section_heading else []
+
+
+def build_sections(elements: list[DocumentElement]) -> list[Section]:
+    """Kelompokkan elemen berurutan dengan heading yang sama menjadi satu bagian.
+
+    Gambar dari Docling datang di akhir (bukan urutan baca), sehingga ditempatkan
+    ke bagian terakhir yang dimulai pada atau sebelum halaman gambar tersebut.
     """
-    Tugas barunya adalah sebagai 'Adapter & Injector':
-    1. Menyuntikkan metadata (Nama Kompetitor, Bab) langsung ke dalam teks (Context Injection).
-    2. Mengubah DocumentElement menjadi format Chunk standar untuk Chroma DB.
+    for el in elements:
+        if el.element_type == ElementType.FIGURE and el.image_bytes:
+            el.metadata["image_hash"] = image_hash(el.image_bytes)
+
+    text_elements = [e for e in elements if e.element_type != ElementType.FIGURE]
+    figures = [e for e in elements if e.element_type == ElementType.FIGURE]
+
+    groups: list[tuple[list[str], list[DocumentElement]]] = []
+    for el in text_elements:
+        heads = _headings(el)
+        if groups and groups[-1][0] == heads:
+            groups[-1][1].append(el)
+        else:
+            groups.append((heads, [el]))
+
+    for fig in figures:
+        target = None
+        for heads, els in groups:
+            if els[0].page_number <= fig.page_number:
+                target = els
+        if target is None:
+            groups.append(([], [fig]))  # dokumen tanpa teks (mis. hanya gambar)
+        else:
+            target.append(fig)
+
+    sections: list[Section] = []
+    seen: dict[str, int] = {}
+    for ord_, (heads, els) in enumerate(groups):
+        heading = heads[-1] if heads else ""
+        h = _section_hash(heading, els)
+        # Dua bagian dengan isi identik (mis. footer berulang): bedakan agar PK unik.
+        if h in seen:
+            seen[h] += 1
+            h = hashlib.sha256(f"{h}:{seen[h]}".encode()).hexdigest()
+        else:
+            seen[h] = 0
+        sections.append(
+            Section(
+                section_hash=h,
+                heading=heading,
+                parent_heading=heads[-2] if len(heads) >= 2 else "",
+                page_start=min(e.page_number for e in els),
+                ord=ord_,
+                elements=els,
+            )
+        )
+    return sections
+
+
+def build_units(
+    sections: list[Section],
+    count_tokens: Callable[[str], int],
+    min_section_tokens: int,
+    max_unit_tokens: int,
+) -> list[ExtractionUnit]:
+    """Gabungkan bagian kecil dengan tetangganya (heading induk sama) sampai batas token.
+
+    Bagian yang lebih besar dari ``max_unit_tokens`` dipecah per elemen menjadi
+    beberapa unit; semua pecahan tetap membawa ``section_hash`` bagian aslinya.
     """
+    units: list[list[Section]] = []
+    current: list[Section] = []
+    current_tokens = 0
 
-    def generate_chunk_id(self, text: str, page: int) -> str:
-        """Membuat ID unik berbasis hash dari isi teks dan halamannya."""
-        unique_string = f"{page}-{text}"
-        return hashlib.md5(unique_string.encode("utf-8")).hexdigest()[:16]
+    for section, tokens in _split_oversized(sections, count_tokens, max_unit_tokens):
+        can_merge = (
+            current
+            and current[-1].parent_heading == section.parent_heading
+            and current_tokens + tokens <= max_unit_tokens
+            and (tokens < min_section_tokens or current_tokens < min_section_tokens)
+        )
+        if can_merge:
+            current.append(section)
+            current_tokens += tokens
+        else:
+            if current:
+                units.append(current)
+            current, current_tokens = [section], tokens
+    if current:
+        units.append(current)
 
-    def process_elements(
-        self,
-        elements: List[DocumentElement],
-        document_id: str
-    ) -> List[Chunk]:
-        """Memproses elemen dari Loader dan menyiapkannya untuk Vector DB."""
-        chunks: List[Chunk] = []
+    result = []
+    for group in units:
+        labels = {f"S{i + 1}": s.section_hash for i, s in enumerate(group)}
+        # Hash isi unit (bukan hanya section_hash) agar pecahan bagian besar
+        # mendapat kunci cache yang berbeda.
+        unit_hash = hashlib.sha256(
+            "|".join(f"{s.section_hash}:{_normalize(s.text)}" for s in group).encode()
+        ).hexdigest()
+        result.append(ExtractionUnit(unit_hash=unit_hash, sections=group, labels=labels))
+    return result
 
-        for i, element in enumerate(elements):
-            if not element.content or not element.content.strip():
+
+def _split_oversized(
+    sections: list[Section], count_tokens: Callable[[str], int], max_tokens: int
+) -> list[tuple[Section, int]]:
+    out: list[tuple[Section, int]] = []
+    for section in sections:
+        if not section.text.strip():
+            continue
+        tokens = count_tokens(section.text)
+        if tokens <= max_tokens or len(section.elements) == 1:
+            out.append((section, tokens))
+            continue
+        part: list[DocumentElement] = []
+        part_tokens = 0
+        for el in section.elements:
+            t = count_tokens(el.content)
+            if part and part_tokens + t > max_tokens:
+                out.append((_part(section, part), part_tokens))
+                part, part_tokens = [], 0
+            part.append(el)
+            part_tokens += t
+        if part:
+            out.append((_part(section, part), part_tokens))
+    return out
+
+
+def _part(section: Section, elements: list[DocumentElement]) -> Section:
+    return Section(
+        section_hash=section.section_hash,
+        heading=section.heading,
+        parent_heading=section.parent_heading,
+        page_start=min(e.page_number for e in elements),
+        ord=section.ord,
+        elements=elements,
+    )
+
+
+def build_index_chunks(
+    sections: list[Section], document_id: str, version_id: str, display_name: str
+) -> list[IndexChunk]:
+    """Satu chunk per elemen non-kosong. ID = hash(version_id + isi): unik antar versi."""
+    chunks: list[IndexChunk] = []
+    seen: set[str] = set()
+    for section in sections:
+        for el in section.elements:
+            if not el.content or not el.content.strip():
                 continue
-
-            raw_source = element.metadata.get("source", "Unknown")
-            clean_filename = Path(raw_source).name
-
-            element.metadata["source"] = clean_filename
-            element.metadata["document_id"] = document_id
-
-            injected_text = (
-                f"[Dokumen: {clean_filename}]\n"
-                f"{element.content}"
+            text = f"[Dokumen: {display_name}]\n{el.content.strip()}"
+            chunk_id = hashlib.sha256(f"{version_id}\x1f{text}".encode()).hexdigest()[:32]
+            if chunk_id in seen:
+                continue
+            seen.add(chunk_id)
+            chunks.append(
+                IndexChunk(
+                    chunk_id=chunk_id,
+                    text=text,
+                    metadata={
+                        "document_id": document_id,
+                        "version_id": version_id,
+                        "section_hash": section.section_hash,
+                        "section_heading": section.heading,
+                        "page_number": el.page_number,
+                        "content_type": el.element_type.value,
+                        "source": display_name,
+                    },
+                )
             )
-
-            chunk_id = self.generate_chunk_id(injected_text, element.page_number)
-
-            chunk = Chunk(
-                chunk_id=chunk_id,
-                source_doc=clean_filename,
-                chunk_index=i,
-                page_number=element.page_number,
-                section_heading=element.section_heading,
-                content_type=element.element_type,
-                text=injected_text,
-                metadata=element.metadata
-            )
-
-            if element.image_bytes:
-                chunk.image_bytes = element.image_bytes
-
-            chunks.append(chunk)
-
-        return chunks
+    return chunks

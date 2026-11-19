@@ -1,34 +1,24 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any
+
+from app.services.ingestion.model import IndexChunk
+from app.services.vector_store.model import SearchHit
+
 
 class BaseVectorStoreProvider(ABC):
+    @abstractmethod
+    def add_chunks(self, chunks: list[IndexChunk]) -> list[str]:
+        """Embed lalu simpan/perbarui chunk. Return ID yang tersimpan."""
 
     @abstractmethod
-    def add_chunks(self, chunks: list) -> list[str]:
-        """Menyimpan atau memperbarui chunk ke dalam vector store."""
-        ...
+    def search(self, query: str, version_ids: list[str] | None, limit: int = 5) -> list[SearchHit]:
+        """Cari chunk paling relevan, hanya dari `version_ids` (None = tanpa filter)."""
 
     @abstractmethod
-    def search(self, query: str, limit: int = 5) -> dict[str, Any]:
-        """Mencari chunk yang paling relevan dengan query."""
-        ...
+    def delete_version(self, version_id: str) -> None:
+        """Hapus semua chunk milik satu versi dokumen."""
 
     @abstractmethod
-    def delete_by_ids(self, chunk_ids: list[str]) -> None:
-        """Menghapus chunk berdasarkan ID."""
-        ...
-
-    @abstractmethod
-    def delete_by_metadata(self, filter_dict: dict[str, Any]) -> None:
-        """Menghapus chunk berdasarkan kriteria metadata."""
-        ...
-
-    @abstractmethod
-    def delete_all(self) -> None:
-        """Menghapus seluruh data dalam collection."""
-        ...
-
-    @abstractmethod
-    def get_by_document_id(self, document_id: str) -> list[str]:
-        """Ambil semua dokumen berdasarkan document_id dari metadata."""
-        ...
+    def count_version(self, version_id: str) -> int:
+        """Jumlah chunk milik satu versi (untuk pemeriksaan & test)."""

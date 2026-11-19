@@ -12,7 +12,8 @@ def get_embedder() -> BaseEmbedder:
         return OpenAIEmbedder(
             api_key=secrets.OPENAI_API_KEY,
             model=app_config.OPENAI_EMBEDDING_MODEL,
-            chunk_size=app_config.OPENAI_EMBEDDING_CHUNK_SIZE,
+            batch_size=app_config.EMBED_BATCH_SIZE,
+            timeout=app_config.EMBED_TIMEOUT,
         )
 
     raise ValueError(f"Unknown embedding provider: '{provider}'")

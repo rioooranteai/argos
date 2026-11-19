@@ -1,87 +1,117 @@
-import logging
-from typing import Any
+"""Ekstraksi feature per unit bagian, dengan batas concurrency, timeout, dan cache.
 
+(DESIGN_GROUP_B.md §7; audit poin 11 — tidak ada lagi pemotongan 100.000 karakter.)
+
+Error dibiarkan naik ke worker: unit yang sudah selesai tersimpan di cache,
+sehingga percobaan ulang hanya membayar unit yang belum selesai.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict
+
+from app.infrastructure.interface.cache_repository import BaseCacheRepository
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
-from app.infrastructure.interface.feature_repository import BaseFeatureRepository
-from app.services.extraction.factories.extraction_factory import ExtractionFactory
-from app.services.extraction.model import ExtractionResult
+from app.services.extraction.model import ExtractedFeature, FeatureRow
+from app.services.ingestion.model import ExtractionUnit
 
 logger = logging.getLogger(__name__)
 
-_MAX_CHUNK_CHARS = 100_000
-_MIN_CHUNK_CHARS = 80
-
 
 class ExtractionService:
-    """Orchestrates LLM-based feature extraction and persistence.
-
-    The service does not know how features are stored — it depends only on
-    the FeatureRepository port. Swap the adapter (SQLite, Postgres, in-memory
-    for tests) without touching this class.
-    """
-
     def __init__(
         self,
-        repository: BaseFeatureRepository,
-        provider: str = "pydantic_ai",
-        **kwargs: Any,
-    ):
-        self._repo = repository
-        self._provider: BaseExtractionProvider = ExtractionFactory.create(
-            provider=provider,
-            **kwargs,
-        )
-        logger.info(f"ExtractionService ready with provider: '{provider}'")
+        provider: BaseExtractionProvider,
+        cache: BaseCacheRepository,
+        semaphore: asyncio.Semaphore,
+        pipeline_version: str,
+        timeout: float,
+    ) -> None:
+        self._provider = provider
+        self._cache = cache
+        self._semaphore = semaphore
+        self._pipeline_version = pipeline_version
+        self._timeout = timeout
 
-    async def process_document_texts(
+    async def extract_units(
         self,
-        document_id: str,
-        chunks_text: list[str],
-    ) -> dict:
+        units: list[ExtractionUnit],
+        on_progress: Callable[[int], Awaitable[None]] | None = None,
+    ) -> list[FeatureRow]:
+        done = 0
+        lock = asyncio.Lock()
+        results: list[list[FeatureRow]] = [[] for _ in units]
 
-        valid_texts = [t for t in chunks_text if len(t.strip()) >= _MIN_CHUNK_CHARS]
+        async def one(i: int, unit: ExtractionUnit) -> None:
+            nonlocal done
+            results[i] = await self._extract_unit(unit)
+            async with lock:
+                done += 1
+                if on_progress is not None:
+                    await on_progress(done)
 
-        if not valid_texts:
-            logger.warning(f"No valid text for document_id: {document_id}")
-            return ExtractionResult(
-                status="failed",
-                document_id=document_id,
-                total_features_extracted=0,
-            ).model_dump()
+        # Tunggu semua unit selesai (berhasil atau gagal) sebelum melempar error,
+        # agar unit yang sukses sempat masuk cache untuk percobaan berikutnya.
+        outcomes = await asyncio.gather(
+            *(one(i, u) for i, u in enumerate(units)), return_exceptions=True
+        )
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException):
+                raise outcome
+        return [row for rows in results for row in rows]
 
-        combined_text = "\n\n--- Bagian Lanjutan ---\n\n".join(valid_texts)
+    async def _extract_unit(self, unit: ExtractionUnit) -> list[FeatureRow]:
+        cached = await asyncio.to_thread(
+            self._cache.get_extraction, unit.unit_hash, self._pipeline_version
+        )
+        if cached is not None:
+            return [FeatureRow(**row) for row in json.loads(cached)]
 
-        if len(combined_text) > _MAX_CHUNK_CHARS:
-            combined_text = combined_text[:_MAX_CHUNK_CHARS]
+        async with self._semaphore:
+            features = await asyncio.wait_for(
+                self._provider.extract(unit.prompt_text()), timeout=self._timeout
+            )
 
-        try:
-            extracted_features = await self._provider.extract(combined_text)
+        rows = self._to_rows(unit, features)
+        await asyncio.to_thread(
+            self._cache.put_extraction,
+            unit.unit_hash,
+            self._pipeline_version,
+            json.dumps([asdict(r) for r in rows], ensure_ascii=False),
+        )
+        return rows
 
-            # Drop rows that fail the prompt's required-field contract:
-            # `product_name` is required (str, non-empty). `brand_name` may
-            # legitimately be null (e.g. unbranded product family).
-            valid_features = [
-                f.model_dump() for f in extracted_features
-                if f.product_name and f.product_name.strip()
-            ]
-
-            if valid_features:
-                self._repo.insert_batch(valid_features, document_id)
-
-            return ExtractionResult(
-                status="success",
-                document_id=document_id,
-                total_features_extracted=len(valid_features),
-            ).model_dump()
-
-        except Exception as e:
-            logger.error(f"Extraction failed: {e}", exc_info=True)
-            return ExtractionResult(
-                status="failed",
-                document_id=document_id,
-                total_features_extracted=0,
-            ).model_dump()
-
-    @property
-    def available_providers(self) -> list[str]:
-        return ExtractionFactory.available_providers()
+    @staticmethod
+    def _to_rows(unit: ExtractionUnit, features: list[ExtractedFeature]) -> list[FeatureRow]:
+        by_hash = {s.section_hash: s for s in unit.sections}
+        first_label = next(iter(unit.labels))
+        rows: list[FeatureRow] = []
+        for f in features:
+            # `product_name` wajib (Rule 3); `brand_name` boleh null (Rule 20).
+            if not (f.product_name and f.product_name.strip()):
+                continue
+            label = (f.section_ref or "").strip().strip("[]")
+            if label not in unit.labels:
+                logger.info(
+                    "section_ref %r tidak valid untuk unit %s; memakai %s.",
+                    f.section_ref, unit.unit_hash[:12], first_label,
+                )
+                label = first_label
+            section = by_hash[unit.labels[label]]
+            rows.append(
+                FeatureRow(
+                    section_hash=section.section_hash,
+                    section_heading=section.heading,
+                    page_number=section.page_start,
+                    brand_name=f.brand_name,
+                    product_name=f.product_name.strip(),
+                    price=f.price,
+                    price_currency=f.price_currency,
+                    advantages=f.advantages,
+                    disadvantages=f.disadvantages,
+                )
+            )
+        return rows

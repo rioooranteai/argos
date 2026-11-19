@@ -181,7 +181,21 @@ Rule 20: If brand_name cannot be determined from the text, set it to
 
 INPUT FORMAT
 
-TEXT CHUNK: {text_chunk}
+The input is one or more document sections. Each section starts with a
+label line in the form "[S<n>] <section heading>", followed by the
+section text. Example:
+
+[S1] Tabel Harga
+...section text...
+
+[S2] Spesifikasi
+...section text...
+
+Rule 21: For every extracted object, set section_ref to the label
+         ("S1", "S2", ...) of the section where its main fact (usually
+         the price, otherwise the product mention) is written.
+Rule 22: section_ref must be one of the labels present in the input.
+         Never invent a label.
 
 OUTPUT FORMAT
 
@@ -197,6 +211,7 @@ OUTPUT SCHEMA
     "price": float or null,
     "price_currency": string or null,
     "advantages": string or null,
-    "disadvantages": string or null
+    "disadvantages": string or null,
+    "section_ref": string
   }
 ]
