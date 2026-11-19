@@ -135,7 +135,9 @@ class DoclingLoader(BaseDocumentLoader):
                         content=enriched_text.strip(),
                         page_number=page_num,
                         section_heading=current_heading,
-                        metadata={"source": file_path, "docling_strategy": "HybridChunker"}
+                        # Jalur heading lengkap: dipakai untuk mengelompokkan bagian
+                        # & unit ekstraksi (DESIGN_GROUP_B.md §7).
+                        metadata={"headings": list(c.meta.headings or [])},
                     )
                 )
 
@@ -162,7 +164,7 @@ class DoclingLoader(BaseDocumentLoader):
                                     page_number=page_num,
                                     section_heading="",
                                     image_bytes=image_bytes,
-                                    metadata={"source": file_path, "bbox": pic.prov[0].bbox if pic.prov else None}
+                                    metadata={},
                                 )
                             )
                     except Exception as img_err:
