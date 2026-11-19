@@ -93,14 +93,19 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
                 # versi baru bersamaan tidak mendapat version_no yang sama.
                 conn.execute("BEGIN IMMEDIATE")
                 next_no = conn.execute(
-                    "SELECT COALESCE(MAX(version_no), 0) + 1 FROM document_versions "
-                    "WHERE document_id = ?",
+                    """
+                    SELECT MAX(d.version_counter,
+                               COALESCE((SELECT MAX(version_no) FROM document_versions
+                                         WHERE document_id = d.id), 0)) + 1
+                    FROM library_documents d WHERE d.id = ?
+                    """,
                     (document_id,),
                 ).fetchone()[0]
                 conn.execute(_INSERT_VERSION, _version_params(document_id, next_no, version))
                 conn.execute(
-                    "UPDATE library_documents SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (document_id,),
+                    "UPDATE library_documents SET version_counter = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE id = ?",
+                    (next_no, document_id),
                 )
                 row = conn.execute(
                     "SELECT * FROM document_versions WHERE id = ?", (version.id,)
@@ -185,6 +190,76 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
                 "WHERE id = ?",
                 (display_name, document_id),
             )
+
+    # ── Hapus / arsip ──────────────────────────────────────────────────
+
+    def detach_from_owner_notebooks(self, document_id: str, owner_id: str) -> int:
+        with self._db.get_connection() as conn:
+            cur = conn.execute(
+                """
+                DELETE FROM notebook_sources
+                WHERE document_id = ?
+                  AND notebook_id IN (SELECT id FROM notebooks WHERE owner_id = ?)
+                """,
+                (document_id, owner_id),
+            )
+            return cur.rowcount
+
+    def count_notebook_uses(self, document_id: str) -> int:
+        with self._db.get_connection() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM notebook_sources WHERE document_id = ?", (document_id,)
+            ).fetchone()[0]
+
+    def count_version_pins(self, version_id: str) -> int:
+        with self._db.get_connection() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM notebook_sources WHERE version_id = ?", (version_id,)
+            ).fetchone()[0]
+
+    def archive_document(self, document_id: str) -> None:
+        with self._db.get_connection() as conn:
+            conn.execute(
+                "UPDATE library_documents SET status = 'archived', updated_at = CURRENT_TIMESTAMP "
+                "WHERE id = ?",
+                (document_id,),
+            )
+
+    def delete_document(self, document_id: str) -> None:
+        with self._db.get_connection() as conn:
+            # FK notebook_sources tanpa CASCADE: dokumen yang masih dipakai notebook
+            # tidak akan terhapus (IntegrityError) — pengaman bila aturan service terlewat.
+            conn.execute("DELETE FROM document_versions WHERE document_id = ?", (document_id,))
+            conn.execute("DELETE FROM library_documents WHERE id = ?", (document_id,))
+
+    def delete_version(self, document_id: str, version_id: str) -> None:
+        with self._db.get_connection() as conn:
+            conn.execute(
+                "DELETE FROM document_versions WHERE id = ? AND document_id = ?",
+                (version_id, document_id),
+            )
+            conn.execute(
+                """
+                UPDATE library_documents SET
+                    latest_version_id = (
+                        SELECT id FROM document_versions
+                        WHERE document_id = ? AND stage = 'ready'
+                        ORDER BY version_no DESC LIMIT 1
+                    ),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (document_id, document_id),
+            )
+
+    def transfer_ownership(self, from_user_id: str, to_user_id: str) -> int:
+        with self._db.get_connection() as conn:
+            cur = conn.execute(
+                "UPDATE library_documents SET owner_id = ?, updated_at = CURRENT_TIMESTAMP "
+                "WHERE owner_id = ?",
+                (to_user_id, from_user_id),
+            )
+            return cur.rowcount
 
     # ── Mapper ─────────────────────────────────────────────────────────
 

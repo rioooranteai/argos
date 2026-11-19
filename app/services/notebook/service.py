@@ -68,6 +68,7 @@ class NotebookService:
         self._repo.delete(notebook_id)
         for source in sources:
             self._maybe_cancel(user, source)
+            self._library_svc.purge_if_unused(source.document_id)
 
     # ── Sumber ─────────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ class NotebookService:
         self._repo.remove_source(notebook_id, document_id)
         self._repo.touch(notebook_id)
         self._maybe_cancel(user, source)
+        self._library_svc.purge_if_unused(document_id)
         return self._repo.list_sources(notebook_id)
 
     def active_sources(self, user: CurrentUser, notebook_id: str) -> list[ActiveSource]:

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import logging
 import os
+import sqlite3
 import uuid
+from typing import Literal, Protocol
 from pathlib import Path, PurePath
 
 from fastapi import UploadFile
@@ -23,7 +25,10 @@ from app.core.errors import (
     ValidationError,
 )
 from app.infrastructure.interface.library_repository import BaseLibraryRepository
+from app.infrastructure.interface.job_repository import BaseJobRepository
+from app.infrastructure.interface.user_repository import BaseUserRepository
 from app.services.library.model import (
+    FINAL_STAGES,
     RECLAIMABLE_STAGES,
     DocumentListItem,
     DocumentVersion,
@@ -38,16 +43,31 @@ logger = logging.getLogger(__name__)
 _MB = 1024 * 1024
 
 
+class _VectorDeleter(Protocol):
+    def delete_version(self, version_id: str) -> None: ...
+
+
 def queued_file_path(queue_dir: Path, version_id: str, ext: str) -> Path:
     """Lokasi file asli sebuah versi selama menunggu/diproses worker."""
     return queue_dir / f"{version_id}{ext}"
 
 
 class LibraryService:
-    def __init__(self, repository: BaseLibraryRepository, queue_dir: Path, config: AppConfig) -> None:
+    def __init__(
+        self,
+        repository: BaseLibraryRepository,
+        queue_dir: Path,
+        config: AppConfig,
+        vector_store: _VectorDeleter | None = None,
+        jobs: BaseJobRepository | None = None,
+        users: BaseUserRepository | None = None,
+    ) -> None:
         self._repo = repository
         self._queue_dir = queue_dir
         self._cfg = config
+        self._vectors = vector_store
+        self._jobs = jobs
+        self._users = users
 
     # ── Upload ─────────────────────────────────────────────────────────
 
@@ -165,6 +185,108 @@ class LibraryService:
             raise ValidationError("Nama dokumen tidak boleh kosong.")
         self._repo.rename_document(document_id, name)
         return self._repo.get_document_item(document_id)
+
+    # ── Hapus / arsip (tahap 2, DESIGN_GROUP_A.md §6.6–6.7) ──────────
+
+    def delete_document(self, user: CurrentUser, document_id: str) -> Literal["deleted", "archived"]:
+        document = self._repo.get_document(document_id)
+        if document is None or document.status != "active":
+            raise NotFoundError("Dokumen tidak ditemukan.")
+        self._check_can_manage(user, document.owner_id)
+
+        # Notebook milik pemilik sendiri dilepas; notebook orang lain tidak disentuh.
+        self._repo.detach_from_owner_notebooks(document_id, document.owner_id)
+        if self._repo.count_notebook_uses(document_id) > 0:
+            self._repo.archive_document(document_id)
+            logger.info("Dokumen %s diarsipkan (masih dipakai notebook lain).", document_id)
+            return "archived"
+
+        self._purge(document_id)
+        logger.info("Dokumen %s dihapus permanen.", document_id)
+        return "deleted"
+
+    def purge_if_unused(self, document_id: str) -> bool:
+        """Hapus permanen dokumen ARSIP yang sudah tidak dipakai notebook mana pun."""
+        document = self._repo.get_document(document_id)
+        if document is None or document.status != "archived":
+            return False
+        if self._repo.count_notebook_uses(document_id) > 0:
+            return False
+        self._purge(document_id)
+        logger.info("Dokumen arsip %s dihapus permanen (tidak dipakai lagi).", document_id)
+        return True
+
+    def delete_version(self, user: CurrentUser, document_id: str, version_id: str) -> None:
+        document = self._repo.get_document(document_id)
+        if document is None or document.status != "active":
+            raise NotFoundError("Dokumen tidak ditemukan.")
+        self._check_can_manage(user, document.owner_id)
+
+        versions = self._repo.list_versions(document_id)
+        version = next((v for v in versions if v.id == version_id), None)
+        if version is None:
+            raise NotFoundError("Versi dokumen tidak ditemukan.")
+        if len(versions) == 1:
+            raise ConflictError(
+                "Ini satu-satunya versi. Hapus dokumennya jika tidak dipakai lagi.",
+                code="ONLY_VERSION",
+            )
+        pins = self._repo.count_version_pins(version_id)
+        if pins:
+            raise ConflictError(
+                f"Versi {version.version_no} masih dipakai di {pins} notebook. "
+                "Minta pemakainya beralih ke versi lain dulu.",
+                code="VERSION_IN_USE",
+                details={"notebooks": pins},
+            )
+
+        if version.stage not in FINAL_STAGES and self._jobs is not None:
+            self._jobs.request_cancel(version_id)
+        try:
+            self._repo.delete_version(document_id, version_id)
+        except sqlite3.IntegrityError:
+            # Ada notebook yang mem-pin versi ini di antara pengecekan dan penghapusan.
+            raise ConflictError(
+                f"Versi {version.version_no} baru saja dipakai di notebook.", code="VERSION_IN_USE"
+            ) from None
+        self._remove_version_data(version)
+        logger.info("Versi %s (v%s) dokumen %s dihapus.", version_id, version.version_no, document_id)
+
+    def _purge(self, document_id: str) -> None:
+        versions = self._repo.list_versions(document_id)
+        if self._jobs is not None:
+            for v in versions:
+                if v.stage not in FINAL_STAGES:
+                    self._jobs.request_cancel(v.id)
+        try:
+            self._repo.delete_document(document_id)
+        except sqlite3.IntegrityError:
+            raise ConflictError(
+                "Dokumen baru saja dipakai di notebook lain. Coba lagi.", code="DOCUMENT_IN_USE"
+            ) from None
+        # Database dulu, baru vektor & file: vektor yatim tidak pernah terbaca chat
+        # (versinya sudah tidak ada), sedangkan kebalikannya merusak versi yang masih ada.
+        for v in versions:
+            self._remove_version_data(v)
+
+    def _remove_version_data(self, version: DocumentVersion) -> None:
+        if self._vectors is not None:
+            try:
+                self._vectors.delete_version(version.id)
+            except Exception:
+                logger.exception("Vektor versi %s gagal dihapus (tidak terlihat oleh chat).", version.id)
+        queued_file_path(self._queue_dir, version.id, version.file_ext).unlink(missing_ok=True)
+
+    def _check_can_manage(self, user: CurrentUser, owner_id: str) -> None:
+        if owner_id == user.id:
+            return
+        if user.is_admin and self._users is not None:
+            owner = self._users.get(owner_id)
+            if owner is None or not owner.is_active:
+                return
+        raise PermissionDenied(
+            "Hanya pengunggah dokumen yang bisa menghapusnya.", code="NOT_DOCUMENT_OWNER"
+        )
 
     # ── Internal ───────────────────────────────────────────────────────
 

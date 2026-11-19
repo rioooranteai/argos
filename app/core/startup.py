@@ -80,12 +80,7 @@ async def lifespan(app: FastAPI):
     app.state.user_repo = SQLiteUserRepository(database=db)
     library_repo = SQLiteLibraryRepository(database=db)
     cache_repo = SQLiteCacheRepository(database=db)
-
-    app.state.library_service = LibraryService(
-        repository=library_repo,
-        queue_dir=infra.upload_queue_dir,
-        config=app_config,
-    )
+    job_repo = SQLiteJobRepository(database=db)
 
     conversation_repo = SQLiteConversationRepository(database=db)
 
@@ -95,6 +90,15 @@ async def lifespan(app: FastAPI):
 
     # --- Services ---
     app.state.vector_store_svc = VectorStoreService(embedder=embedder, provider="chroma")
+
+    app.state.library_service = LibraryService(
+        repository=library_repo,
+        queue_dir=infra.upload_queue_dir,
+        config=app_config,
+        vector_store=app.state.vector_store_svc,
+        jobs=job_repo,
+        users=app.state.user_repo,
+    )
 
     # --- Pipeline dokumen & worker (DESIGN_GROUP_B.md) ---
     docling = DoclingProcess()
@@ -121,7 +125,6 @@ async def lifespan(app: FastAPI):
         limits=limits,
         count_tokens=_token_counter(),
     )
-    job_repo = SQLiteJobRepository(database=db)
     app.state.notebook_service = NotebookService(
         repository=SQLiteNotebookRepository(database=db),
         library_repo=library_repo,

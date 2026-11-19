@@ -1,7 +1,7 @@
 """Library: dokumen bersama seluruh karyawan (DESIGN_GROUP_A.md §6, §10)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 
 from app.core.dependencies import get_current_user, get_library_service
 from app.services.library.model import (
@@ -80,6 +80,33 @@ def rename_document(
     svc: LibraryService = Depends(get_library_service),
 ) -> DocumentOut:
     return DocumentOut.from_item(svc.rename_document(user, document_id, body.display_name))
+
+
+@router.delete(
+    "/documents/{document_id}",
+    summary="Hapus dokumen (diarsipkan bila masih dipakai notebook orang lain)",
+)
+def delete_document(
+    document_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    svc: LibraryService = Depends(get_library_service),
+) -> dict:
+    return {"result": svc.delete_document(user, document_id)}
+
+
+@router.delete(
+    "/documents/{document_id}/versions/{version_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Hapus satu versi dokumen",
+)
+def delete_version(
+    document_id: str,
+    version_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    svc: LibraryService = Depends(get_library_service),
+) -> Response:
+    svc.delete_version(user, document_id, version_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/versions/{version_id}", summary="Status pemrosesan sebuah versi (untuk polling)")

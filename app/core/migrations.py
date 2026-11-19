@@ -160,6 +160,16 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (unit_hash, pipeline_version)
         );
     """),
+    (2, """
+        -- Penghitung nomor versi yang tidak pernah turun: versi yang dihapus tidak
+        -- membuat nomornya dipakai ulang, sehingga sitasi lama "v2" tetap berarti
+        -- isi yang sama (DESIGN_GROUP_A.md §6.7).
+        ALTER TABLE library_documents ADD COLUMN version_counter INTEGER NOT NULL DEFAULT 1;
+        UPDATE library_documents SET version_counter = COALESCE(
+            (SELECT MAX(version_no) FROM document_versions v WHERE v.document_id = library_documents.id),
+            1
+        );
+    """),
 ]
 
 

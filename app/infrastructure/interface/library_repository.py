@@ -56,3 +56,31 @@ class BaseLibraryRepository(ABC):
 
     @abstractmethod
     def rename_document(self, document_id: str, display_name: str) -> None: ...
+
+    # ── Tahap 2: hapus / arsip ──────────────────────────────────────────
+
+    @abstractmethod
+    def detach_from_owner_notebooks(self, document_id: str, owner_id: str) -> int:
+        """Lepas dokumen dari notebook milik `owner_id`. Return jumlah notebook."""
+
+    @abstractmethod
+    def count_notebook_uses(self, document_id: str) -> int:
+        """Jumlah notebook (siapa pun) yang masih memakai dokumen ini."""
+
+    @abstractmethod
+    def count_version_pins(self, version_id: str) -> int: ...
+
+    @abstractmethod
+    def archive_document(self, document_id: str) -> None: ...
+
+    @abstractmethod
+    def delete_document(self, document_id: str) -> None:
+        """Hapus permanen dokumen + semua versi (bagian & features ikut terhapus)."""
+
+    @abstractmethod
+    def delete_version(self, document_id: str, version_id: str) -> None:
+        """Hapus satu versi lalu hitung ulang `latest_version_id`."""
+
+    @abstractmethod
+    def transfer_ownership(self, from_user_id: str, to_user_id: str) -> int:
+        """Pindahkan kepemilikan semua dokumen. Return jumlah dokumen."""
