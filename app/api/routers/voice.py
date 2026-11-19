@@ -1,7 +1,9 @@
 import io
 import logging
 
+from app.core.config import app_config
 from app.core.dependencies import get_voice_service
+from app.core.errors import PayloadTooLarge
 from app.services.voice.model import STTRequest, TTSRequest
 from app.services.voice.service import VoiceService
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -60,7 +62,17 @@ async def speech_to_text(
     if content_type not in ALLOWED_AUDIO:
         raise HTTPException(status_code=415, detail="Format audio tidak didukung")
 
-    audio_bytes = await audio.read()
+    # Dibaca bertahap & dihentikan begitu melewati batas (DESIGN_GROUP_B.md §8);
+    # batas mengikuti Whisper API (25 MB).
+    max_bytes = app_config.STT_MAX_MB * 1024 * 1024
+    chunks: list[bytes] = []
+    size = 0
+    while chunk := await audio.read(1024 * 1024):
+        size += len(chunk)
+        if size > max_bytes:
+            raise PayloadTooLarge(f"Audio melebihi {app_config.STT_MAX_MB} MB.", code="AUDIO_TOO_LARGE")
+        chunks.append(chunk)
+    audio_bytes = b"".join(chunks)
 
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="File kosong")
