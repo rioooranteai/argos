@@ -318,12 +318,7 @@ async def send_message(
     # Pesan user yang sudah tersimpan tanpa jawaban = poin audit 17 (kelompok C).
     result = await chat_engine.chat(user_input=request.question, history=history, sources=active)
 
-    if result.get("error"):
-        raise ValidationError(result["error"])
-
-    answer = result["answer"]
-    citations = result.get("citations", [])
-    conv_svc.append_assistant_message(conversation_id, answer, citations=citations)
+    conv_svc.append_assistant_message(conversation_id, result.answer, citations=result.citations)
 
     if is_new:
         conv_svc.schedule_auto_title(
@@ -333,13 +328,16 @@ async def send_message(
     return ChatResponse(
         conversation_id=conversation_id,
         question=request.question,
-        answer=answer,
-        citations=citations,
+        answer=result.answer,
+        citations=result.citations,
         metadata={
-            "route": result["route"],
-            "router_reasoning": result["router_reasoning"],
+            "route": result.route,
+            "router_reasoning": result.router_reasoning,
             "is_new_conversation": is_new,
             "sources_used": len(active),
             "pending_sources": pending,
+            "degraded": result.degraded,
+            "issues": [i.to_dict() for i in result.issues],
+            "trace": result.trace,
         },
     )

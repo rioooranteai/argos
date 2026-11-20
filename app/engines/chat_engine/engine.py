@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from app.core.errors import UpstreamTimeout
 from app.engines.chat_engine.graph import build_graph
+from app.engines.chat_engine.outcome import ChatResult, NodeTrace, issues_from
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.conversation.model import Message
-from app.services.notebook.model import ActiveSource
 from app.services.nl2sql.service import NL2SQLService
+from app.services.notebook.model import ActiveSource
+from app.services.observability.llm_recorder import recorder
+from app.services.observability.model import LLMCall
 from app.services.vector_store.service import VectorStoreService
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
@@ -78,7 +82,7 @@ class ChatEngine:
             user_input: str,
             history: list[Message] | list[dict] | None = None,
             sources: list[ActiveSource] | None = None,
-    ) -> dict[str, Any]:
+    ) -> ChatResult:
         """Run the LangGraph pipeline with the given prior history.
 
         Args:
@@ -112,26 +116,50 @@ class ChatEngine:
             "sql_result": None,
             "vector_result": None,
             "final_answer": "",
-            "error": None,
             "active_versions": [src.version_id for src in sources],
             "sources": sources,
             "citations": [],
+            "node_traces": [],
         }
 
-        try:
-            final_state = await asyncio.wait_for(
-                self._graph.ainvoke(initial_state), timeout=self._total_timeout
-            )
-        except TimeoutError:
-            logger.warning("Chat melewati batas %s detik.", self._total_timeout)
-            raise UpstreamTimeout("Jawaban terlalu lama dibuat. Coba lagi.", code="CHAT_TIMEOUT") from None
+        with recorder.collect() as llm_calls:
+            try:
+                final_state = await asyncio.wait_for(
+                    self._graph.ainvoke(initial_state), timeout=self._total_timeout
+                )
+            except TimeoutError:
+                logger.warning("Chat melewati batas %s detik.", self._total_timeout)
+                raise UpstreamTimeout(
+                    "Jawaban terlalu lama dibuat. Coba lagi.", code="CHAT_TIMEOUT"
+                ) from None
 
-        return {
-            "answer": final_state["final_answer"],
-            "route": final_state["route"],
-            "router_reasoning": final_state["router_reasoning"],
-            "sql_result": final_state["sql_result"],
-            "vector_result": final_state["vector_result"],
-            "error": final_state.get("error"),
-            "citations": final_state.get("citations", []),
-        }
+        traces: list[NodeTrace] = final_state.get("node_traces", [])
+        issues = issues_from(traces)
+        return ChatResult(
+            answer=final_state["final_answer"],
+            route=final_state["route"],
+            router_reasoning=final_state["router_reasoning"],
+            citations=final_state.get("citations", []),
+            issues=issues,
+            trace=build_trace(final_state, traces, issues, llm_calls),
+        )
+
+
+def build_trace(state: dict, traces: list[NodeTrace], issues, llm_calls: list[LLMCall]) -> dict[str, Any]:
+    """Trace per pesan (DESIGN_GROUP_C.md §7.4): tanpa prompt dan teks dokumen."""
+    trace: dict[str, Any] = {
+        "route": state["route"],
+        "router_reasoning": state["router_reasoning"],
+    }
+    for t in traces:
+        entry = t.to_dict()
+        if t.node == "synthesizer":
+            trace["chunks"] = entry.pop("chunks", [])
+        trace[t.node] = entry
+    trace["llm"] = {
+        "calls": len(llm_calls),
+        "input_tokens": sum(c.input_tokens or 0 for c in llm_calls),
+        "output_tokens": sum(c.output_tokens or 0 for c in llm_calls),
+    }
+    trace["issues"] = [i.to_dict() for i in issues]
+    return trace

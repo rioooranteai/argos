@@ -20,6 +20,7 @@ from app.core.dependencies import (
 from app.core.errors import UpstreamTimeout, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
+from app.engines.chat_engine.outcome import ChatResult
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
 )
@@ -52,13 +53,13 @@ class FakeChatEngine:
 
     async def chat(self, user_input, history=None, sources=None):
         self.calls.append({"q": user_input, "sources": sources, "history": history})
-        return {
-            "answer": "Avanza Rp 230 jt [1].",
-            "route": "sql",
-            "router_reasoning": "harga",
-            "citations": [{"label": 1, "version_id": sources[0].version_id, "display_name": sources[0].display_name}],
-            "error": None,
-        }
+        return ChatResult(
+            answer="Avanza Rp 230 jt [1].",
+            route="sql",
+            router_reasoning="harga",
+            citations=[{"label": 1, "version_id": sources[0].version_id, "display_name": sources[0].display_name}],
+            trace={"route": "sql"},
+        )
 
 
 @pytest.fixture
@@ -118,6 +119,7 @@ def test_chat_blocked_until_source_ready_then_scoped(env):
     assert body["citations"][0]["label"] == 1
     assert [s.version_id for s in engine.calls[0]["sources"]] == [vid]
     assert body["metadata"]["sources_used"] == 1
+    assert body["metadata"]["degraded"] is False and body["metadata"]["issues"] == []
 
     conv = c.get(f"/api/v1/notebooks/{nb['id']}/conversations/{body['conversation_id']}").json()
     assert [m["role"] for m in conv["messages"]] == ["user", "assistant"]
@@ -223,7 +225,13 @@ async def test_engine_passes_active_versions_and_returns_citations():
     sources = [ActiveSource("v1", "d1", "Pricelist", 1, datetime(2026, 1, 1))]
     out = await engine.chat("harga?", sources=sources)
     assert nl2sql.version_ids == ["v1"] and vectors.version_ids == ["v1"]
-    assert [c["label"] for c in out["citations"]] == [1]
+    assert [c["label"] for c in out.citations] == [1]
+    assert out.degraded is False
+    assert out.trace["route"] == "both"
+    assert out.trace["sql"]["status"] == "ok" and out.trace["sql"]["row_count"] == 1
+    assert out.trace["vector"]["status"] == "ok"
+    assert out.trace["chunks"] == [{"label": "[2]", "page": 2, "distance": 0.1}]
+    assert out.trace["llm"]["calls"] == 0  # LLM palsu tidak melewati recorder
 
 
 async def test_engine_total_timeout():

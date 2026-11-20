@@ -4,6 +4,8 @@ import json
 import logging
 from pathlib import Path
 
+from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.outcome import NodeTrace
 from app.infrastructure.interface.llm import BaseLLM
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,7 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
         f"Pertanyaan terbaru user: {user_input}"
     )
 
+    clock = Stopwatch()
     try:
         raw = await llm.ainvoke(prompt=prompt, system=_ROUTER_SYSTEM)
         clean = raw.strip().replace("```json", "").replace("```", "").strip()
@@ -48,7 +51,14 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
         if route not in ("sql", "vector", "both", "none"):
             route = "vector"
 
-        return {"route": route, "router_reasoning": reasoning}
+        trace = NodeTrace(node="router", status="ok", duration_ms=clock.ms())
+        return {"route": route, "router_reasoning": reasoning, "node_traces": [trace]}
 
-    except Exception as e:
-        return {"route": "vector", "router_reasoning": "Fallback karena error parsing router"}
+    except Exception:
+        logger.exception("[router] Gagal menentukan rute; memakai rute cadangan.")
+        trace = NodeTrace(node="router", status="error", duration_ms=clock.ms(), code="ROUTER_FAILED")
+        return {
+            "route": "vector",
+            "router_reasoning": "Rute cadangan karena pemilihan sumber gagal.",
+            "node_traces": [trace],
+        }

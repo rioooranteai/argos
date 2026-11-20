@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 
 from app.engines.chat_engine.citations import CitationRegistry
+from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.outcome import NodeTrace
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.service import NL2SQLResult
 
@@ -100,7 +102,23 @@ def _message_to_text(m) -> str:
     return f"{str(role).upper()}: {content}"
 
 
+def _chunk_refs(vector_result: list | None, registry: CitationRegistry) -> list[dict]:
+    """Ringkasan chunk untuk trace: label, halaman, jarak. Tanpa teks dokumen."""
+    refs = []
+    for chunk in vector_result or []:
+        meta = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
+        refs.append({
+            "label": registry.label_for(
+                meta.get("version_id"), meta.get("page_number"), meta.get("section_heading")
+            ),
+            "page": meta.get("page_number"),
+            "distance": round(chunk["distance"], 4) if chunk.get("distance") is not None else None,
+        })
+    return refs
+
+
 async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
+    clock = Stopwatch()
     user_input = state["user_input"]
     messages = state.get("messages", [])
     registry = CitationRegistry(state.get("sources") or [])
@@ -123,7 +141,14 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
         logger.exception("[synthesizer] Gagal membuat jawaban.")
         answer = "Maaf, terjadi kesalahan saat membuat jawaban."
 
+    trace = NodeTrace(
+        node="synthesizer",
+        status="ok",
+        duration_ms=clock.ms(),
+        details={"chunks": _chunk_refs(state.get("vector_result"), registry)},
+    )
     return {
         "final_answer": answer,
         "citations": [c.to_dict() for c in registry.used_in(answer)],
+        "node_traces": [trace],
     }
