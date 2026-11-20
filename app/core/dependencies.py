@@ -1,38 +1,49 @@
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 
 from app.core import log_context
-from app.core.config import app_config, secrets
 from app.core.errors import AuthenticationError, PermissionDenied
 from app.core.security import is_admin
+from app.core.session import decode_session_token, session_token_from
 from app.engines.chat_engine.engine import ChatEngine
 from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.user.admin import AdminService
-from app.services.user.model import CurrentUser
+from app.services.user.model import CurrentUser, User
 from app.services.voice.service import VoiceService
 
+# Header Bearer tetap diterima untuk alat non-browser (dan tombol "Authorize" di /docs).
+# Browser memakai cookie HttpOnly (DESIGN_GROUP_D.md D1).
 bearer = HTTPBearer(auto_error=False)
+
+
+def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | None:
+    """User aktif + payload bila token sah; selain itu None. Tidak melempar error."""
+    if not token:
+        return None
+    payload = decode_session_token(token)
+    if payload is None:
+        return None
+    user = request.app.state.user_repo.get(payload.get("sub", ""))
+    if user is None or not user.is_active:
+        return None
+    return user, payload
 
 
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> CurrentUser:
-    """Verifikasi JWT, lalu pastikan user masih ada & aktif di database."""
-    if credentials is None:
+    """Sesi dari cookie (browser) atau header Bearer (alat lain); user harus ada & aktif."""
+    token = session_token_from(request) or (credentials.credentials if credentials else None)
+    if not token:
         raise AuthenticationError()
-    try:
-        payload = jwt.decode(
-            credentials.credentials,
-            secrets.SECRET_KEY,
-            algorithms=[app_config.JWT_ALGORITHM],
-        )
-    except JWTError:
-        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN") from None
+
+    payload = decode_session_token(token)
+    if payload is None:
+        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN")
 
     user = request.app.state.user_repo.get(payload.get("sub", ""))
     if user is None:

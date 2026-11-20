@@ -9,22 +9,17 @@ const LAST_NOTEBOOK_KEY = "argos.lastNotebook";
 // Autentikasi
 // ---------------------------------------------------------------------------
 
-(function captureToken() {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    if (token) {
-        localStorage.setItem("access_token", token);
-        window.history.replaceState({}, document.title, "/" + (window.location.hash || ""));
-    }
-})();
+// Sesi = cookie HttpOnly yang dipasang server (DESIGN_GROUP_D.md D1). JavaScript tidak
+// pernah melihat token, dan tidak ada data sesi di localStorage. Halaman ini hanya
+// dikirim server kepada user yang sudah login; bila sesi habis, API menjawab 401.
 
-function getToken() { return localStorage.getItem("access_token"); }
+function toLogin() { window.location.href = "/login"; }
 
-if (!getToken()) window.location.href = "/login";
-
-function logout() {
-    localStorage.removeItem("access_token");
-    window.location.href = "/login";
+async function logout() {
+    try {
+        await fetch(`${API}/auth/logout`, { method: "POST", credentials: "same-origin" });
+    } catch { /* tetap keluar walau jaringan bermasalah */ }
+    toLogin();
 }
 
 // ---------------------------------------------------------------------------
@@ -43,7 +38,7 @@ class ApiError extends Error {
 }
 
 async function api(path, { method = "GET", json, form } = {}) {
-    const headers = { Authorization: `Bearer ${getToken()}` };
+    const headers = {};
     let body;
     if (json !== undefined) {
         headers["Content-Type"] = "application/json";
@@ -54,13 +49,13 @@ async function api(path, { method = "GET", json, form } = {}) {
 
     let response;
     try {
-        response = await fetch(`${API}${path}`, { method, headers, body });
+        response = await fetch(`${API}${path}`, { method, headers, body, credentials: "same-origin" });
     } catch {
         throw new ApiError("Tidak bisa terhubung ke server. Periksa koneksi Anda.", "NETWORK", null, 0);
     }
 
     if (response.status === 401) {
-        logout();
+        toLogin();
         throw new ApiError("Sesi berakhir.", "UNAUTHENTICATED", null, 401);
     }
     if (response.status === 204) return null;
@@ -1549,10 +1544,11 @@ async function speakMessage(text, btn) {
     try {
         const response = await fetch(`${API}/voice/tts`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
             body: JSON.stringify({ text: text.slice(0, 4000), voice: "alloy", format: "mp3", speed: 1.0 }),
         });
-        if (response.status === 401) return logout();
+        if (response.status === 401) return toLogin();
         if (!response.ok) throw new Error("tts");
         const url = URL.createObjectURL(await response.blob());
         currentAudio = new Audio(url);
@@ -1879,7 +1875,30 @@ async function loadMe() {
     try {
         state.me = await api("/users/me");
         $("manageUsersBtn").hidden = !state.me.is_admin;
+        renderUserProfile(state.me);
     } catch { /* menu admin tetap tersembunyi */ }
+}
+
+/** Nama & foto di sidebar, dari /users/me (bukan dari isi token). */
+function renderUserProfile(me) {
+    const fullName = me.name || "";
+    const firstName = me.given_name || fullName.split(" ")[0] || "User";
+    $("userName").textContent = firstName;
+    $("userMenuName").textContent = fullName || firstName;
+    $("userMenuEmail").textContent = me.email || "";
+
+    const avatarEl = $("userAvatar");
+    const fallbackEl = $("userAvatarFallback");
+    fallbackEl.textContent = (fullName || me.email || "U").trim().charAt(0).toUpperCase() || "U";
+    avatarEl.querySelector("img")?.remove();
+    if (me.picture) {
+        const img = h("img", { src: me.picture, alt: fullName || "Profil", referrerpolicy: "no-referrer" });
+        img.onload = () => { fallbackEl.style.display = "none"; };
+        img.onerror = () => { img.remove(); fallbackEl.style.display = "flex"; };
+        avatarEl.prepend(img);
+    } else {
+        fallbackEl.style.display = "flex";
+    }
 }
 
 // ---------------------------------------------------------------------------

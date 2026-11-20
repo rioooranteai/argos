@@ -116,6 +116,7 @@ class AppConfig:
     # ── Auth ─────────────────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
+    SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly (DESIGN_GROUP_D.md D1)
 
     # ── Library & notebook ───────────────────────────────────────────
     NOTEBOOK_MAX_SOURCES: int = 10

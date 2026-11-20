@@ -341,51 +341,6 @@
 <!-- Notifikasi singkat -->
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script>
-    // Decode JWT payload (tanpa verifikasi — hanya untuk tampilan)
-    function parseJwt(token) {
-        try {
-            return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-        } catch {
-            return null;
-        }
-    }
-
-    function getInitial(name, email) {
-        const src = (name || email || "U").trim();
-        return src ? src.charAt(0).toUpperCase() : "U";
-    }
-
-    (function renderUserProfile() {
-        const token   = localStorage.getItem("access_token");
-        const payload = token ? parseJwt(token) : null;
-
-        const fullName  = (payload && payload.name)       || "";
-        const firstName = (payload && payload.given_name) || fullName.split(" ")[0] || "User";
-        const email     = (payload && payload.email)      || "";
-        const picture   = (payload && payload.picture)    || "";
-
-        document.getElementById("userName").textContent      = firstName;
-        document.getElementById("userMenuName").textContent  = fullName || firstName;
-        document.getElementById("userMenuEmail").textContent = email;
-
-        const avatarEl   = document.getElementById("userAvatar");
-        const fallbackEl = document.getElementById("userAvatarFallback");
-        fallbackEl.textContent = getInitial(fullName, email);
-        if (picture) {
-            const img = document.createElement("img");
-            img.src = picture;
-            img.alt = fullName || "Profil";
-            img.referrerPolicy = "no-referrer";
-            img.onload  = () => { fallbackEl.style.display = "none"; };
-            img.onerror = () => { img.remove(); fallbackEl.style.display = "flex"; };
-            avatarEl.prepend(img);
-        } else {
-            fallbackEl.style.display = "flex";
-        }
-    })();
-</script>
-
 <script src="/js/main.js"></script>
 </body>
 </html>
