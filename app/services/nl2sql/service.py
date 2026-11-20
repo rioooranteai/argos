@@ -6,14 +6,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from app.core.llm_errors import classify_llm_error
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.exceptions import InvalidQuestionError
 from app.services.nl2sql.executor import (
+    SQLExecutionFailed,
     SQLExecutionTimeout,
+    SQLRejected,
     execute_scoped_sql,
     features_schema_ddl,
 )
-from app.services.nl2sql.security import sanitize_nl_input, validate_generated_sql
+from app.services.nl2sql.security import validate_generated_sql
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +53,12 @@ class NL2SQLResult:
     """Hasil NL2SQL bertipe (menggantikan dict).
 
     - ``ok``    : query berhasil dan ada baris
-    - ``empty`` : query berhasil, memang tidak ada data
-    - ``error`` : pertanyaan ditolak / SQL tidak valid / gagal dieksekusi
+    - ``empty`` : query berhasil tanpa baris, atau pertanyaan memang tidak bisa
+                  dijawab dari tabel features (``INVALID_QUESTION``)
+    - ``error`` : sistem gagal; kode di ``error_code`` (DESIGN_GROUP_C.md §3):
+                  ``SQL_REJECTED``, ``SQL_TIMEOUT``, ``SQL_FAILED``, atau kode LLM_*
+
+    ``message`` hanya untuk log; tidak dikirim ke user maupun ke prompt.
     """
 
     status: Literal["ok", "empty", "error"]
@@ -60,6 +67,7 @@ class NL2SQLResult:
     row_count: int = 0
     truncated: bool = False
     message: str | None = None
+    error_code: str | None = None
 
     @property
     def is_row_level(self) -> bool:
@@ -85,20 +93,28 @@ class NL2SQLService:
         """Jawab pertanyaan hanya dari baris milik `version_ids` (sumber aktif notebook)."""
         if not version_ids:
             return NL2SQLResult(status="empty", message="Tidak ada sumber aktif.")
+        sql: str | None = None
         try:
-            safe_question = sanitize_nl_input(user_question)
-            sql = await self._generate_sql(safe_question)
+            sql = await self._generate_sql(user_question.strip())
             rows, truncated = await asyncio.to_thread(
                 execute_scoped_sql, sql, self._db_path, version_ids, self._exec_timeout, MAX_RAW_ROWS
             )
         except InvalidQuestionError as e:
-            return NL2SQLResult(status="error", message=str(e))
+            # Bukan kegagalan sistem: pertanyaan tidak cocok untuk data terstruktur.
+            return NL2SQLResult(status="empty", message=str(e))
         except SQLExecutionTimeout as e:
             logger.warning("NL2SQL: %s", e)
-            return NL2SQLResult(status="error", message=str(e))
-        except ValueError as e:
-            logger.info("NL2SQL ditolak: %s", e)
-            return NL2SQLResult(status="error", message=str(e))
+            return self._error("SQL_TIMEOUT", sql, e)
+        except SQLExecutionFailed as e:
+            logger.warning("NL2SQL gagal dieksekusi: %s", e)
+            return self._error("SQL_FAILED", sql, e)
+        except (SQLRejected, ValueError) as e:
+            # ValueError = validator SELECT menolak keluaran LLM.
+            logger.warning("NL2SQL ditolak: %s", e)
+            return self._error("SQL_REJECTED", sql, e)
+        except Exception as e:
+            logger.exception("NL2SQL: panggilan LLM gagal.")
+            return self._error(classify_llm_error(e), sql, e)
 
         return NL2SQLResult(
             status="ok" if rows else "empty",
@@ -107,6 +123,10 @@ class NL2SQLService:
             row_count=len(rows),
             truncated=truncated,
         )
+
+    @staticmethod
+    def _error(code: str, sql: str | None, exc: BaseException) -> NL2SQLResult:
+        return NL2SQLResult(status="error", sql_query=sql, message=str(exc), error_code=code)
 
     async def _generate_sql(self, question: str) -> str:
         raw_sql = await self.llm.ainvoke(prompt=self._build_sql_prompt(question), system=_SQL_PROMPT_TEXT)

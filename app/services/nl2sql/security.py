@@ -1,21 +1,12 @@
-import re
+"""Validasi SQL hasil LLM.
+
+Tidak ada filter kata kunci pada pertanyaan user (DESIGN_GROUP_C.md §5): filter
+itu menolak pertanyaan sah ("harga setelah update?"). Keamanan dijaga oleh
+validator di bawah, koneksi read-only, TEMP VIEW + authorizer, dan timeout.
+"""
 import sqlparse
 from sqlparse.sql import Statement
 from sqlparse.tokens import Keyword, DDL
-
-FORBIDDEN_NL_PATTERNS = [
-    r"\b(hapus|drop|delete|truncate|format)\b",
-    r"\b(ignore|abaikan).*(instruksi|perintah|system)\b",
-    r"(you are now|sekarang kamu adalah|ignore previous|abaikan sebelumnya)",
-    r"\b(insert|update|alter|grant|revoke)\b",
-]
-
-def sanitize_nl_input(user_input: str) -> str:
-    """Mencegah pengguna menyisipkan perintah manipulasi lewat bahasa natural."""
-    for pattern in FORBIDDEN_NL_PATTERNS:
-        if re.search(pattern, user_input, re.IGNORECASE):
-            raise ValueError("Input ditolak: Terdeteksi pola bahasa yang mencurigakan atau tidak diizinkan.")
-    return user_input.strip()
 
 ALLOWED_STATEMENT_TYPES = {"SELECT"}
 FORBIDDEN_KEYWORDS = {"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "EXEC", "EXECUTE", "REPLACE"}

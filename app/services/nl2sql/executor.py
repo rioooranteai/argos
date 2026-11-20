@@ -47,6 +47,14 @@ class SQLExecutionTimeout(Exception):
     """Query melewati batas waktu eksekusi."""
 
 
+class SQLRejected(ValueError):
+    """Database menolak query (authorizer / bukan SELECT yang diizinkan)."""
+
+
+class SQLExecutionFailed(ValueError):
+    """Query valid secara bentuk tetapi gagal dijalankan (mis. kolom/tabel tidak ada)."""
+
+
 def _authorizer(action: int, arg1: str | None, arg2: str | None, db: str | None, src: str | None) -> int:
     if action not in _ALLOWED_ACTIONS:
         return sqlite3.SQLITE_DENY
@@ -101,7 +109,8 @@ def execute_scoped_sql(
         (baris, terpotong) — maksimal `max_rows` baris.
 
     Raises:
-        ValueError: query ditolak database.
+        SQLRejected: query ditolak authorizer database.
+        SQLExecutionFailed: query gagal dijalankan.
         SQLExecutionTimeout: melewati `timeout_s`.
     """
     conn = build_scoped_db(db_path, version_ids)
@@ -115,8 +124,10 @@ def execute_scoped_sql(
     except sqlite3.OperationalError as e:
         if "interrupted" in str(e).lower():
             raise SQLExecutionTimeout(f"Query melewati batas {timeout_s:.0f} detik.") from None
-        raise ValueError(f"Query gagal dieksekusi oleh database: {e}") from None
+        if "not authorized" in str(e).lower():
+            raise SQLRejected(f"Query ditolak: {e}") from None
+        raise SQLExecutionFailed(f"Query gagal dieksekusi oleh database: {e}") from None
     except sqlite3.DatabaseError as e:
-        raise ValueError(f"Query ditolak: {e}") from None
+        raise SQLRejected(f"Query ditolak: {e}") from None
     finally:
         conn.close()

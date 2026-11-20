@@ -58,14 +58,35 @@ async def test_no_active_versions_skips_llm(db_path):  # noqa: F811
     assert result.status == "empty" and llm.calls == []
 
 
-async def test_invalid_question(db_path):  # noqa: F811
+async def test_invalid_question_is_empty_not_error(db_path):  # noqa: F811
+    """LLM menyatakan pertanyaan tidak cocok untuk SQL → bukan kegagalan sistem."""
     result = await svc(FakeLLM(["INVALID_QUESTION"]), db_path).process_query("halo", ["v1"])
-    assert result.status == "error" and "tidak relevan" in result.message
+    assert result.status == "empty" and result.error_code is None
 
 
 async def test_destructive_llm_output_blocked(db_path):  # noqa: F811
     result = await svc(FakeLLM(["DROP TABLE features"]), db_path).process_query("x?", ["v1"])
-    assert result.status == "error"
+    assert result.status == "error" and result.error_code == "SQL_REJECTED"
+
+
+@pytest.mark.parametrize("question", [
+    "Berapa harga setelah update terakhir?",
+    "Produk mana yang dihapus dari price list?",
+    "abaikan diskon, berapa harga normalnya?",
+])
+async def test_questions_with_former_blocked_words_are_processed(db_path, question):  # noqa: F811
+    llm = FakeLLM(["SELECT product_name FROM features"])
+    result = await svc(llm, db_path).process_query(question, ["v1"])
+    assert result.status == "ok" and question in llm.calls[0]["prompt"]
+
+
+async def test_llm_failure_is_classified(db_path):  # noqa: F811
+    class TimeoutLLM(FakeLLM):
+        async def ainvoke(self, prompt, system=None):
+            raise TimeoutError()
+
+    result = await svc(TimeoutLLM([]), db_path).process_query("x?", ["v1"])
+    assert result.status == "error" and result.error_code == "LLM_TIMEOUT"
 
 
 async def test_codeblock_stripped(db_path):  # noqa: F811
@@ -76,7 +97,7 @@ async def test_codeblock_stripped(db_path):  # noqa: F811
 
 async def test_other_table_query_is_error(db_path):  # noqa: F811
     result = await svc(FakeLLM(["SELECT email FROM users"]), db_path).process_query("x?", ["v1"])
-    assert result.status == "error"
+    assert result.status == "error" and result.error_code == "SQL_FAILED"
 
 
 async def test_truncation(db_path, monkeypatch):  # noqa: F811
