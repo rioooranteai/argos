@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from app.core.errors import UpstreamError
+from app.core.llm_errors import classify_llm_error
 from app.engines.chat_engine.citations import CitationRegistry
 from app.engines.chat_engine.nodes.timing import Stopwatch
-from app.engines.chat_engine.outcome import NodeTrace
+from app.engines.chat_engine.outcome import COMPONENT_LABELS, RETRIEVAL_NODES, NodeTrace
 from app.infrastructure.interface.llm import BaseLLM
 from app.services.nl2sql.service import NL2SQLResult
 
@@ -76,19 +78,40 @@ def _format_vector_result(vector_result: list | None, registry: CitationRegistry
     return "\n".join(lines)
 
 
-def _build_data_context(sql_result, vector_result, registry: CitationRegistry) -> str:
+def _failure_note(failed: list[str]) -> str:
+    """Blok untuk synthesizer saat sebagian sumber gagal dibaca (jawaban degraded)."""
+    if not failed:
+        return ""
+    names = ", ".join(COMPONENT_LABELS.get(n, n) for n in failed)
+    return (
+        "[CATATAN SISTEM]\n"
+        f"Sumber berikut GAGAL dibaca karena gangguan sistem: {names}. "
+        "Data dari sumber itu tidak tersedia, bukan kosong."
+    )
+
+
+def _build_data_context(
+    sql_result, vector_result, registry: CitationRegistry, failed: list[str] | None = None
+) -> str:
     sections = [
         s for s in (
             _format_sql_result(sql_result, registry),
             _format_vector_result(vector_result, registry),
         ) if s
     ]
-    if not sections:
-        return ""
     legend = registry.legend()
-    if legend:
+    if sections and legend:
         sections.append("[DAFTAR SUMBER]\n" + legend)
+    note = _failure_note(failed or [])
+    if note:
+        sections.append(note)
     return "\n\n".join(sections)
+
+
+def _retrieval_status(state: dict) -> tuple[list[str], list[str]]:
+    """(node pengambil data yang berjalan, yang gagal) dari trace sejauh ini."""
+    ran = [t for t in state.get("node_traces", []) if t.node in RETRIEVAL_NODES]
+    return [t.node for t in ran], [t.node for t in ran if t.status == "error"]
 
 
 def _message_to_text(m) -> str:
@@ -123,7 +146,20 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
     messages = state.get("messages", [])
     registry = CitationRegistry(state.get("sources") or [])
 
-    data_context = _build_data_context(state.get("sql_result"), state.get("vector_result"), registry)
+    ran, failed = _retrieval_status(state)
+    if ran and len(failed) == len(ran):
+        # Semua sumber gagal: jangan biarkan LLM menjawab "tidak ada data" (C2).
+        raise UpstreamError(
+            "Sumber data sedang tidak bisa dibaca. Coba lagi sebentar.",
+            details={"issues": [
+                {"component": t.node, "code": t.code}
+                for t in state["node_traces"] if t.node in failed
+            ]},
+        )
+
+    data_context = _build_data_context(
+        state.get("sql_result"), state.get("vector_result"), registry, failed
+    )
 
     recent_history = messages[-6:] if len(messages) > 6 else messages
     history_text = "\n".join(_message_to_text(m) for m in recent_history)
@@ -136,10 +172,13 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
 
     try:
         answer = await llm.ainvoke(prompt=prompt, system=None)
-    except Exception:
-        # Perilaku saat gagal (flag degraded, tanpa jawaban karangan) = kelompok C.
+    except Exception as e:
+        # Tidak ada jawaban pengganti yang disimpan sebagai jawaban (C2).
         logger.exception("[synthesizer] Gagal membuat jawaban.")
-        answer = "Maaf, terjadi kesalahan saat membuat jawaban."
+        raise UpstreamError(
+            "Layanan AI gagal membuat jawaban. Coba lagi sebentar.",
+            details={"issues": [{"component": "synthesizer", "code": classify_llm_error(e)}]},
+        ) from e
 
     trace = NodeTrace(
         node="synthesizer",

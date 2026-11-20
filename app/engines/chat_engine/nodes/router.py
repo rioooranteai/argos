@@ -57,8 +57,10 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
     except Exception:
         logger.exception("[router] Gagal menentukan rute; memakai rute cadangan.")
         trace = NodeTrace(node="router", status="error", duration_ms=clock.ms(), code="ROUTER_FAILED")
+        # Rute cadangan `both`: lebih baik membaca semua sumber daripada menebak satu
+        # (DESIGN_GROUP_C.md §3).
         return {
-            "route": "vector",
+            "route": "both",
             "router_reasoning": "Rute cadangan karena pemilihan sumber gagal.",
             "node_traces": [trace],
         }
