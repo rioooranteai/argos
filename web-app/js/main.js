@@ -1202,14 +1202,20 @@ function clearRetryButtons() {
     el.chatBox.querySelectorAll(".btn-retry").forEach((b) => b.remove());
 }
 
-function appendBotMessage(text, citations, pending = []) {
+/**
+ * Jawaban bot. `info` (opsional) = metadata respons chat atau pesan dari riwayat:
+ * {degraded, issues, trace} (DESIGN_GROUP_C.md §3, §7.4).
+ */
+function appendBotMessage(text, citations, pending = [], info = {}) {
     const byLabel = new Map(citations.map((c) => [c.label, c]));
     const bubble = h("div", { class: "message bot" });
     bubble.innerHTML = window.marked ? marked.parse(text || "") : "";
     if (!window.marked) bubble.textContent = text;
     linkCitations(bubble, byLabel);
 
-    const group = h("div", { class: "bubble-group" }, bubble);
+    const group = h("div", { class: "bubble-group" });
+    if (info.degraded) group.append(degradedBanner(info.issues || []));
+    group.append(bubble);
 
     if (citations.length) {
         group.append(h("ol", { class: "cite-list", "aria-label": "Sumber jawaban" },
@@ -1222,6 +1228,8 @@ function appendBotMessage(text, citations, pending = []) {
             text: `Belum dipakai karena masih diproses: ${pending.join(", ")}.` }));
     }
 
+    if (info.trace) group.append(tracePanel(info.trace));
+
     const tts = h("button", { type: "button", class: "btn-action-icon btn-tts", title: "Dengarkan", "aria-label": "Dengarkan jawaban" });
     tts.innerHTML = iconSpeaker();
     tts.addEventListener("click", () => speakMessage(bubble.innerText, tts));
@@ -1232,6 +1240,110 @@ function appendBotMessage(text, citations, pending = []) {
             h("div", { class: "msg-avatar bot-avatar", text: "Ar", "aria-hidden": "true" }),
             group));
     scrollToBottom();
+}
+
+// ── Jawaban degraded & panel "Lihat proses AI" ─────────────────────────────
+
+const COMPONENT_LABEL = {
+    router: "pemilihan sumber",
+    sql: "data terstruktur (SQL)",
+    vector: "pencarian dokumen",
+};
+
+function degradedBanner(issues) {
+    const failed = [...new Set(issues.map((i) => i.component))].filter((c) => c !== "router");
+    const parts = [];
+    if (failed.length) {
+        parts.push(`Sebagian sumber gagal dibaca: ${failed.map((c) => COMPONENT_LABEL[c] || c).join(", ")}. `
+            + "Jawaban ini mungkin belum lengkap. Coba tanyakan lagi sebentar lagi.");
+    }
+    if (issues.some((i) => i.component === "router")) {
+        parts.push("Pemilihan sumber gagal, jadi semua sumber dibaca.");
+    }
+    return h("div", { class: "degraded-banner", role: "note" }, iconAlert(), h("span", { text: parts.join(" ") }));
+}
+
+const TRACE_STEPS = [
+    ["router", "Memilih sumber"],
+    ["sql", "Data terstruktur (SQL)"],
+    ["vector", "Pencarian dokumen"],
+    ["synthesizer", "Menyusun jawaban"],
+];
+const TRACE_STATUS = { ok: "berhasil", empty: "tidak ada data", error: "gagal" };
+const ROUTE_LABEL = {
+    sql: "data terstruktur",
+    vector: "dokumen",
+    both: "data terstruktur + dokumen",
+    none: "tanpa sumber",
+};
+
+function formatMs(ms) {
+    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} dtk`;
+}
+
+/** Panel lipat; isinya baru dibangun saat dibuka pertama kali. */
+function tracePanel(trace) {
+    const panelEl = h("details", { class: "ai-trace" }, h("summary", { text: "Lihat proses AI" }));
+    let built = false;
+    panelEl.addEventListener("toggle", () => {
+        if (panelEl.open && !built) {
+            panelEl.append(traceBody(trace));
+            built = true;
+        }
+    });
+    return panelEl;
+}
+
+function traceBody(t) {
+    const body = h("div", { class: "ai-trace-body" });
+
+    body.append(h("p", { class: "trace-route" },
+        h("span", { class: "trace-label", text: "Rute" }),
+        h("span", { text: ROUTE_LABEL[t.route] || t.route || "-" }),
+        t.router_reasoning ? h("span", { class: "trace-meta", text: ` — ${t.router_reasoning}` }) : null));
+
+    const steps = h("ol", { class: "trace-steps" });
+    for (const [key, label] of TRACE_STEPS) {
+        const step = t[key];
+        if (!step) continue;
+        const meta = [];
+        if (key === "sql" && step.status !== "error") {
+            meta.push(`${step.row_count ?? 0} baris${step.truncated ? " (terpotong)" : ""}`);
+        }
+        if (key === "vector" && step.hits !== undefined) meta.push(`${step.hits} potongan teks`);
+        if (step.duration_ms !== undefined) meta.push(formatMs(step.duration_ms));
+        steps.append(h("li", { class: `trace-step is-${step.status}` },
+            h("span", { class: "trace-dot", "aria-hidden": "true" }),
+            h("span", { class: "trace-name", text: label }),
+            h("span", { class: "trace-status", text: TRACE_STATUS[step.status] || step.status }),
+            step.code ? h("code", { class: "trace-code", text: step.code }) : null,
+            meta.length ? h("span", { class: "trace-meta", text: meta.join(" · ") }) : null));
+    }
+    body.append(steps);
+
+    if (t.sql && t.sql.query) {
+        body.append(h("div", { class: "trace-block" },
+            h("div", { class: "trace-label", text: "SQL yang dijalankan" }),
+            h("pre", { class: "trace-sql" }, h("code", { text: t.sql.query }))));
+    }
+
+    if (t.chunks && t.chunks.length) {
+        body.append(h("div", { class: "trace-block" },
+            h("div", { class: "trace-label", text: "Potongan dokumen yang dibaca" }),
+            h("ul", { class: "trace-chunks" }, ...t.chunks.map((c) => h("li", {},
+                h("span", { class: "cite-num", text: (c.label || "–").replace(/[[\]]/g, "") }),
+                h("span", { text: c.page ? `hal. ${c.page}` : "halaman tidak diketahui" }),
+                typeof c.distance === "number"
+                    ? h("span", { class: "trace-meta", text: `jarak ${c.distance.toFixed(3).replace(".", ",")}` })
+                    : null)))));
+    }
+
+    if (t.llm) {
+        const n = (x) => (x || 0).toLocaleString("id-ID");
+        body.append(h("p", { class: "trace-meta trace-tokens",
+            text: `${t.llm.calls} panggilan AI · ${n(t.llm.input_tokens)} token masuk · ${n(t.llm.output_tokens)} token keluar` }));
+    }
+    return body;
 }
 
 function citationLine(c) {
