@@ -8,7 +8,7 @@ import tiktoken
 from fastapi import FastAPI
 
 from app.core.concurrency import AILimits
-from app.core.config import app_config, infra, validate_required_config
+from app.core.config import app_config, infra, secrets, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
@@ -43,6 +43,7 @@ from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
+from app.services.observability.health import HealthChecker
 from app.services.observability.llm_recorder import recorder as llm_recorder
 from app.services.vector_store.service import VectorStoreService
 from app.services.user.admin import AdminService
@@ -178,6 +179,16 @@ async def lifespan(app: FastAPI):
         nl2sql_svc=app.state.nl2sql_service,
         vector_svc=app.state.vector_store_svc,
         total_timeout=app_config.CHAT_TOTAL_TIMEOUT,
+    )
+
+    app.state.health_checker = HealthChecker(
+        database=db,
+        vector_store=app.state.vector_store_svc,
+        worker=worker,
+        docling=docling,
+        recorder=llm_recorder,
+        missing_config=secrets.missing_required,
+        worker_poll_seconds=app_config.WORKER_POLL_SECONDS,
     )
 
     warm_up = asyncio.create_task(_warm_up_docling(docling))

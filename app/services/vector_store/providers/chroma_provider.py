@@ -126,3 +126,7 @@ class ChromaProvider(BaseVectorStoreProvider):
 
     def count_version(self, version_id: str) -> int:
         return len(self.collection.get(where={"version_id": version_id}, include=[])["ids"])
+
+    def heartbeat(self) -> None:
+        self.client.heartbeat()
+        self.collection.count()

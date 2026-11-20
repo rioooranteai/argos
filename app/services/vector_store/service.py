@@ -34,3 +34,6 @@ class VectorStoreService:
 
     def count_version(self, version_id: str) -> int:
         return self._store.count_version(version_id)
+
+    def heartbeat(self) -> None:
+        self._store.heartbeat()

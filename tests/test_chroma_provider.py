@@ -59,3 +59,7 @@ def test_delete_version(store):
     store.delete_version("v1")
     assert store.count_version("v1") == 0
     assert store.count_version("v2") == 1
+
+
+def test_heartbeat(store):
+    store.heartbeat()  # tidak melempar exception

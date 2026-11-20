@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -44,10 +45,21 @@ class DocumentWorker:
         self._cfg = config
         self._stopping = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
+        # Untuk /health/ready (DESIGN_GROUP_C.md §6).
+        self._last_tick: float | None = None  # time.monotonic() putaran loop terakhir
+        self._active_jobs = 0
 
     @property
     def is_running(self) -> bool:
         return any(not t.done() for t in self._tasks)
+
+    @property
+    def active_jobs(self) -> int:
+        return self._active_jobs
+
+    def seconds_since_tick(self) -> float | None:
+        """Detik sejak slot mana pun terakhir memeriksa antrean (None = belum pernah)."""
+        return None if self._last_tick is None else time.monotonic() - self._last_tick
 
     async def start(self) -> None:
         recovered = await asyncio.to_thread(self._jobs.recover_orphans)
@@ -81,6 +93,7 @@ class DocumentWorker:
 
     async def _loop(self, slot: int) -> None:
         while not self._stopping.is_set():
+            self._last_tick = time.monotonic()
             try:
                 worked = await self.run_once()
             except asyncio.CancelledError:
@@ -96,8 +109,12 @@ class DocumentWorker:
 
     async def _run_job(self, job: DocumentVersion) -> None:
         # Semua log & catatan llm_calls selama job ini membawa version_id (+ stage).
-        with log_context.scoped(version_id=job.id, stage="queued"):
-            await self._run_job_in_context(job)
+        self._active_jobs += 1
+        try:
+            with log_context.scoped(version_id=job.id, stage="queued"):
+                await self._run_job_in_context(job)
+        finally:
+            self._active_jobs -= 1
 
     async def _run_job_in_context(self, job: DocumentVersion) -> None:
         ctx = JobContext(job, self._jobs, self._cfg.VERSION_LEASE_MINUTES)

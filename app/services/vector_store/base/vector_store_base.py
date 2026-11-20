@@ -34,3 +34,7 @@ class BaseVectorStoreProvider(ABC):
     @abstractmethod
     def count_version(self, version_id: str) -> int:
         """Jumlah chunk milik satu versi (untuk pemeriksaan & test)."""
+
+    def heartbeat(self) -> None:
+        """Lempar exception bila penyimpanan vektor tidak bisa diakses (/health/ready)."""
+        raise NotImplementedError

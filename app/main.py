@@ -38,8 +38,3 @@ def index():
 @app.get("/login", tags=["Frontend"])
 def login_page():
     return FileResponse("web-app/login.html")
-
-
-@app.get("/health", tags=["Health Check"])
-def health_check():
-    return {"status": "healthy", "message": "System is running fast and smoothly!"}
