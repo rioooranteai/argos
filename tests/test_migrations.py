@@ -87,7 +87,7 @@ def test_v5_message_status_defaults_and_check(db):
     with db.get_connection() as conn:
         conn.execute("INSERT INTO users (id, email) VALUES ('u1', 'u1@corp.com')")
         conn.execute("INSERT INTO conversations (id, user_id, title) VALUES ('c1', 'u1', 't')")
-        conn.execute("INSERT INTO messages (conversation_id, role, content) VALUES ('c1', 'user', 'q')")
+        conn.execute("INSERT INTO messages (id, seq, conversation_id, role, content) VALUES ('m1', 1, 'c1', 'user', 'q')")
         row = conn.execute("SELECT status, error_code, trace FROM messages").fetchone()
         assert tuple(row) == ("ok", None, None)
         with pytest.raises(sqlite3.IntegrityError):
@@ -97,11 +97,11 @@ def test_v5_message_status_defaults_and_check(db):
 def test_v5_llm_calls_status_check(db):
     with db.get_connection() as conn:
         conn.execute(
-            "INSERT INTO llm_calls (purpose, model, latency_ms, status) VALUES ('router', 'm', 5, 'ok')"
+            "INSERT INTO llm_calls (id, seq, purpose, model, latency_ms, status) VALUES ('a', 1, 'router', 'm', 5, 'ok')"
         )
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
-                "INSERT INTO llm_calls (purpose, model, latency_ms, status) VALUES ('router', 'm', 5, 'meh')"
+                "INSERT INTO llm_calls (id, seq, purpose, model, latency_ms, status) VALUES ('b', 2, 'router', 'm', 5, 'meh')"
             )
 
 
@@ -158,3 +158,61 @@ def test_python_migration_rejects_foreign_key_violations(tmp_path):
     with pytest.raises(RuntimeError, match="foreign key"):
         run_migrations(conn, [(1, orphan)])
     assert conn.execute("SELECT parent_id FROM child").fetchone() == ("p",)
+
+
+# ── v6: semua ID menjadi UUID ───────────────────────────────────────────────
+
+def test_v6_converts_ids_and_keeps_data(tmp_path):
+    import uuid
+
+    from app.core.migrations import MIGRATIONS
+
+    database = Database(db_path=tmp_path / "v5.db")
+    with database.get_connection() as conn:
+        run_migrations(conn, [m for m in MIGRATIONS if m[0] <= 5])
+        conn.executescript("""
+            INSERT INTO users (id, email, name) VALUES ('1111', 'a@corp.com', 'A'), ('2222', 'b@corp.com', 'B');
+            INSERT INTO library_documents (id, display_name, owner_id) VALUES ('d1', 'Doc', '1111');
+            INSERT INTO document_versions (id, document_id, version_no, content_hash, original_filename,
+                file_ext, size_bytes, uploaded_by, pipeline_version)
+                VALUES ('v1', 'd1', 1, 'h', 'a.pdf', '.pdf', 1, '2222', 'p');
+            INSERT INTO notebooks (id, owner_id, title) VALUES ('n1', '1111', 'NB');
+            INSERT INTO conversations (id, user_id, title, notebook_id) VALUES ('c1', '1111', 't', 'n1');
+            INSERT INTO messages (conversation_id, role, content, created_at)
+                VALUES ('c1', 'user', 'tanya', '2026-01-01 10:00:00'),
+                       ('c1', 'assistant', 'jawab', '2026-01-01 10:00:00');
+            INSERT INTO pending_uploads (id, user_id, original_filename, file_ext, size_bytes, content_hash,
+                candidate_document_id, score) VALUES ('p1', '2222', 'x.pdf', '.pdf', 1, 'h2', 'd1', 0.95);
+            INSERT INTO features (document_id, version_id, section_hash, product_name) VALUES ('d1', 'v1', 's', 'Avanza');
+            INSERT INTO llm_calls (purpose, model, latency_ms, status, message_id) VALUES ('router', 'm', 5, 'ok', 1);
+            INSERT INTO llm_calls (purpose, model, latency_ms, status, message_id) VALUES ('router', 'm', 5, 'ok', 99);
+        """)
+        run_migrations(conn)
+
+        users = {r["google_sub"]: r["id"] for r in conn.execute("SELECT id, google_sub FROM users")}
+        assert set(users) == {"1111", "2222"}
+        a, b = users["1111"], users["2222"]
+        assert str(uuid.UUID(a)) == a and a != b
+
+        assert conn.execute("SELECT owner_id FROM library_documents").fetchone()[0] == a
+        assert conn.execute("SELECT uploaded_by FROM document_versions").fetchone()[0] == b
+        assert conn.execute("SELECT owner_id FROM notebooks").fetchone()[0] == a
+        assert conn.execute("SELECT user_id FROM conversations").fetchone()[0] == a
+        assert conn.execute("SELECT user_id FROM pending_uploads").fetchone()[0] == b
+
+        msgs = conn.execute("SELECT id, seq, role FROM messages ORDER BY seq").fetchall()
+        assert [m["role"] for m in msgs] == ["user", "assistant"]  # urutan dipertahankan
+        assert all(str(uuid.UUID(m["id"])) == m["id"] for m in msgs)
+
+        calls = conn.execute("SELECT id, message_id FROM llm_calls ORDER BY seq").fetchall()
+        assert calls[0]["message_id"] == msgs[0]["id"]
+        assert calls[1]["message_id"] is None            # pesan 99 tidak ada
+        feature = conn.execute("SELECT id, product_name FROM features").fetchone()
+        assert feature["product_name"] == "Avanza" and len(feature["id"]) == 36
+
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+        indexes = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+        assert {"idx_messages_conversation", "idx_llm_calls_message", "idx_features_version"} <= indexes
+        # Cascade tetap jalan setelah tabel dibuat ulang.
+        conn.execute("DELETE FROM conversations WHERE id = 'c1'")
+        assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0

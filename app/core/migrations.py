@@ -231,6 +231,150 @@ MIGRATIONS: list[tuple[int, Migration]] = [
 ]
 
 
+# ── v6: semua ID memakai UUID (DESIGN_GROUP_D.md D10) ─────────────────────────
+
+# Kolom yang merujuk users.id (FK maupun tanpa FK).
+_USER_REFERENCES = (
+    ("library_documents", "owner_id"),
+    ("document_versions", "uploaded_by"),
+    ("notebooks", "owner_id"),
+    ("conversations", "user_id"),
+    ("pending_uploads", "user_id"),
+)
+
+
+def _rebuild(conn: sqlite3.Connection, table: str, create_sql: str, columns: list[str],
+             rows: list[tuple], indexes: tuple[str, ...] = ()) -> None:
+    """Buat ulang `table` dengan struktur baru dan isi `rows` (urutan sesuai `columns`)."""
+    conn.execute(create_sql.replace(f"CREATE TABLE {table} ", f"CREATE TABLE {table}__new ", 1))
+    placeholders = ", ".join("?" for _ in columns)
+    conn.executemany(
+        f"INSERT INTO {table}__new ({', '.join(columns)}) VALUES ({placeholders})", rows
+    )
+    conn.execute(f"DROP TABLE {table}")
+    conn.execute(f"ALTER TABLE {table}__new RENAME TO {table}")
+    for index_sql in indexes:
+        conn.execute(index_sql)
+
+
+def _v6_uuid_ids(conn: sqlite3.Connection) -> None:
+    import uuid
+
+    def new_id() -> str:
+        return str(uuid.uuid4())
+
+    # ── users: id = UUID baru, ID Google pindah ke google_sub ──────────
+    old_users = conn.execute(
+        "SELECT id, email, name, picture, is_active, created_at, last_login_at FROM users"
+    ).fetchall()
+    user_map = {row[0]: new_id() for row in old_users}
+    _rebuild(conn, "users", """
+        CREATE TABLE users (
+            id             TEXT PRIMARY KEY,              -- UUID
+            google_sub     TEXT UNIQUE,                   -- ID akun Google; hanya untuk login
+            email          TEXT NOT NULL UNIQUE,
+            name           TEXT,
+            picture        TEXT,
+            is_active      INTEGER NOT NULL DEFAULT 1,
+            created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_login_at  TIMESTAMP
+        )""",
+        ["id", "google_sub", "email", "name", "picture", "is_active", "created_at", "last_login_at"],
+        [(user_map[r[0]], r[0], *r[1:]) for r in old_users],
+    )
+    for table, column in _USER_REFERENCES:
+        conn.executemany(
+            f"UPDATE {table} SET {column} = ? WHERE {column} = ?",
+            [(new, old) for old, new in user_map.items()],
+        )
+
+    # ── messages: id = UUID, urutan lewat seq (tidak keluar ke API) ────
+    old_messages = conn.execute(
+        """SELECT id, conversation_id, role, content, created_at, source_snapshot, citations,
+                  status, error_code, trace FROM messages ORDER BY id"""
+    ).fetchall()
+    message_map = {row[0]: new_id() for row in old_messages}
+    _rebuild(conn, "messages", """
+        CREATE TABLE messages (
+            id               TEXT PRIMARY KEY,             -- UUID
+            seq              INTEGER NOT NULL UNIQUE,      -- urutan insert; internal
+            conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            role             TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content          TEXT NOT NULL,
+            created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            source_snapshot  TEXT,
+            citations        TEXT,
+            status           TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok', 'failed')),
+            error_code       TEXT,
+            trace            TEXT
+        )""",
+        ["id", "seq", "conversation_id", "role", "content", "created_at", "source_snapshot",
+         "citations", "status", "error_code", "trace"],
+        [(message_map[r[0]], r[0], *r[1:]) for r in old_messages],
+        ("CREATE INDEX idx_messages_conversation ON messages (conversation_id, seq)",),
+    )
+
+    # ── llm_calls: id = UUID, message_id ikut ke UUID pesan ─────────────
+    old_calls = conn.execute(
+        """SELECT id, ts, purpose, model, input_tokens, output_tokens, latency_ms, status,
+                  error_code, request_id, version_id, message_id FROM llm_calls ORDER BY id"""
+    ).fetchall()
+    _rebuild(conn, "llm_calls", """
+        CREATE TABLE llm_calls (
+            id             TEXT PRIMARY KEY,   -- UUID
+            seq            INTEGER NOT NULL UNIQUE,
+            ts             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            purpose        TEXT NOT NULL,
+            model          TEXT NOT NULL,
+            input_tokens   INTEGER,
+            output_tokens  INTEGER,
+            latency_ms     INTEGER NOT NULL,
+            status         TEXT NOT NULL CHECK (status IN ('ok', 'error')),
+            error_code     TEXT,
+            request_id     TEXT,
+            version_id     TEXT,
+            message_id     TEXT                -- UUID pesan user pemicu; tanpa FK
+        )""",
+        ["id", "seq", "ts", "purpose", "model", "input_tokens", "output_tokens", "latency_ms",
+         "status", "error_code", "request_id", "version_id", "message_id"],
+        [(new_id(), r[0], *r[1:11], message_map.get(r[11])) for r in old_calls],
+        ("CREATE INDEX idx_llm_calls_ts      ON llm_calls (ts)",
+         "CREATE INDEX idx_llm_calls_message ON llm_calls (message_id)"),
+    )
+
+    # ── features: id = UUID ─────────────────────────────────────────────
+    feature_columns = ["document_id", "version_id", "section_hash", "section_heading",
+                       "page_number", "brand_name", "product_name", "price", "price_currency",
+                       "advantages", "disadvantages"]
+    old_features = conn.execute(
+        f"SELECT {', '.join(feature_columns)} FROM features ORDER BY id"
+    ).fetchall()
+    _rebuild(conn, "features", """
+        CREATE TABLE features (
+            id               TEXT PRIMARY KEY,   -- UUID
+            document_id      TEXT NOT NULL REFERENCES library_documents(id) ON DELETE CASCADE,
+            version_id       TEXT NOT NULL REFERENCES document_versions(id) ON DELETE CASCADE,
+            section_hash     TEXT NOT NULL,
+            section_heading  TEXT,
+            page_number      INTEGER,
+            brand_name       TEXT,
+            product_name     TEXT NOT NULL,
+            price            REAL,
+            price_currency   TEXT,
+            advantages       TEXT,
+            disadvantages    TEXT
+        )""",
+        ["id", *feature_columns],
+        [(new_id(), *r) for r in old_features],
+        ("CREATE INDEX idx_features_version ON features (version_id)",
+         "CREATE INDEX idx_features_brand   ON features (brand_name)",
+         "CREATE INDEX idx_features_product ON features (product_name)"),
+    )
+
+
+MIGRATIONS.append((6, _v6_uuid_ids))
+
+
 def run_migrations(conn: sqlite3.Connection, migrations: list[tuple[int, Migration]] | None = None) -> None:
     """Apply pending migrations. Safe to call on every startup."""
     conn.execute("""
