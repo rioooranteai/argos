@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.core.config import app_config
-from app.core.dependencies import get_voice_service
+from app.core.dependencies import get_current_user, get_voice_service
 from app.core.errors import PayloadTooLarge, UnsupportedMediaType, UpstreamError, ValidationError
 from app.services.voice.exceptions import (
     UnsupportedFormatError,
@@ -19,7 +19,12 @@ from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/voice", tags=["Voice"])
+# Wajib login: STT/TTS memakai kredit OpenAI (audit poin 4, DESIGN_GROUP_D.md D4).
+router = APIRouter(
+    prefix="/api/v1/voice",
+    tags=["Voice"],
+    dependencies=[Depends(get_current_user)],
+)
 
 ALLOWED_AUDIO = {
     "audio/wav",

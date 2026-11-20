@@ -8,8 +8,11 @@ from fastapi.testclient import TestClient
 
 from app.api.routers import voice
 from app.core.config import AppConfig
-from app.core.dependencies import get_voice_service
-from app.core.errors import register_exception_handlers
+from app.core.dependencies import get_current_user, get_voice_service
+from app.core.errors import AuthenticationError, register_exception_handlers
+from app.services.user.model import CurrentUser
+
+USER = CurrentUser(id="u1", email="a@corp.com", name="A", given_name="", picture="", is_admin=False)
 
 
 class FakeVoice:
@@ -22,12 +25,19 @@ class FakeVoice:
         return {"text": f"{len(audio_bytes)} bytes"}
 
 
-def _client(monkeypatch, mb: int, service: FakeVoice | None = None) -> TestClient:
+def _client(monkeypatch, mb: int, service: FakeVoice | None = None, user=USER) -> TestClient:
     monkeypatch.setattr(voice, "app_config", dataclasses.replace(AppConfig(), STT_MAX_MB=mb))
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(voice.router)
     app.dependency_overrides[get_voice_service] = lambda: service or FakeVoice()
+
+    def current_user():
+        if user is None:
+            raise AuthenticationError()
+        return user
+
+    app.dependency_overrides[get_current_user] = current_user
     return TestClient(app)
 
 
@@ -67,3 +77,12 @@ def test_provider_failure_is_503_without_details(monkeypatch):
 
     r = _post(_client(monkeypatch, 1, FakeVoice(UnsupportedLanguageError("xx", "openai", ["id"]))))
     assert r.status_code == 400 and r.json()["error"]["code"] == "VOICE_UNSUPPORTED"
+
+
+def test_voice_requires_login(monkeypatch):
+    service = FakeVoice()
+    client = _client(monkeypatch, 1, service, user=None)
+    r = _post(client)
+    assert r.status_code == 401 and r.json()["error"]["code"] == "UNAUTHENTICATED"
+    r = client.post("/api/v1/voice/tts", json={"text": "halo"})
+    assert r.status_code == 401
