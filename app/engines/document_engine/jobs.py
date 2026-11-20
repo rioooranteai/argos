@@ -7,10 +7,14 @@ import time
 import httpx
 import openai
 
+from app.core import log_context
 from app.core.errors import ArgosError
 from app.infrastructure.interface.job_repository import BaseJobRepository
 from app.services.ingestion.exceptions import DocumentLoadError
-from app.services.ingestion.providers.loaders.docling_process import ParserTimeout, ParserUnavailable
+from app.services.ingestion.providers.loaders.docling_process import (
+    ParserTimeout,
+    ParserUnavailable,
+)
 from app.services.library.model import DocumentVersion
 
 
@@ -94,6 +98,7 @@ class JobContext:
 
     async def stage(self, stage: str, total: int = 0) -> None:
         self._stage, self._done, self._total = stage, 0, total
+        log_context.bind_request(stage=stage)  # dict konteks milik job ini (worker: scoped)
         await self._write()
 
     async def progress(self, done: int) -> None:

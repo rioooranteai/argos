@@ -166,8 +166,10 @@ class AppConfig:
     # ── Voice ────────────────────────────────────────────────────────
     STT_MAX_MB: int = 25
 
-    # ── Logging ──────────────────────────────────────────────────────
-    LOG_PROMPTS: bool = False
+    # ── Logging & observability (DESIGN_GROUP_C.md §7) ───────────────
+    LOG_FORMAT: str = "json"          # "json" | "text" (text untuk dibaca saat dev lokal)
+    LOG_PROMPTS: bool = False         # True: prompt & respons LLM ditulis ke log level DEBUG
+    LLM_CALLS_RETENTION_DAYS: int = 90
 
 
 secrets = Secrets()

@@ -2,6 +2,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
+from app.core import log_context
 from app.core.config import app_config, secrets
 from app.core.errors import AuthenticationError, PermissionDenied
 from app.core.security import is_admin
@@ -38,6 +39,8 @@ def get_current_user(
         raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN")
     if not user.is_active:
         raise PermissionDenied("Akun Anda dinonaktifkan.", code="USER_INACTIVE")
+
+    log_context.bind_request(user_id=user.id)
 
     return CurrentUser(
         id=user.id,

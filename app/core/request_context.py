@@ -2,11 +2,11 @@
 
 - Diterima dari header ``X-Request-ID`` (jika aman) atau dibuat baru.
 - Disimpan di ``request.state`` dan contextvar, dikembalikan di header respons,
-  dan disisipkan ke setiap baris log lewat ``RequestIDLogFilter``.
+  dan disisipkan ke setiap baris log lewat ``logging_setup.ContextFilter``.
+- Middleware juga membuka konteks log baru per request (``log_context``).
 """
 from __future__ import annotations
 
-import logging
 import re
 import uuid
 from contextvars import ContextVar
@@ -14,6 +14,8 @@ from contextvars import ContextVar
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from app.core import log_context
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -54,6 +56,7 @@ class RequestIDMiddleware:
 
         scope.setdefault("state", {})["request_id"] = rid
         token = _request_id_var.set(rid)
+        ctx_token = log_context.start_request()
 
         async def send_with_id(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -65,12 +68,5 @@ class RequestIDMiddleware:
         try:
             await self.app(scope, receive, send_with_id)
         finally:
+            log_context.end_request(ctx_token)
             _request_id_var.reset(token)
-
-
-class RequestIDLogFilter(logging.Filter):
-    """Menambahkan atribut ``request_id`` ke setiap LogRecord."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = get_request_id() or "-"
-        return True

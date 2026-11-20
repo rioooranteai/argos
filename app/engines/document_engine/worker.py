@@ -15,6 +15,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
+from app.core import log_context
 from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, classify
 from app.infrastructure.interface.job_repository import BaseJobRepository
@@ -94,6 +95,11 @@ class DocumentWorker:
                     pass
 
     async def _run_job(self, job: DocumentVersion) -> None:
+        # Semua log & catatan llm_calls selama job ini membawa version_id (+ stage).
+        with log_context.scoped(version_id=job.id, stage="queued"):
+            await self._run_job_in_context(job)
+
+    async def _run_job_in_context(self, job: DocumentVersion) -> None:
         ctx = JobContext(job, self._jobs, self._cfg.VERSION_LEASE_MINUTES)
         logger.info("Memproses versi %s (percobaan %d).", job.id, job.attempts)
         try:

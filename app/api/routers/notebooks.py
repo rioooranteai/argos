@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 
+from app.core import log_context
 from app.core.dependencies import (
     get_chat_engine,
     get_conversation_service,
@@ -25,6 +26,7 @@ from app.services.conversation.model import (
     RenameConversationRequest,
 )
 from app.services.conversation.service import ConversationService, ConversationWithMessages
+from app.services.library.model import ResolvePendingRequest
 from app.services.notebook.model import (
     AddSourcesRequest,
     CreateNotebookRequest,
@@ -37,11 +39,20 @@ from app.services.notebook.model import (
     SourceUploadOut,
     UpdateSourceRequest,
 )
-from app.services.library.model import ResolvePendingRequest
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 
-router = APIRouter(prefix="/api/v1/notebooks", tags=["Notebook"])
+
+def _bind_notebook_to_logs(request: Request) -> None:
+    """Semua log & catatan llm_calls di endpoint notebook membawa notebook_id."""
+    log_context.bind_request(notebook_id=request.path_params.get("notebook_id"))
+
+
+router = APIRouter(
+    prefix="/api/v1/notebooks",
+    tags=["Notebook"],
+    dependencies=[Depends(_bind_notebook_to_logs)],
+)
 logger = logging.getLogger(__name__)
 
 

@@ -5,17 +5,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.router import register_routers
+from app.core.config import app_config
 from app.core.errors import register_exception_handlers
+from app.core.logging_setup import configure_logging
 from app.core.middleware import register_middleware
-from app.core.request_context import RequestIDLogFilter
 from app.core.startup import lifespan
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s",
-)
-for _handler in logging.getLogger().handlers:
-    _handler.addFilter(RequestIDLogFilter())
+configure_logging(app_config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
