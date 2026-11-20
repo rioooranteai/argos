@@ -13,16 +13,21 @@ from app.core.errors import register_exception_handlers
 
 
 class FakeVoice:
+    def __init__(self, error: BaseException | None = None):
+        self.error = error
+
     async def speech_to_text(self, audio_bytes, request):
+        if self.error is not None:
+            raise self.error
         return {"text": f"{len(audio_bytes)} bytes"}
 
 
-def _client(monkeypatch, mb: int) -> TestClient:
+def _client(monkeypatch, mb: int, service: FakeVoice | None = None) -> TestClient:
     monkeypatch.setattr(voice, "app_config", dataclasses.replace(AppConfig(), STT_MAX_MB=mb))
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(voice.router)
-    app.dependency_overrides[get_voice_service] = lambda: FakeVoice()
+    app.dependency_overrides[get_voice_service] = lambda: service or FakeVoice()
     return TestClient(app)
 
 
@@ -39,3 +44,26 @@ def test_audio_too_large(monkeypatch):
     )
     assert r.status_code == 413
     assert r.json()["error"]["code"] == "AUDIO_TOO_LARGE"
+
+
+def _post(client, data=b"x", ctype="audio/webm"):
+    return client.post("/api/v1/voice/stt", files={"audio": ("a.webm", data, ctype)})
+
+
+def test_unsupported_and_empty_audio_use_error_contract(monkeypatch):
+    client = _client(monkeypatch, 1)
+    r = _post(client, ctype="text/plain")
+    assert r.status_code == 415 and r.json()["error"]["code"] == "AUDIO_UNSUPPORTED"
+    r = _post(client, data=b"")
+    assert r.status_code == 400 and r.json()["error"]["code"] == "AUDIO_EMPTY"
+
+
+def test_provider_failure_is_503_without_details(monkeypatch):
+    from app.services.voice.exceptions import STTError, UnsupportedLanguageError
+
+    r = _post(_client(monkeypatch, 1, FakeVoice(STTError("OpenAI STT gagal: sk-secret"))))
+    assert r.status_code == 503 and r.json()["error"]["code"] == "VOICE_UNAVAILABLE"
+    assert "sk-secret" not in r.text
+
+    r = _post(_client(monkeypatch, 1, FakeVoice(UnsupportedLanguageError("xx", "openai", ["id"]))))
+    assert r.status_code == 400 and r.json()["error"]["code"] == "VOICE_UNSUPPORTED"

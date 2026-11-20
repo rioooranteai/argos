@@ -1,13 +1,21 @@
 import io
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.core.config import app_config
 from app.core.dependencies import get_voice_service
-from app.core.errors import PayloadTooLarge
+from app.core.errors import PayloadTooLarge, UnsupportedMediaType, UpstreamError, ValidationError
+from app.services.voice.exceptions import (
+    UnsupportedFormatError,
+    UnsupportedLanguageError,
+    VoiceServiceError,
+)
 from app.services.voice.model import STTRequest, TTSRequest
 from app.services.voice.service import VoiceService
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +58,20 @@ MIME_TO_EXT = {
 }
 
 
+@contextmanager
+def _voice_errors() -> Iterator[None]:
+    """Error layanan suara → kontrak error standar (DESIGN_GROUP_C.md §2)."""
+    try:
+        yield
+    except (UnsupportedFormatError, UnsupportedLanguageError) as e:
+        raise ValidationError(str(e), code="VOICE_UNSUPPORTED") from e
+    except VoiceServiceError as e:
+        # Detail OpenAI hanya di log (handler global mencatat error 5xx beserta stack).
+        raise UpstreamError(
+            "Layanan suara sedang tidak tersedia. Coba lagi sebentar.", code="VOICE_UNAVAILABLE"
+        ) from e
+
+
 @router.post("/stt")
 async def speech_to_text(
         audio: UploadFile = File(...),
@@ -60,7 +82,7 @@ async def speech_to_text(
     content_type = audio.content_type or "application/octet-stream"
 
     if content_type not in ALLOWED_AUDIO:
-        raise HTTPException(status_code=415, detail="Format audio tidak didukung")
+        raise UnsupportedMediaType("Format audio tidak didukung.", code="AUDIO_UNSUPPORTED")
 
     # Dibaca bertahap & dihentikan begitu melewati batas (DESIGN_GROUP_B.md §8);
     # batas mengikuti Whisper API (25 MB).
@@ -75,7 +97,7 @@ async def speech_to_text(
     audio_bytes = b"".join(chunks)
 
     if not audio_bytes:
-        raise HTTPException(status_code=400, detail="File kosong")
+        raise ValidationError("File audio kosong.", code="AUDIO_EMPTY")
 
     ext = MIME_TO_EXT.get(content_type, "webm")
 
@@ -86,7 +108,8 @@ async def speech_to_text(
         audio_filename=f"audio.{ext}",
     )
 
-    return await voice_service.speech_to_text(audio_bytes, request)
+    with _voice_errors():
+        return await voice_service.speech_to_text(audio_bytes, request)
 
 
 @router.post("/tts")
@@ -94,7 +117,8 @@ async def text_to_speech(
         request: TTSRequest,
         voice_service: VoiceService = Depends(get_voice_service),
 ):
-    result = await voice_service.text_to_speech(request)
+    with _voice_errors():
+        result = await voice_service.text_to_speech(request)
 
     return StreamingResponse(
         io.BytesIO(result.audio_bytes),

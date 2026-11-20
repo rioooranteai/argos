@@ -82,6 +82,12 @@ class PayloadTooLarge(ArgosError):
     default_message = "Ukuran data melebihi batas."
 
 
+class UnsupportedMediaType(ArgosError):
+    code = "UNSUPPORTED_MEDIA_TYPE"
+    http_status = 415
+    default_message = "Format file tidak didukung."
+
+
 class UpstreamError(ArgosError):
     code = "UPSTREAM_UNAVAILABLE"
     http_status = 503
