@@ -53,7 +53,9 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]
+# BLE: setiap `except Exception` wajib logger.exception / exc_info=True atau raise ulang
+# (DESIGN_GROUP_C.md §7.2). Pengecualian sengaja diberi `# noqa: BLE001 — <alasan>`.
+select = ["E", "F", "W", "I", "B", "UP", "BLE"]
 ignore = ["E501"]  # line length handled by formatter
 
 [tool.mypy]

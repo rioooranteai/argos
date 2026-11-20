@@ -5,6 +5,8 @@ import logging
 from collections.abc import Iterable
 from typing import Any
 
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+
 from app.core.errors import UpstreamTimeout
 from app.engines.chat_engine.graph import build_graph
 from app.engines.chat_engine.outcome import ChatResult, NodeTrace, issues_from
@@ -15,7 +17,6 @@ from app.services.notebook.model import ActiveSource
 from app.services.observability.llm_recorder import recorder
 from app.services.observability.model import LLMCall
 from app.services.vector_store.service import VectorStoreService
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 logger = logging.getLogger(__name__)
 

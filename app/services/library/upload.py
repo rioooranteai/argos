@@ -104,4 +104,4 @@ def count_pages(path: Path, ext: str) -> int | None:
         logger.info("PDF tidak bisa dibuka (%s): %s", path.name, exc)
         raise ValidationError(
             "File PDF rusak atau terkunci kata sandi.", code="FILE_CORRUPT"
-        ) from None
+        ) from exc

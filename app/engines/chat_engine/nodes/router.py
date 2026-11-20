@@ -18,7 +18,7 @@ def _load_prompt(filename: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}")
+        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}") from None
 
 
 _ROUTER_SYSTEM = _load_prompt("router_agent.md")

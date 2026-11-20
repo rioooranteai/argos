@@ -41,7 +41,7 @@ def _serve(conn: Connection, loader_spec: str) -> None:
     """Loop di dalam subprocess: terima path, kirim balik elemen dokumen."""
     try:
         loader = _load_factory(loader_spec)()
-    except Exception as exc:  # gagal memuat model
+    except Exception as exc:  # noqa: BLE001 — di subprocess: error dikirim ke proses induk, yang mencatatnya
         conn.send(("fatal", f"{type(exc).__name__}: {exc}"))
         return
     conn.send(("ready", None))
@@ -54,7 +54,7 @@ def _serve(conn: Connection, loader_spec: str) -> None:
             return
         try:
             conn.send(("ok", loader.load(path)))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — sama: dicatat oleh proses induk
             conn.send(("error", f"{type(exc).__name__}: {exc}"))
 
 

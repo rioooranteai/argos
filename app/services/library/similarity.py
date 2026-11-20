@@ -56,8 +56,8 @@ def extract_text(path: Path, ext: str) -> str:
                 return "\n".join(parts)
             finally:
                 pdf.close()
-    except Exception as exc:  # hanya untuk saran: gagal → tanpa saran
-        logger.info("Teks untuk sidik kemiripan tidak bisa dibaca (%s): %s", path.name, exc)
+    except Exception:  # hanya untuk saran: gagal → tanpa saran
+        logger.info("Teks untuk sidik kemiripan tidak bisa dibaca (%s).", path.name, exc_info=True)
     return ""
 
 

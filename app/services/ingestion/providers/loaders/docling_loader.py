@@ -42,7 +42,7 @@ def _resolve_device(name: str) -> AcceleratorDevice:
 
         cuda_ok = torch.cuda.is_available()
         gpu_name = torch.cuda.get_device_name(0) if cuda_ok else None
-    except Exception:  # torch belum terpasang / rusak
+    except Exception:  # noqa: BLE001 — torch opsional; tanpa torch/CUDA = jalan di CPU
         cuda_ok, gpu_name = False, None
 
     if device == AcceleratorDevice.CUDA and not cuda_ok:
@@ -167,10 +167,13 @@ class DoclingLoader(BaseDocumentLoader):
                                     metadata={},
                                 )
                             )
-                    except Exception as img_err:
-                        logger.warning(f"Gagal mengekstrak gambar di halaman {page_num}: {img_err}")
+                    except Exception:
+                        # Satu gambar rusak tidak menggagalkan dokumen; teks tetap diproses.
+                        logger.warning(
+                            "Gagal mengekstrak gambar di halaman %s.", page_num, exc_info=True
+                        )
 
             return elements
 
         except Exception as e:
-            raise DocumentLoadError(file_path, f"Docling gagal memproses dokumen: {str(e)}") from None
+            raise DocumentLoadError(file_path, f"Docling gagal memproses dokumen: {str(e)}") from e

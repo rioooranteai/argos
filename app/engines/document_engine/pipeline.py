@@ -168,8 +168,11 @@ class DocumentPipeline:
             return {}
         try:
             return self._vectors.version_texts(previous_id)
-        except Exception as exc:
-            logger.warning("Vektor versi %s tidak bisa dibaca untuk dipakai ulang: %s", previous_id, exc)
+        except Exception:
+            # Pemakaian ulang hanya penghematan: gagal → semua chunk di-embed biasa.
+            logger.warning(
+                "Vektor versi %s tidak bisa dibaca untuk dipakai ulang.", previous_id, exc_info=True
+            )
             return {}
 
     async def cleanup(self, version_id: str) -> None:

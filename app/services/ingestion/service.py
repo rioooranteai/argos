@@ -89,9 +89,10 @@ class FigureDescriber:
         try:
             async with self._semaphore:
                 description = await self._processor.describe_image(el)
-        except Exception as exc:
+        except Exception:
+            # Gambar gagal tidak menggagalkan dokumen; dihitung di `vision_failed`.
             logger.warning(
-                "Vision gagal untuk gambar hal. %s (%s): %s", el.page_number, key[:12], exc
+                "Vision gagal untuk gambar hal. %s (%s).", el.page_number, key[:12], exc_info=True
             )
             el.content = FAILED_IMAGE_TEXT
             el.image_bytes = None

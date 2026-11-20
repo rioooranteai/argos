@@ -81,4 +81,4 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
             raise VisionProcessingError(
                 page_number=element.page_number,
                 reason=str(e)
-            )
+            ) from e
