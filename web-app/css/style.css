@@ -2394,3 +2394,58 @@ button.history-item {
   .panel-body { padding-left: 18px; padding-right: 18px; }
   .panel-actions .modal-btn { flex: 1; }
 }
+
+/* ── Pesan gagal + kirim ulang (DESIGN_GROUP_C.md §4, §8) ── */
+.user-wrapper.is-failed .message.user {
+  opacity: 0.55;
+  border-style: dashed;
+  border-color: rgba(239,68,68,0.35);
+}
+
+.msg-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  margin-top: -12px;           /* rapat ke bubble (bubble-group gap: 20px) */
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #f3a6a6;
+}
+.msg-failure .icon { color: var(--red); }
+.msg-failure-text { text-align: right; }
+.msg-failure-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.btn-retry,
+.btn-copy-id {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;            /* target sentuh yang wajar di layar kecil */
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.btn-retry {
+  border: 1px solid rgba(244,124,60,0.45);
+  background: var(--accent-dim);
+  color: #ffb48a;
+  font-weight: 600;
+}
+.btn-retry:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-copy-id {
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.btn-copy-id:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.btn-retry:focus-visible,
+.btn-copy-id:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-retry:disabled { opacity: 0.5; cursor: default; }
+
+.chat-notice .btn-copy-id { margin-left: 4px; align-self: center; min-height: 24px; padding: 1px 8px; }

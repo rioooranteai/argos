@@ -32,11 +32,13 @@ function logout() {
 // ---------------------------------------------------------------------------
 
 class ApiError extends Error {
-    constructor(message, code, requestId, status) {
+    constructor(message, code, requestId, status, details = {}, retryable = false) {
         super(message);
         this.code = code;
         this.requestId = requestId;
         this.status = status;
+        this.details = details;      // mis. {conversation_id, message_id} saat chat gagal
+        this.retryable = retryable;
     }
 }
 
@@ -71,6 +73,8 @@ async function api(path, { method = "GET", json, form } = {}) {
             (err && err.code) || `HTTP_${response.status}`,
             (err && err.request_id) || response.headers.get("X-Request-ID"),
             response.status,
+            (err && err.details) || {},
+            Boolean(err && err.retryable),
         );
     }
     return data;
@@ -1012,12 +1016,16 @@ async function openConversation(conversationId) {
         const detail = await api(`/notebooks/${state.notebook.id}/conversations/${conversationId}`);
         if (state.conversationId !== conversationId) return;
         el.headerTitle.textContent = detail.title || "Tanpa judul";
+        const last = detail.messages[detail.messages.length - 1];
         detail.messages.forEach((m) =>
-            m.role === "user" ? appendUserMessage(m.content) : appendBotMessage(m.content, m.citations || []));
+            m.role === "user"
+                // Hanya pesan terakhir yang bisa dikirim ulang (server menolak yang lain).
+                ? appendUserMessage(m.content, { ...m, conversationId, canRetry: m === last })
+                : appendBotMessage(m.content, m.citations || [], [], m));
         scrollToBottom();
     } catch (err) {
         if (err.status === 404) { go(state.notebook.id); return; }
-        appendNotice(errorText(err));
+        appendNotice(err.message, err.requestId);
     }
 }
 
@@ -1106,17 +1114,92 @@ document.querySelectorAll(".welcome-suggestion").forEach((btn) =>
 
 function scrollToBottom() { el.chatBox.scrollTop = el.chatBox.scrollHeight; }
 
-function appendUserMessage(text) {
-    el.chatBox.append(
-        h("div", { class: "message-wrapper user-wrapper" },
-            h("div", { class: "msg-avatar user-avatar", text: "U", "aria-hidden": "true" }),
-            h("div", { class: "bubble-group" }, h("div", { class: "message user", text }))));
+/**
+ * Pesan user. `msg` (opsional, dari riwayat): {id, status, error_code, conversationId, canRetry}.
+ * Mengembalikan elemen wrapper agar bisa ditandai gagal / dipulihkan.
+ */
+function appendUserMessage(text, msg = {}) {
+    const group = h("div", { class: "bubble-group" }, h("div", { class: "message user", text }));
+    const wrapper = h("div", { class: "message-wrapper user-wrapper" },
+        h("div", { class: "msg-avatar user-avatar", text: "U", "aria-hidden": "true" }),
+        group);
+    el.chatBox.append(wrapper);
+    if (msg.status === "failed") {
+        markFailed(wrapper, {
+            code: msg.error_code,
+            messageId: msg.id,
+            conversationId: msg.conversationId,
+            canRetry: msg.canRetry,
+        });
+    }
+    scrollToBottom();
+    return wrapper;
+}
+
+/** Tombol kecil yang menyalin request ID, untuk dilaporkan ke admin. */
+function requestIdButton(requestId) {
+    return h("button", {
+        type: "button",
+        class: "btn-copy-id",
+        title: "Salin kode ini bila melapor ke admin",
+        "aria-label": `Salin kode error ${requestId}`,
+        onclick: async () => {
+            try {
+                await navigator.clipboard.writeText(requestId);
+                toast("Kode disalin.");
+            } catch {
+                toast(`Kode: ${requestId}`);
+            }
+        },
+    }, `Kode: ${requestId}`);
+}
+
+function appendNotice(text, requestId = null) {
+    el.chatBox.append(h("div", { class: "chat-notice", role: "alert" },
+        iconAlert(), h("span", { text }), requestId ? requestIdButton(requestId) : null));
     scrollToBottom();
 }
 
-function appendNotice(text) {
-    el.chatBox.append(h("div", { class: "chat-notice", role: "alert" }, iconAlert(), h("span", { text })));
-    scrollToBottom();
+// Teks untuk pesan gagal yang dimuat dari riwayat (server hanya menyimpan kodenya).
+const FAILURE_TEXT = {
+    UPSTREAM_UNAVAILABLE: "layanan AI atau sumber data sedang tidak tersedia.",
+    CHAT_TIMEOUT: "jawaban terlalu lama dibuat.",
+    CANCELLED: "koneksi terputus sebelum jawaban selesai.",
+    INTERNAL_ERROR: "terjadi kesalahan pada sistem.",
+};
+
+function failureText(code, message) {
+    if (message) return message;
+    return `Gagal: ${FAILURE_TEXT[code] || "pesan ini belum terjawab."}`;
+}
+
+/** Tandai pesan user sebagai gagal (DESIGN_GROUP_C.md §4): redup + alasan + [Kirim ulang]. */
+function markFailed(wrapper, { code, message, requestId, messageId, conversationId, canRetry = true }) {
+    clearFailed(wrapper);
+    wrapper.classList.add("is-failed");
+    const row = h("div", { class: "msg-failure", role: "status" },
+        iconAlert(), h("span", { class: "msg-failure-text", text: failureText(code, message) }));
+    const actions = h("div", { class: "msg-failure-actions" });
+    if (canRetry && messageId && conversationId) {
+        actions.append(h("button", {
+            type: "button",
+            class: "btn-retry",
+            onclick: () => retryMessage(wrapper, conversationId, messageId),
+        }, "Kirim ulang"));
+    }
+    if (requestId) actions.append(requestIdButton(requestId));
+    if (actions.childElementCount) row.append(actions);
+    wrapper.querySelector(".bubble-group").append(row);
+}
+
+function clearFailed(wrapper) {
+    wrapper.classList.remove("is-failed");
+    wrapper.querySelector(".msg-failure")?.remove();
+}
+
+/** Pesan baru membuat pesan gagal sebelumnya tidak lagi "terakhir" → tidak bisa dikirim ulang. */
+function clearRetryButtons() {
+    el.chatBox.querySelectorAll(".btn-retry").forEach((b) => b.remove());
 }
 
 function appendBotMessage(text, citations, pending = []) {
@@ -1242,7 +1325,8 @@ async function sendMessage() {
     }
 
     showChat();
-    appendUserMessage(question);
+    clearRetryButtons();
+    const userEl = appendUserMessage(question);
     el.chatInput.value = "";
     setSending(true);
 
@@ -1253,21 +1337,68 @@ async function sendMessage() {
         const res = await api(`/notebooks/${notebookId}/messages`, { method: "POST", json: body });
         if (!state.notebook || state.notebook.id !== notebookId) return;
 
-        appendBotMessage(res.answer, res.citations || [], res.metadata.pending_sources || []);
-        if (!state.conversationId) {
-            state.conversationId = res.conversation_id;
-            window.history.replaceState({}, document.title, `/#/nb/${notebookId}/c/${res.conversation_id}`);
-            el.headerTitle.textContent = question.length > 60 ? `${question.slice(0, 59)}…` : question;
-            // Judul otomatis dibuat server di background; ambil lagi sebentar kemudian.
-            setTimeout(async () => {
-                await refreshConversations();
-                const conv = state.conversations.find((c) => c.id === state.conversationId);
-                if (conv) el.headerTitle.textContent = conv.title;
-            }, 2000);
-        }
-        refreshConversations();
+        appendBotMessage(res.answer, res.citations || [], res.metadata.pending_sources || [], res.metadata);
+        adoptConversation(notebookId, res.conversation_id, question);
     } catch (err) {
-        appendNotice(errorText(err));
+        if (!state.notebook || state.notebook.id !== notebookId) return;
+        const d = err.details || {};
+        // Pesan tersimpan sebagai `failed` di server → percakapan baru pun sudah punya ID.
+        if (d.conversation_id) adoptConversation(notebookId, d.conversation_id, question);
+        markFailed(userEl, {
+            code: err.code,
+            message: err.message,
+            requestId: err.requestId,
+            messageId: d.message_id,
+            conversationId: d.conversation_id,
+        });
+        if (err.code === "SOURCES_PROCESSING" || err.code === "NO_ACTIVE_SOURCES") pollSources();
+    } finally {
+        setSending(false);
+    }
+}
+
+/** Setelah pesan pertama: pakai ID percakapan dari server, perbarui URL & judul. */
+function adoptConversation(notebookId, conversationId, question) {
+    if (state.conversationId === conversationId) {
+        refreshConversations();
+        return;
+    }
+    state.conversationId = conversationId;
+    window.history.replaceState({}, document.title, `/#/nb/${notebookId}/c/${conversationId}`);
+    el.headerTitle.textContent = question.length > 60 ? `${question.slice(0, 59)}…` : question;
+    refreshTitleSoon();
+}
+
+/** Judul otomatis dibuat server di background; ambil lagi sebentar kemudian. */
+function refreshTitleSoon() {
+    refreshConversations();
+    setTimeout(async () => {
+        await refreshConversations();
+        const conv = state.conversations.find((c) => c.id === state.conversationId);
+        if (conv) el.headerTitle.textContent = conv.title;
+    }, 2000);
+}
+
+/** Kirim ulang pesan gagal: server memakai baris pesan yang sama (tidak ada pertanyaan ganda). */
+async function retryMessage(wrapper, conversationId, messageId) {
+    if (state.sending || !state.notebook) return;
+    const notebookId = state.notebook.id;
+    clearFailed(wrapper);
+    setSending(true);
+    try {
+        const res = await api(
+            `/notebooks/${notebookId}/conversations/${conversationId}/messages/${messageId}/retry`,
+            { method: "POST" },
+        );
+        if (!state.notebook || state.notebook.id !== notebookId || state.conversationId !== conversationId) return;
+        appendBotMessage(res.answer, res.citations || [], res.metadata.pending_sources || [], res.metadata);
+        refreshTitleSoon();
+    } catch (err) {
+        const final = ["MESSAGE_NOT_LATEST", "MESSAGE_NOT_FAILED", "MESSAGE_NOT_FOUND"].includes(err.code);
+        markFailed(wrapper, {
+            code: err.code, message: err.message, requestId: err.requestId,
+            messageId, conversationId, canRetry: !final,
+        });
         if (err.code === "SOURCES_PROCESSING" || err.code === "NO_ACTIVE_SOURCES") pollSources();
     } finally {
         setSending(false);
