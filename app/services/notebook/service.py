@@ -59,6 +59,12 @@ class NotebookService:
             raise NotFoundError("Notebook tidak ditemukan.")
         return notebook
 
+    def open(self, user: CurrentUser, notebook_id: str) -> Notebook:
+        """Seperti `get`, sekaligus mencatat notebook ini sebagai yang terakhir dibuka."""
+        notebook = self.get(user, notebook_id)
+        self._repo.mark_opened(notebook_id)
+        return notebook
+
     def rename(self, user: CurrentUser, notebook_id: str, title: str) -> Notebook:
         self.get(user, notebook_id)
         self._repo.rename(notebook_id, _clean_title(title))

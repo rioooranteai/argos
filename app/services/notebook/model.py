@@ -15,6 +15,7 @@ class Notebook:
     title: str
     created_at: datetime
     updated_at: datetime
+    last_opened_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,7 @@ class NotebookOut(BaseModel):
     source_count: int
     created_at: datetime
     updated_at: datetime
+    last_opened_at: datetime | None = None  # untuk memilih notebook default (D8)
 
 
 class NotebookSourceOut(BaseModel):

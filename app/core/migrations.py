@@ -374,6 +374,11 @@ def _v6_uuid_ids(conn: sqlite3.Connection) -> None:
 
 MIGRATIONS.append((6, _v6_uuid_ids))
 
+# v7: notebook terakhir dibuka disimpan di server, bukan localStorage (D8).
+MIGRATIONS.append((7, """
+    ALTER TABLE notebooks ADD COLUMN last_opened_at TIMESTAMP;
+"""))
+
 
 def run_migrations(conn: sqlite3.Connection, migrations: list[tuple[int, Migration]] | None = None) -> None:
     """Apply pending migrations. Safe to call on every startup."""

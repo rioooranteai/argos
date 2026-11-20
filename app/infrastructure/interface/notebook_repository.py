@@ -31,6 +31,10 @@ class BaseNotebookRepository(ABC):
     def touch(self, notebook_id: str) -> None: ...
 
     @abstractmethod
+    def mark_opened(self, notebook_id: str) -> None:
+        """Catat waktu notebook dibuka (pengganti localStorage di browser)."""
+
+    @abstractmethod
     def list_sources(self, notebook_id: str) -> list[NotebookSource]: ...
 
     @abstractmethod

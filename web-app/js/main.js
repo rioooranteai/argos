@@ -3,7 +3,6 @@
 const API = "/api/v1";
 const POLL_MS = 2500;
 const FINAL_STAGES = new Set(["ready", "failed", "cancelled"]);
-const LAST_NOTEBOOK_KEY = "argos.lastNotebook";
 
 // ---------------------------------------------------------------------------
 // Autentikasi
@@ -299,7 +298,6 @@ async function handleRoute() {
     if (!state.notebook || state.notebook.id !== notebookId) {
         const ok = await loadNotebook(notebookId);
         if (!ok) {
-            localStorage.removeItem(LAST_NOTEBOOK_KEY);
             const fallback = await defaultNotebookId();
             if (fallback && fallback !== notebookId) go(fallback);
             return;
@@ -318,8 +316,10 @@ async function defaultNotebookId() {
         toast(errorText(err), "error");
         return null;
     }
-    const last = localStorage.getItem(LAST_NOTEBOOK_KEY);
-    if (last && state.notebooks.some((n) => n.id === last)) return last;
+    // Notebook yang terakhir dibuka (dicatat server, tidak ada localStorage).
+    const opened = state.notebooks.filter((n) => n.last_opened_at)
+        .sort((a, b) => b.last_opened_at.localeCompare(a.last_opened_at));
+    if (opened.length) return opened[0].id;
     if (state.notebooks.length) return state.notebooks[0].id;
     // Pengguna baru: langsung siapkan satu notebook agar bisa mulai menambah sumber.
     try {
@@ -345,7 +345,6 @@ async function loadNotebook(notebookId) {
         state.notebook = detail;
         state.conversations = conversations;
         state.conversationId = null;
-        localStorage.setItem(LAST_NOTEBOOK_KEY, notebookId);
         if (!state.notebooks.some((n) => n.id === notebookId)) {
             state.notebooks = await api("/notebooks").catch(() => state.notebooks);
         }
@@ -420,7 +419,6 @@ $("deleteNotebookBtn").addEventListener("click", async () => {
     try {
         await api(`/notebooks/${state.notebook.id}`, { method: "DELETE" });
         const deletedId = state.notebook.id;
-        localStorage.removeItem(LAST_NOTEBOOK_KEY);
         state.notebook = null;
         state.notebooks = state.notebooks.filter((n) => n.id !== deletedId);
         window.location.hash = "";  // memicu hashchange → handleRoute

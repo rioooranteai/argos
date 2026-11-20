@@ -84,6 +84,14 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
                 "UPDATE notebooks SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (notebook_id,)
             )
 
+    def mark_opened(self, notebook_id: str) -> None:
+        with self._db.get_connection() as conn:
+            conn.execute(
+                # Presisi milidetik: membuka dua notebook dalam detik yang sama tetap berurutan.
+                "UPDATE notebooks SET last_opened_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = ?",
+                (notebook_id,),
+            )
+
     # ── Sumber ─────────────────────────────────────────────────────────
 
     def list_sources(self, notebook_id: str) -> list[NotebookSource]:
@@ -180,6 +188,7 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
             title=row["title"],
             created_at=_ts(row["created_at"]),
             updated_at=_ts(row["updated_at"]),
+            last_opened_at=_ts(row["last_opened_at"]),
         )
 
     @staticmethod

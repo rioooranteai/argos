@@ -255,3 +255,18 @@ def test_llm_factory_sets_timeouts():
     assert get_llm("title")._client.max_retries == 0
     assert get_llm("nl2sql")._client.request_timeout == cfg.LLM_TIMEOUT_NL2SQL
     assert dataclasses.is_dataclass(cfg)
+
+
+
+def test_last_opened_notebook_is_remembered_on_the_server(env):
+    c, _, _, _ = env
+    a = c.post("/api/v1/notebooks", json={"title": "A"}).json()
+    b = c.post("/api/v1/notebooks", json={"title": "B"}).json()
+    listed = {n["id"]: n for n in c.get("/api/v1/notebooks").json()}
+    assert listed[a["id"]]["last_opened_at"] is None
+
+    c.get(f"/api/v1/notebooks/{b['id']}")
+    c.get(f"/api/v1/notebooks/{a['id']}")
+    listed = c.get("/api/v1/notebooks").json()
+    newest = max((n for n in listed if n["last_opened_at"]), key=lambda n: n["last_opened_at"])
+    assert newest["id"] == a["id"]

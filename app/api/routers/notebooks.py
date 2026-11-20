@@ -84,7 +84,8 @@ def list_notebooks(
 ) -> list[NotebookOut]:
     return [
         NotebookOut(id=nb.id, title=nb.title, source_count=count,
-                    created_at=nb.created_at, updated_at=nb.updated_at)
+                    created_at=nb.created_at, updated_at=nb.updated_at,
+                    last_opened_at=nb.last_opened_at)
         for nb, count in svc.list(user)
     ]
 
@@ -105,7 +106,7 @@ def get_notebook(
     user: CurrentUser = Depends(get_current_user),
     svc: NotebookService = Depends(get_notebook_service),
 ) -> NotebookDetailOut:
-    nb = svc.get(user, notebook_id)
+    nb = svc.open(user, notebook_id)  # dicatat sebagai notebook terakhir dibuka
     return _detail(nb, svc.sources(user, notebook_id), svc.max_sources)
 
 
