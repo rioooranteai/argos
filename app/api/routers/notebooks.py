@@ -17,6 +17,7 @@ from app.core.dependencies import (
     get_notebook_service,
 )
 from app.core.errors import ArgosError, InternalError, NotFoundError, ValidationError
+from app.core.rate_limit import rate_limit
 from app.engines.chat_engine.engine import ChatEngine
 from app.services.conversation.model import (
     ChatRequest,
@@ -148,6 +149,7 @@ def add_sources(
     "/{notebook_id}/sources/upload",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload dokumen ke Library dan langsung pasang ke notebook",
+    dependencies=[Depends(rate_limit("upload"))],
 )
 async def upload_sources(
     notebook_id: str,
@@ -163,6 +165,7 @@ async def upload_sources(
     "/{notebook_id}/sources/pending/{pending_id}/resolve",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload yang mirip dokumen Library: pilih versi baru / dokumen terpisah, lalu pasang",
+    dependencies=[Depends(rate_limit("upload"))],
 )
 async def resolve_pending_source(
     notebook_id: str,
@@ -277,7 +280,11 @@ def delete_conversation(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/{notebook_id}/messages", summary="Kirim pesan; jawaban hanya dari sumber yang dicentang")
+@router.post(
+    "/{notebook_id}/messages",
+    summary="Kirim pesan; jawaban hanya dari sumber yang dicentang",
+    dependencies=[Depends(rate_limit("chat"))],
+)
 async def send_message(
     notebook_id: str,
     request: ChatRequest,
@@ -310,6 +317,7 @@ async def send_message(
 @router.post(
     "/{notebook_id}/conversations/{conversation_id}/messages/{message_id}/retry",
     summary="Kirim ulang pesan yang gagal (memakai baris pesan yang sama)",
+    dependencies=[Depends(rate_limit("chat"))],
 )
 async def retry_message(
     notebook_id: str,

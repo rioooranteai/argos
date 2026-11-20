@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 
 from app.core.dependencies import get_current_user, get_library_service
+from app.core.rate_limit import rate_limit
 from app.services.library.model import (
     DocumentDetailOut,
     DocumentOut,
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/api/v1/library", tags=["Library"])
     "/documents",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload dokumen baru ke Library (diproses di background)",
+    dependencies=[Depends(rate_limit("upload"))],
 )
 async def upload_documents(
     files: list[UploadFile] = File(...),
@@ -39,6 +41,7 @@ async def upload_documents(
     "/pending/{pending_id}/resolve",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload yang mirip: jadikan versi baru dokumen yang mirip, atau dokumen terpisah",
+    dependencies=[Depends(rate_limit("upload"))],
 )
 async def resolve_pending(
     pending_id: str,
@@ -53,6 +56,7 @@ async def resolve_pending(
     "/documents/{document_id}/versions",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload versi baru dari dokumen yang ada",
+    dependencies=[Depends(rate_limit("upload"))],
 )
 async def upload_new_version(
     document_id: str,

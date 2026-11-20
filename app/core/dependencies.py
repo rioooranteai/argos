@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core import log_context
 from app.core.errors import AuthenticationError, PermissionDenied
+from app.core.rate_limit import limiter
 from app.core.security import is_admin
 from app.core.session import decode_session_token, session_token_from
 from app.engines.chat_engine.engine import ChatEngine
@@ -52,6 +53,8 @@ def get_current_user(
         raise PermissionDenied("Akun Anda dinonaktifkan.", code="USER_INACTIVE")
 
     log_context.bind_request(user_id=user.id)
+    # Batas umum per user untuk semua endpoint yang butuh login (D9).
+    limiter.check("default", user.id)
 
     return CurrentUser(
         id=user.id,

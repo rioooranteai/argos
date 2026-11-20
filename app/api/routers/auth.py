@@ -5,8 +5,9 @@ from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import secrets
-from app.core.errors import PermissionDenied
+from app.core.errors import PermissionDenied, RateLimited
 from app.core.oauth import oauth
+from app.core.rate_limit import client_ip, limiter
 from app.core.security import verify_google_identity
 from app.core.session import clear_session_cookie, create_session_token, set_session_cookie
 
@@ -18,8 +19,19 @@ def _login_error(code: str) -> RedirectResponse:
     return RedirectResponse(url=f"/login?error={quote(code)}")
 
 
+def _login_rate_limited(request: Request) -> RedirectResponse | None:
+    """Batas percobaan login per IP (D9). Alur login = navigasi browser → redirect, bukan JSON."""
+    try:
+        limiter.check("login", client_ip(request))
+    except RateLimited:
+        return _login_error("RATE_LIMITED")
+    return None
+
+
 @router.get("/google/login")
 async def google_login(request: Request):
+    if (blocked := _login_rate_limited(request)) is not None:
+        return blocked
     redirect_uri = request.url_for("google_callback")
     # `hd` hanya petunjuk untuk layar pilih akun Google; penegakan tetap di callback.
     return await oauth.google.authorize_redirect(
@@ -29,6 +41,8 @@ async def google_login(request: Request):
 
 @router.get("/google/callback", name="google_callback")
 async def google_callback(request: Request):
+    if (blocked := _login_rate_limited(request)) is not None:
+        return blocked
     token = await oauth.google.authorize_access_token(request)
     google_user = token["userinfo"]
 

@@ -1547,6 +1547,13 @@ async function speakMessage(text, btn) {
             body: JSON.stringify({ text: text.slice(0, 4000), voice: "alloy", format: "mp3", speed: 1.0 }),
         });
         if (response.status === 401) return toLogin();
+        if (response.status === 429) {
+            const data = await response.json().catch(() => null);
+            resetTts(btn);
+            currentTtsBtn = null;
+            toast((data && data.error && data.error.message) || "Terlalu banyak permintaan.", "error");
+            return;
+        }
         if (!response.ok) throw new Error("tts");
         const url = URL.createObjectURL(await response.blob());
         currentAudio = new Audio(url);

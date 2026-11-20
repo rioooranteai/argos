@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from app.core.config import app_config
 from app.core.dependencies import get_current_user, get_voice_service
 from app.core.errors import PayloadTooLarge, UnsupportedMediaType, UpstreamError, ValidationError
+from app.core.rate_limit import rate_limit
 from app.services.voice.exceptions import (
     UnsupportedFormatError,
     UnsupportedLanguageError,
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/v1/voice",
     tags=["Voice"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(rate_limit("voice"))],
 )
 
 ALLOWED_AUDIO = {

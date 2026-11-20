@@ -102,6 +102,17 @@ class UpstreamTimeout(ArgosError):
     default_message = "Proses terlalu lama dan dihentikan. Coba lagi."
 
 
+class RateLimited(ArgosError):
+    code = "RATE_LIMITED"
+    http_status = 429
+    retryable = True
+    default_message = "Terlalu banyak permintaan. Coba lagi sebentar."
+
+    def __init__(self, message: str | None = None, *, retry_after: int = 60) -> None:
+        super().__init__(message, details={"retry_after": retry_after})
+        self.headers = {"Retry-After": str(retry_after)}
+
+
 class InternalError(ArgosError):
     code = "INTERNAL_ERROR"
     http_status = 500
@@ -125,10 +136,13 @@ def error_body(
     return {"error": body}
 
 
-def _response(request: Request, status: int, body: dict[str, Any]) -> JSONResponse:
+def _response(
+    request: Request, status: int, body: dict[str, Any], extra_headers: dict[str, str] | None = None
+) -> JSONResponse:
     rid = request_id_from(request)
-    headers = {REQUEST_ID_HEADER: rid} if rid else None
-    return JSONResponse(status_code=status, content=body, headers=headers)
+    headers = {REQUEST_ID_HEADER: rid} if rid else {}
+    headers.update(extra_headers or {})
+    return JSONResponse(status_code=status, content=body, headers=headers or None)
 
 
 async def _argos_error_handler(request: Request, exc: ArgosError) -> JSONResponse:
@@ -141,6 +155,7 @@ async def _argos_error_handler(request: Request, exc: ArgosError) -> JSONRespons
         request,
         exc.http_status,
         error_body(exc.code, exc.message, rid, exc.retryable, exc.details),
+        getattr(exc, "headers", None),
     )
 
 

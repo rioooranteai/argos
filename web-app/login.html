@@ -60,7 +60,8 @@
         var messages = {
             DOMAIN_NOT_ALLOWED: "Gunakan akun Google perusahaan untuk masuk.",
             EMAIL_NOT_VERIFIED: "Email Google Anda belum terverifikasi.",
-            USER_INACTIVE: "Akun Anda dinonaktifkan. Hubungi admin."
+            USER_INACTIVE: "Akun Anda dinonaktifkan. Hubungi admin.",
+            RATE_LIMITED: "Terlalu banyak percobaan masuk. Coba lagi dalam satu menit."
         };
         var code = new URLSearchParams(window.location.search).get("error");
         if (!code) return;

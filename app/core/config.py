@@ -119,6 +119,14 @@ class AppConfig:
     SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly (DESIGN_GROUP_D.md D1)
     API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json publik (D5, portofolio)
 
+    # ── Rate limit per menit (DESIGN_GROUP_D.md D9) ──────────────────
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_CHAT: int = 20      # kirim pesan & kirim ulang (3–5 panggilan LLM per pesan)
+    RATE_LIMIT_VOICE: int = 10     # STT & TTS
+    RATE_LIMIT_UPLOAD: int = 10    # upload / versi baru / resolve pending
+    RATE_LIMIT_LOGIN: int = 10     # per IP, sebelum login
+    RATE_LIMIT_DEFAULT: int = 120  # semua endpoint lain (polling status ±24/menit)
+
     # ── Library & notebook ───────────────────────────────────────────
     NOTEBOOK_MAX_SOURCES: int = 10
     UPLOAD_MAX_FILE_MB: int = 10
