@@ -103,3 +103,58 @@ def test_v5_llm_calls_status_check(db):
             conn.execute(
                 "INSERT INTO llm_calls (purpose, model, latency_ms, status) VALUES ('router', 'm', 5, 'meh')"
             )
+
+
+# ── Migrasi Python ──────────────────────────────────────────────────────────
+
+def _plain_db(tmp_path):
+    conn = sqlite3.connect(tmp_path / "py.db")
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def test_python_migration_runs_once_in_a_transaction(tmp_path):
+    conn = _plain_db(tmp_path)
+    calls = []
+
+    def add_table(c):
+        calls.append(1)
+        c.execute("CREATE TABLE t (id TEXT PRIMARY KEY)")
+        c.execute("INSERT INTO t VALUES ('a')")
+
+    run_migrations(conn, [(1, add_table)])
+    run_migrations(conn, [(1, add_table)])
+    assert calls == [1]
+    assert conn.execute("SELECT id FROM t").fetchall() == [("a",)]
+    assert conn.execute("PRAGMA foreign_keys").fetchone() == (1,)
+
+
+def test_python_migration_failure_rolls_back_everything(tmp_path):
+    conn = _plain_db(tmp_path)
+
+    def broken(c):
+        c.execute("CREATE TABLE t (id TEXT PRIMARY KEY)")
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        run_migrations(conn, [(1, broken)])
+    assert conn.execute("SELECT name FROM sqlite_master WHERE name='t'").fetchone() is None
+    assert conn.execute("SELECT COUNT(*) FROM schema_version").fetchone() == (0,)
+    assert conn.execute("PRAGMA foreign_keys").fetchone() == (1,)
+
+
+def test_python_migration_rejects_foreign_key_violations(tmp_path):
+    conn = _plain_db(tmp_path)
+    conn.executescript("""
+        CREATE TABLE parent (id TEXT PRIMARY KEY);
+        CREATE TABLE child (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parent(id));
+        INSERT INTO parent VALUES ('p');
+        INSERT INTO child VALUES ('c', 'p');
+    """)
+
+    def orphan(c):
+        c.execute("UPDATE child SET parent_id = 'tidak-ada'")
+
+    with pytest.raises(RuntimeError, match="foreign key"):
+        run_migrations(conn, [(1, orphan)])
+    assert conn.execute("SELECT parent_id FROM child").fetchone() == ("p",)

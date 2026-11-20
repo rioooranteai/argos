@@ -8,10 +8,15 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
-MIGRATIONS: list[tuple[int, str]] = [
+# Satu migrasi = skrip SQL, atau fungsi Python untuk perubahan yang tidak bisa
+# ditulis sebagai SQL biasa (mis. membuat UUID, membuat ulang tabel).
+Migration = str | Callable[[sqlite3.Connection], None]
+
+MIGRATIONS: list[tuple[int, Migration]] = [
     (1, """
         -- ── User ────────────────────────────────────────────────────────
         CREATE TABLE users (
@@ -226,7 +231,7 @@ MIGRATIONS: list[tuple[int, str]] = [
 ]
 
 
-def run_migrations(conn: sqlite3.Connection) -> None:
+def run_migrations(conn: sqlite3.Connection, migrations: list[tuple[int, Migration]] | None = None) -> None:
     """Apply pending migrations. Safe to call on every startup."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_version (
@@ -241,13 +246,46 @@ def run_migrations(conn: sqlite3.Connection) -> None:
         for row in conn.execute("SELECT version FROM schema_version").fetchall()
     }
 
-    for version, sql in MIGRATIONS:
+    for version, migration in migrations if migrations is not None else MIGRATIONS:
         if version in applied:
             continue
 
-        conn.executescript(sql)
-        conn.execute(
-            "INSERT INTO schema_version (version) VALUES (?)", (version,)
-        )
-        conn.commit()
-        logger.info(f"Migration v{version} applied.")
+        if callable(migration):
+            _run_python_migration(conn, version, migration)
+        else:
+            conn.executescript(migration)
+            conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?)", (version,)
+            )
+            conn.commit()
+        logger.info("Migration v%s applied.", version)
+
+
+def _run_python_migration(
+    conn: sqlite3.Connection, version: int, migration: Callable[[sqlite3.Connection], None]
+) -> None:
+    """Satu transaksi; foreign key dimatikan selama tabel dibuat ulang.
+
+    Prosedur resmi SQLite untuk mengubah struktur tabel (buat tabel baru → salin →
+    hapus lama → ganti nama). Sebelum commit, ``foreign_key_check`` harus kosong;
+    bila tidak, atau bila migrasi melempar exception, semua perubahan dibatalkan.
+    """
+    conn.commit()
+    # PRAGMA foreign_keys tidak berlaku di dalam transaksi → set sebelum BEGIN.
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute("BEGIN")
+        try:
+            migration(conn)
+            violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if violations:
+                raise RuntimeError(
+                    f"Migrasi v{version} melanggar foreign key: {[tuple(v) for v in violations[:5]]}"
+                )
+            conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
