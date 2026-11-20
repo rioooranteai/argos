@@ -2,6 +2,7 @@ import logging
 import io
 
 from app.core.config import app_config, secrets
+from app.services.observability.llm_recorder import recorder
 from app.services.voice.base.stt_base import BaseSTTProvider
 from app.services.voice.exceptions import STTError
 from app.services.voice.model import STTRequest, STTResult, STTSegment
@@ -71,14 +72,15 @@ class OpenAISTTProvider(BaseSTTProvider):
             audio_file.name = filename
 
             if request.with_timestamps:
-                response = await self._client.audio.transcriptions.create(
-                    model=self._model,
-                    file=audio_file,
-                    language=request.language,
-                    prompt=request.prompt,
-                    response_format="verbose_json",
-                    timestamp_granularities=["segment"],
-                )
+                with recorder.track("stt", self._model):
+                    response = await self._client.audio.transcriptions.create(
+                        model=self._model,
+                        file=audio_file,
+                        language=request.language,
+                        prompt=request.prompt,
+                        response_format="verbose_json",
+                        timestamp_granularities=["segment"],
+                    )
                 segments = [
                     STTSegment(
                         start=round(s.start, 2),
@@ -94,12 +96,13 @@ class OpenAISTTProvider(BaseSTTProvider):
                     provider=self.provider_name,
                 )
             else:
-                response = await self._client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=(filename, audio_bytes),
-                    language=request.language,
-                    prompt=request.prompt,
-                )
+                with recorder.track("stt", "whisper-1"):
+                    response = await self._client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=(filename, audio_bytes),
+                        language=request.language,
+                        prompt=request.prompt,
+                    )
                 return STTResult(
                     text=response.text,
                     provider=self.provider_name,

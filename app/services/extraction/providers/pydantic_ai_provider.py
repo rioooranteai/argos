@@ -10,6 +10,7 @@ from app.core.config import app_config, secrets
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.exceptions import ExtractionAgentError
 from app.services.extraction.model import ExtractedFeature
+from app.services.observability.llm_recorder import recorder
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class PydanticAIExtractionProvider(BaseExtractionProvider):
             timeout=timeout or app_config.EXTRACTION_TIMEOUT,
             max_retries=max_retries,
         )
+        self._model = resolved_model
         self._agent = Agent(
             model=OpenAIChatModel(resolved_model, provider=OpenAIProvider(openai_client=client)),
             output_type=list[ExtractedFeature],
@@ -46,7 +48,10 @@ class PydanticAIExtractionProvider(BaseExtractionProvider):
 
     async def extract(self, text: str) -> list[ExtractedFeature]:
         try:
-            result = await self._agent.run(text)
+            with recorder.track("extraction", self._model) as call:
+                result = await self._agent.run(text)
+                usage = result.usage()
+                call.usage(usage.input_tokens, usage.output_tokens)
             return result.output
         except Exception as e:
             raise ExtractionAgentError(f"Agent gagal melakukan ekstraksi: {e}") from e

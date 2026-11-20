@@ -1,9 +1,12 @@
 import logging
 from typing import Type
 
-from app.infrastructure.interface.llm import BaseLLM
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
+
+from app.core.config import app_config
+from app.infrastructure.interface.llm import BaseLLM
+from app.services.observability.llm_recorder import recorder, usage_from_langchain
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +21,14 @@ class OpenAILLM(BaseLLM):
         temperature: float = 0.0,
         timeout: float = 60,
         max_retries: int = 1,
+        purpose: str = "synthesizer",
     ):
         logger.info(
-            "Membangun mesin OpenAILLM (Model: %s, Temp: %s, Timeout: %ss, Retry: %s)",
-            model, temperature, timeout, max_retries,
+            "Membangun mesin OpenAILLM (Tujuan: %s, Model: %s, Temp: %s, Timeout: %ss, Retry: %s)",
+            purpose, model, temperature, timeout, max_retries,
         )
+        self._model = model
+        self._purpose = purpose  # kolom `purpose` di llm_calls
         # Timeout & retry eksplisit (bawaan SDK: 600 dtk). Retry SDK hanya untuk
         # error yang bisa pulih: koneksi, timeout, 408/409/429/5xx.
         self._client = ChatOpenAI(
@@ -42,13 +48,31 @@ class OpenAILLM(BaseLLM):
 
     def invoke(self, prompt: str, system: str | None = None) -> str:
         messages = self._build_messages(prompt, system)
-        response = self._client.invoke(messages)
+        self._log_prompt(messages)
+        with recorder.track(self._purpose, self._model) as call:
+            response = self._client.invoke(messages)
+            call.usage(*usage_from_langchain(response))
+        self._log_response(response.content)
         return response.content
 
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
         messages = self._build_messages(prompt, system)
-        response = await self._client.ainvoke(messages)
+        self._log_prompt(messages)
+        with recorder.track(self._purpose, self._model) as call:
+            response = await self._client.ainvoke(messages)
+            call.usage(*usage_from_langchain(response))
+        self._log_response(response.content)
         return response.content
+
+    # Prompt bisa berisi isi dokumen rahasia: hanya ditulis bila LOG_PROMPTS = True
+    # (DESIGN_GROUP_C.md §7.5).
+    def _log_prompt(self, messages: list) -> None:
+        if app_config.LOG_PROMPTS:
+            logger.debug("[%s] prompt: %s", self._purpose, messages)
+
+    def _log_response(self, content: object) -> None:
+        if app_config.LOG_PROMPTS:
+            logger.debug("[%s] respons: %s", self._purpose, content)
 
     def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
         raise NotImplementedError("with_structured_output belum diimplementasi")

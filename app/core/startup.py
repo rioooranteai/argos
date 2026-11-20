@@ -27,6 +27,9 @@ from app.infrastructure.providers.repositories.sqlite_job_repository import SQLi
 from app.infrastructure.providers.repositories.sqlite_library_repository import (
     SQLiteLibraryRepository,
 )
+from app.infrastructure.providers.repositories.sqlite_llm_call_repository import (
+    SQLiteLLMCallRepository,
+)
 from app.infrastructure.providers.repositories.sqlite_notebook_repository import (
     SQLiteNotebookRepository,
 )
@@ -40,6 +43,7 @@ from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
+from app.services.observability.llm_recorder import recorder as llm_recorder
 from app.services.vector_store.service import VectorStoreService
 from app.services.user.admin import AdminService
 from app.services.voice.service import VoiceService
@@ -85,6 +89,15 @@ async def lifespan(app: FastAPI):
     app.state.admin_service = AdminService(users=app.state.user_repo, library=library_repo)
 
     conversation_repo = SQLiteConversationRepository(database=db)
+
+    # --- Catatan panggilan AI (DESIGN_GROUP_C.md §7.3) ---
+    llm_call_repo = SQLiteLLMCallRepository(database=db)
+    purged = llm_call_repo.purge_older_than(app_config.LLM_CALLS_RETENTION_DAYS)
+    if purged:
+        logger.info("%d catatan llm_calls lebih dari %d hari dihapus.",
+                    purged, app_config.LLM_CALLS_RETENTION_DAYS)
+    llm_recorder.attach(llm_call_repo)
+    app.state.llm_recorder = llm_recorder
 
     # --- AI providers ---
     embedder = get_embedder()
@@ -177,3 +190,4 @@ async def lifespan(app: FastAPI):
     warm_up.cancel()
     await asyncio.gather(warm_up, return_exceptions=True)
     await docling.stop()
+    llm_recorder.close()  # tulis sisa catatan llm_calls

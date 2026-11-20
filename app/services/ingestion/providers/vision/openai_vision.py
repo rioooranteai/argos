@@ -7,6 +7,7 @@ from app.core.config import app_config, secrets
 from app.services.ingestion.base.vision import BaseVisionProcessor
 from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.exceptions import VisionProcessingError
+from app.services.observability.llm_recorder import recorder, usage_from_langchain
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,9 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
             )
 
 
-            response = await self.vision_model.ainvoke([message])
+            with recorder.track("vision", app_config.OPENAI_VLM_MODEL) as call:
+                response = await self.vision_model.ainvoke([message])
+                call.usage(*usage_from_langchain(response))
 
             return response.content.strip()
 

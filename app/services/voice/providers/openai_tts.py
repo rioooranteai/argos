@@ -1,6 +1,7 @@
 import logging
 
 from app.core.config import app_config, secrets
+from app.services.observability.llm_recorder import recorder
 from app.services.voice.base.tts_base import BaseTTSProvider
 from app.services.voice.exceptions import TTSError
 from app.services.voice.model import TTSRequest, TTSResult
@@ -39,14 +40,15 @@ class OpenAITTSProvider(BaseTTSProvider):
                 f"[OpenAI TTS] Synthesizing {len(request.text)} chars "
                 f"| voice={request.voice.value} | format={request.format.value}"
             )
-            response = await self._client.audio.speech.create(
-                model=self._model,
-                voice=request.voice.value,
-                input=request.text,
-                response_format=request.format.value,
-                speed=request.speed,
-                instructions="Speak in a cheerful and positive tone."
-            )
+            with recorder.track("tts", self._model):
+                response = await self._client.audio.speech.create(
+                    model=self._model,
+                    voice=request.voice.value,
+                    input=request.text,
+                    response_format=request.format.value,
+                    speed=request.speed,
+                    instructions="Speak in a cheerful and positive tone."
+                )
             return TTSResult(
                 audio_bytes=response.content,
                 format=request.format.value,

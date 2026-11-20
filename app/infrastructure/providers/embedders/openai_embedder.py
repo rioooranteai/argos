@@ -3,6 +3,7 @@ from __future__ import annotations
 from langchain_openai import OpenAIEmbeddings
 
 from app.infrastructure.interface.embedder import BaseEmbedder
+from app.services.observability.llm_recorder import recorder
 
 _DIMENSIONS: dict[str, int] = {
     "text-embedding-3-small": 1536,
@@ -35,10 +36,13 @@ class OpenAIEmbedder(BaseEmbedder):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        return self._embedder.embed_documents(texts)
+        # LangChain tidak mengembalikan pemakaian token embedding → kolom token NULL.
+        with recorder.track("embedding", self.model_name):
+            return self._embedder.embed_documents(texts)
 
     def embed_query(self, text: str) -> list[float]:
-        return self._embedder.embed_query(text)
+        with recorder.track("embedding", self.model_name):
+            return self._embedder.embed_query(text)
 
     @property
     def dimension(self) -> int:
