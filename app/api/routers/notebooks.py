@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
@@ -15,13 +16,14 @@ from app.core.dependencies import (
     get_current_user,
     get_notebook_service,
 )
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import ArgosError, InternalError, NotFoundError, ValidationError
 from app.engines.chat_engine.engine import ChatEngine
 from app.services.conversation.model import (
     ChatRequest,
     ChatResponse,
     ConversationDetailOut,
     ConversationOut,
+    Message,
     MessageOut,
     RenameConversationRequest,
 )
@@ -235,9 +237,7 @@ def get_conversation(
     return ConversationDetailOut(
         id=c.id, title=c.title, created_at=c.created_at, updated_at=c.updated_at,
         messages=[
-            MessageOut(id=m.id, role=m.role, content=m.content, created_at=m.created_at,
-                       citations=m.citations)
-            for m in bundle.messages
+            MessageOut.from_message(m) for m in bundle.messages
         ],
     )
 
@@ -285,6 +285,29 @@ async def send_message(
     conv_svc: ConversationService = Depends(get_conversation_service),
     chat_engine: ChatEngine = Depends(get_chat_engine),
 ) -> ChatResponse:
+    active, pending = _chat_sources(nb_svc, user, notebook_id)
+
+    is_new = request.conversation_id is None
+    if is_new:
+        conversation_id = conv_svc.create_for_user(
+            user_id=user.id, first_message=request.question, notebook_id=notebook_id
+        ).id
+    else:
+        conversation_id = request.conversation_id
+        _conversation_in_notebook(conv_svc, conversation_id, user, notebook_id)
+
+    snapshot = [s.version_id for s in active]
+    user_msg = conv_svc.append_user_message(
+        conversation_id, user.id, request.question, source_snapshot=snapshot
+    )
+    return await _answer(
+        conv_svc, chat_engine, user, conversation_id, user_msg, active, pending,
+        is_new=is_new, schedule_title=is_new,
+    )
+
+
+def _chat_sources(nb_svc: NotebookService, user: CurrentUser, notebook_id: str):
+    """Sumber aktif (dicentang & ready) + nama sumber yang masih diproses."""
     nb_svc.get(user, notebook_id)
     all_sources = nb_svc.sources(user, notebook_id)
     active = nb_svc.active_sources(user, notebook_id)
@@ -300,34 +323,52 @@ async def send_message(
             "Centang minimal satu sumber yang sudah siap untuk memulai chat.",
             code="NO_ACTIVE_SOURCES",
         )
+    return active, pending
 
-    is_new = request.conversation_id is None
-    if is_new:
-        conversation_id = conv_svc.create_for_user(
-            user_id=user.id, first_message=request.question, notebook_id=notebook_id
-        ).id
-    else:
-        conversation_id = request.conversation_id
-        _conversation_in_notebook(conv_svc, conversation_id, user, notebook_id)
 
-    snapshot = [s.version_id for s in active]
-    conv_svc.append_user_message(conversation_id, user.id, request.question, source_snapshot=snapshot)
-    history = conv_svc.get_messages_for_engine(conversation_id, user.id) or []
+async def _answer(
+    conv_svc: ConversationService,
+    chat_engine: ChatEngine,
+    user: CurrentUser,
+    conversation_id: str,
+    user_msg: Message,
+    active: list,
+    pending: list[str],
+    *,
+    is_new: bool,
+    schedule_title: bool,
+) -> ChatResponse:
+    """Jalankan chat untuk `user_msg`. Gagal → pesan ditandai `failed` (C3)."""
+    log_context.bind_request(message_id=user_msg.id)  # ikut ke log & llm_calls
+    failure_ref = {"conversation_id": conversation_id, "message_id": user_msg.id}
+    try:
+        history = conv_svc.get_messages_for_engine(conversation_id, user.id) or []
+        result = await chat_engine.chat(user_input=user_msg.content, history=history, sources=active)
+        bot_msg = conv_svc.append_assistant_message(
+            conversation_id, result.answer, citations=result.citations, trace=result.trace
+        )
+    except ArgosError as e:
+        conv_svc.mark_failed(user_msg.id, e.code)
+        # UI butuh ID ini untuk menampilkan pesan gagal + [Kirim ulang].
+        e.details = {**e.details, **failure_ref}
+        raise
+    except asyncio.CancelledError:
+        # Klien memutus koneksi / server berhenti: pesan tidak boleh tampak terjawab.
+        conv_svc.mark_failed(user_msg.id, "CANCELLED")
+        raise
+    except Exception as e:
+        logger.exception("Chat gagal (pesan %s).", user_msg.id)
+        conv_svc.mark_failed(user_msg.id, InternalError.code)
+        raise InternalError(details=failure_ref) from e
 
-    # Error di sini ditangani handler global (format error standar + request_id).
-    # Pesan user yang sudah tersimpan tanpa jawaban = poin audit 17 (kelompok C).
-    result = await chat_engine.chat(user_input=request.question, history=history, sources=active)
-
-    conv_svc.append_assistant_message(conversation_id, result.answer, citations=result.citations)
-
-    if is_new:
+    if schedule_title:
         conv_svc.schedule_auto_title(
-            conversation_id=conversation_id, user_id=user.id, first_user_message=request.question
+            conversation_id=conversation_id, user_id=user.id, first_user_message=user_msg.content
         )
 
     return ChatResponse(
         conversation_id=conversation_id,
-        question=request.question,
+        question=user_msg.content,
         answer=result.answer,
         citations=result.citations,
         metadata={
@@ -339,5 +380,7 @@ async def send_message(
             "degraded": result.degraded,
             "issues": [i.to_dict() for i in result.issues],
             "trace": result.trace,
+            "user_message_id": user_msg.id,
+            "assistant_message_id": bot_msg.id,
         },
     )

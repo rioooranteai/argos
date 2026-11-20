@@ -27,6 +27,10 @@ class Message:
     created_at: datetime
     source_snapshot: list[str] | None = None  # version_id aktif saat pesan dikirim
     citations: list[dict] = field(default_factory=list)
+    # DESIGN_GROUP_C.md §4: pesan user tanpa jawaban → `failed` + kode error.
+    status: str = "ok"  # 'ok' | 'failed'
+    error_code: str | None = None
+    trace: dict | None = None  # hanya pesan assistant (§7.4)
 
 
 class ConversationOut(BaseModel):
@@ -42,6 +46,20 @@ class MessageOut(BaseModel):
     content: str
     created_at: datetime
     citations: list[dict] = Field(default_factory=list)
+    status: str = "ok"
+    error_code: str | None = None
+    degraded: bool = False
+    issues: list[dict] = Field(default_factory=list)
+    trace: dict | None = None
+
+    @classmethod
+    def from_message(cls, m: "Message") -> "MessageOut":
+        issues = (m.trace or {}).get("issues") or []
+        return cls(
+            id=m.id, role=m.role, content=m.content, created_at=m.created_at,
+            citations=m.citations, status=m.status, error_code=m.error_code,
+            degraded=bool(issues), issues=issues, trace=m.trace,
+        )
 
 
 class ConversationDetailOut(BaseModel):

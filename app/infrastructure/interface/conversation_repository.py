@@ -49,12 +49,29 @@ class BaseConversationRepository(ABC):
         content: str,
         source_snapshot: list[str] | None = None,
         citations: list[dict] | None = None,
+        trace: dict | None = None,
     ) -> Message:
         """Append 1 message ke conversation. Tidak melakukan owner check di sini —
         caller (ConversationService) wajib sudah memverifikasi ownership."""
 
     @abstractmethod
-    def list_messages(self, conversation_id: str, limit: int | None = None) -> list[Message]:
+    def get_message(self, message_id: int) -> Message | None:
+        """Satu pesan berdasarkan ID. Tidak owner-checked."""
+
+    @abstractmethod
+    def set_message_status(
+        self,
+        message_id: int,
+        status: str,
+        error_code: str | None = None,
+        source_snapshot: list[str] | None = None,
+    ) -> None:
+        """Ubah status pesan (`ok` / `failed`). `source_snapshot` None = tidak diubah."""
+
+    @abstractmethod
+    def list_messages(
+        self, conversation_id: str, limit: int | None = None, status: str | None = None
+    ) -> list[Message]:
         """List messages dalam 1 conversation, urut kronologis (created_at ASC).
 
         Tidak owner-checked di level ini — caller bertanggung jawab. Limit None = semua.

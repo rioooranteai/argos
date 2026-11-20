@@ -121,6 +121,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
         content: str,
         source_snapshot: list[str] | None = None,
         citations: list[dict] | None = None,
+        trace: dict | None = None,
     ) -> Message:
         if role not in ("user", "assistant"):
             raise ValueError(
@@ -129,8 +130,8 @@ class SQLiteConversationRepository(BaseConversationRepository):
         with self._db.get_connection() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO messages (conversation_id, role, content, source_snapshot, citations)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO messages (conversation_id, role, content, source_snapshot, citations, trace)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     conversation_id,
@@ -138,6 +139,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
                     content,
                     json.dumps(source_snapshot) if source_snapshot is not None else None,
                     json.dumps(citations, ensure_ascii=False, default=str) if citations else None,
+                    json.dumps(trace, ensure_ascii=False, default=str) if trace else None,
                 ),
             )
             msg_id = cursor.lastrowid
@@ -147,31 +149,44 @@ class SQLiteConversationRepository(BaseConversationRepository):
             ).fetchone()
         return self._row_to_message(row)
 
-    def list_messages(
-        self, conversation_id: str, limit: int | None = None
-    ) -> list[Message]:
+    def get_message(self, message_id: int) -> Message | None:
         with self._db.get_connection() as conn:
-            if limit is None:
-                rows = conn.execute(
-                    """
-                    SELECT *
-                    FROM messages
-                    WHERE conversation_id = ?
-                    ORDER BY created_at ASC, id ASC
-                    """,
-                    (conversation_id,),
-                ).fetchall()
+            row = conn.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+        return self._row_to_message(row) if row else None
+
+    def set_message_status(
+        self,
+        message_id: int,
+        status: str,
+        error_code: str | None = None,
+        source_snapshot: list[str] | None = None,
+    ) -> None:
+        with self._db.get_connection() as conn:
+            if source_snapshot is None:
+                conn.execute(
+                    "UPDATE messages SET status = ?, error_code = ? WHERE id = ?",
+                    (status, error_code, message_id),
+                )
             else:
-                rows = conn.execute(
-                    """
-                    SELECT *
-                    FROM messages
-                    WHERE conversation_id = ?
-                    ORDER BY created_at ASC, id ASC
-                    LIMIT ?
-                    """,
-                    (conversation_id, limit),
-                ).fetchall()
+                conn.execute(
+                    "UPDATE messages SET status = ?, error_code = ?, source_snapshot = ? WHERE id = ?",
+                    (status, error_code, json.dumps(source_snapshot), message_id),
+                )
+
+    def list_messages(
+        self, conversation_id: str, limit: int | None = None, status: str | None = None
+    ) -> list[Message]:
+        sql = "SELECT * FROM messages WHERE conversation_id = ?"
+        params: list = [conversation_id]
+        if status is not None:
+            sql += " AND status = ?"
+            params.append(status)
+        sql += " ORDER BY created_at ASC, id ASC"
+        if limit is not None:
+            sql += " LIMIT ?"
+            params.append(limit)
+        with self._db.get_connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
         return [self._row_to_message(r) for r in rows]
 
     # ── Row mappers ────────────────────────────────────────────────────
@@ -197,4 +212,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
             created_at=_parse_ts(row["created_at"]),
             source_snapshot=json.loads(row["source_snapshot"]) if row["source_snapshot"] else None,
             citations=json.loads(row["citations"]) if row["citations"] else [],
+            status=row["status"],
+            error_code=row["error_code"],
+            trace=json.loads(row["trace"]) if row["trace"] else None,
         )

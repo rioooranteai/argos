@@ -4,9 +4,10 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from app.infrastructure.interface.llm import BaseLLM
+from app.core.errors import ConflictError, NotFoundError
 from app.infrastructure.interface.conversation_repository import BaseConversationRepository
-from app.services.conversation.model import Message, Conversation
+from app.infrastructure.interface.llm import BaseLLM
+from app.services.conversation.model import Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -116,26 +117,66 @@ class ConversationService:
         return msg
 
     def append_assistant_message(
-            self, conversation_id: str, content: str, citations: list[dict] | None = None
+            self,
+            conversation_id: str,
+            content: str,
+            citations: list[dict] | None = None,
+            trace: dict | None = None,
     ) -> Message:
         """No owner check — caller is the chat router which already verified
         ownership when it accepted the user message."""
         msg = self._repo.add_message(
-            conversation_id, role="assistant", content=content, citations=citations
+            conversation_id, role="assistant", content=content, citations=citations, trace=trace
         )
         self._repo.touch(conversation_id)
         return msg
 
+    def mark_failed(self, message_id: int, error_code: str) -> None:
+        """Pesan user tidak mendapat jawaban (DESIGN_GROUP_C.md §4)."""
+        self._repo.set_message_status(message_id, "failed", error_code)
+
+    def prepare_retry(
+            self,
+            conversation_id: str,
+            user_id: str,
+            message_id: int,
+            source_snapshot: list[str],
+    ) -> Message:
+        """Validasi & buka kembali pesan user `failed` untuk dijalankan ulang.
+
+        Hanya pesan terakhir di percakapan yang boleh dikirim ulang, agar jawabannya
+        tidak muncul setelah tanya-jawab yang lebih baru.
+        """
+        if self._repo.get_conversation(conversation_id, user_id) is None:
+            raise NotFoundError("Percakapan tidak ditemukan.")
+        msg = self._repo.get_message(message_id)
+        if msg is None or msg.conversation_id != conversation_id or msg.role != "user":
+            raise NotFoundError("Pesan tidak ditemukan.", code="MESSAGE_NOT_FOUND")
+        if msg.status != "failed":
+            raise ConflictError("Pesan ini tidak gagal, jadi tidak perlu dikirim ulang.",
+                                code="MESSAGE_NOT_FAILED")
+        latest = self._repo.list_messages(conversation_id)[-1]
+        if latest.id != msg.id:
+            raise ConflictError("Hanya pesan terakhir yang bisa dikirim ulang.",
+                                code="MESSAGE_NOT_LATEST")
+        self._repo.set_message_status(message_id, "ok", None, source_snapshot=source_snapshot)
+        self._repo.touch(conversation_id)
+        return self._repo.get_message(message_id)  # type: ignore[return-value]
+
+    def is_first_message(self, conversation_id: str, message_id: int) -> bool:
+        first = self._repo.list_messages(conversation_id, limit=1)
+        return bool(first) and first[0].id == message_id
+
     def get_messages_for_engine(
             self, conversation_id: str, user_id: str
     ) -> list[Message] | None:
-        """Load full message history for feeding the chat engine.
+        """Riwayat untuk chat engine: hanya pesan `ok` (pesan gagal tidak masuk LLM).
 
         Returns None if conversation is not owned by user.
         """
         if self._repo.get_conversation(conversation_id, user_id) is None:
             return None
-        return self._repo.list_messages(conversation_id)
+        return self._repo.list_messages(conversation_id, status="ok")
 
     async def generate_title_async(
             self,
