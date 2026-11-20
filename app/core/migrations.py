@@ -195,6 +195,34 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         CREATE INDEX idx_pending_uploads_created ON pending_uploads (created_at);
     """),
+    (5, """
+        -- Kelompok C (DESIGN_GROUP_C.md §4, §7).
+        -- Pesan gagal: pesan user yang tidak mendapat jawaban ditandai `failed`,
+        -- tidak masuk riwayat LLM, dan bisa dikirim ulang.
+        ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT 'ok'
+            CHECK (status IN ('ok', 'failed'));
+        ALTER TABLE messages ADD COLUMN error_code TEXT;
+        -- Trace per jawaban (JSON, hanya pesan assistant): rute, SQL, chunk, waktu, issues.
+        ALTER TABLE messages ADD COLUMN trace TEXT;
+
+        -- Satu baris per panggilan OpenAI. Tanpa prompt / isi dokumen.
+        CREATE TABLE llm_calls (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            purpose        TEXT NOT NULL,   -- router|nl2sql|synthesizer|title|vision|extraction|embedding|stt|tts
+            model          TEXT NOT NULL,
+            input_tokens   INTEGER,
+            output_tokens  INTEGER,
+            latency_ms     INTEGER NOT NULL,
+            status         TEXT NOT NULL CHECK (status IN ('ok', 'error')),
+            error_code     TEXT,
+            request_id     TEXT,
+            version_id     TEXT,            -- tanpa FK: catatan tetap ada walau versi dihapus
+            message_id     INTEGER          -- ID pesan user pemicu
+        );
+        CREATE INDEX idx_llm_calls_ts      ON llm_calls (ts);
+        CREATE INDEX idx_llm_calls_message ON llm_calls (message_id);
+    """),
 ]
 
 
