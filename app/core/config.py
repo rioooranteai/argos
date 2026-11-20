@@ -117,6 +117,7 @@ class AppConfig:
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
     SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly (DESIGN_GROUP_D.md D1)
+    API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json publik (D5, portofolio)
 
     # ── Library & notebook ───────────────────────────────────────────
     NOTEBOOK_MAX_SOURCES: int = 10

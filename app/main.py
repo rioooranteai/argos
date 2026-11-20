@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.router import register_routers
@@ -14,27 +13,20 @@ from app.core.startup import lifespan
 configure_logging(app_config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
+_docs = app_config.API_DOCS_ENABLED  # D5: publik untuk portofolio; matikan di config.py
 app = FastAPI(
     title="Argos - Competitive Intelligence API",
     description="API untuk RAG dan Agentic Extraction",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
 register_middleware(app)
 register_exception_handlers(app)
 register_routers(app)
 
+# CSS publik (dipakai halaman login). Halaman & /js dilayani router `pages` (wajib sesi).
 app.mount("/css", StaticFiles(directory="web-app/css"), name="css")
-app.mount("/js", StaticFiles(directory="web-app/js"), name="js")
-
-
-@app.get("/", tags=["Frontend"])
-@app.get("/home", tags=["Frontend"])
-def index():
-    return FileResponse("web-app/index.html")
-
-
-@app.get("/login", tags=["Frontend"])
-def login_page():
-    return FileResponse("web-app/login.html")
