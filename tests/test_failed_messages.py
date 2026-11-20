@@ -105,3 +105,55 @@ def test_success_stores_trace_and_degraded_flag(chat):
     bot = _messages(client, nb_id, body["conversation_id"])[1]
     assert bot["status"] == "ok" and bot["degraded"] is True
     assert bot["trace"]["route"] == "both"
+
+
+def _retry(client, nb_id, conv_id, msg_id):
+    return client.post(f"/api/v1/notebooks/{nb_id}/conversations/{conv_id}/messages/{msg_id}/retry")
+
+
+def test_retry_reuses_the_failed_row(chat):
+    client, _, engine, nb_id, _ = chat
+    engine.script = [UpstreamError(), _ok("Akhirnya [1].")]
+    err = _send(client, nb_id, "harga?").json()["error"]["details"]
+    conv_id, msg_id = err["conversation_id"], err["message_id"]
+
+    r = _retry(client, nb_id, conv_id, msg_id)
+    assert r.status_code == 200
+    assert r.json()["answer"] == "Akhirnya [1]." and r.json()["metadata"]["user_message_id"] == msg_id
+    msgs = _messages(client, nb_id, conv_id)
+    assert [(m["id"] == msg_id, m["role"], m["status"]) for m in msgs] == [
+        (True, "user", "ok"), (False, "assistant", "ok"),
+    ]
+    # Pertanyaan yang dikirim ulang ada di riwayat engine, tepat satu kali.
+    assert engine.calls[1]["history"] == [("user", "harga?")]
+
+
+def test_retry_that_fails_again_stays_failed(chat):
+    client, _, engine, nb_id, _ = chat
+    engine.script = [UpstreamError(), UpstreamTimeout(code="CHAT_TIMEOUT")]
+    err = _send(client, nb_id, "x").json()["error"]["details"]
+    r = _retry(client, nb_id, err["conversation_id"], err["message_id"])
+    assert r.status_code == 504
+    assert _messages(client, nb_id, err["conversation_id"])[0]["error_code"] == "CHAT_TIMEOUT"
+
+
+def test_retry_rules(chat):
+    client, _, engine, nb_id, state = chat
+    engine.script = [UpstreamError(), _ok()]
+    err = _send(client, nb_id, "gagal").json()["error"]["details"]
+    conv_id, failed_id = err["conversation_id"], err["message_id"]
+    ok = _send(client, nb_id, "berhasil", conv_id).json()
+
+    # Bukan pesan terakhir
+    r = _retry(client, nb_id, conv_id, failed_id)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "MESSAGE_NOT_LATEST"
+    # Pesan yang tidak gagal
+    r = _retry(client, nb_id, conv_id, ok["metadata"]["user_message_id"])
+    assert r.status_code == 409 and r.json()["error"]["code"] == "MESSAGE_NOT_FAILED"
+    # Pesan assistant / tidak ada
+    r = _retry(client, nb_id, conv_id, ok["metadata"]["assistant_message_id"])
+    assert r.status_code == 404 and r.json()["error"]["code"] == "MESSAGE_NOT_FOUND"
+    assert _retry(client, nb_id, conv_id, 999999).status_code == 404
+    # Milik user lain
+    state["user"] = BOB
+    assert _retry(client, nb_id, conv_id, failed_id).status_code == 404

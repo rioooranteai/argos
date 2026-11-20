@@ -306,6 +306,33 @@ async def send_message(
     )
 
 
+@router.post(
+    "/{notebook_id}/conversations/{conversation_id}/messages/{message_id}/retry",
+    summary="Kirim ulang pesan yang gagal (memakai baris pesan yang sama)",
+)
+async def retry_message(
+    notebook_id: str,
+    conversation_id: str,
+    message_id: int,
+    user: CurrentUser = Depends(get_current_user),
+    nb_svc: NotebookService = Depends(get_notebook_service),
+    conv_svc: ConversationService = Depends(get_conversation_service),
+    chat_engine: ChatEngine = Depends(get_chat_engine),
+) -> ChatResponse:
+    active, pending = _chat_sources(nb_svc, user, notebook_id)
+    _conversation_in_notebook(conv_svc, conversation_id, user, notebook_id)
+    # Sumber diambil dari kondisi notebook SEKARANG; snapshot pesan ikut diperbarui.
+    user_msg = conv_svc.prepare_retry(
+        conversation_id, user.id, message_id, source_snapshot=[s.version_id for s in active]
+    )
+    return await _answer(
+        conv_svc, chat_engine, user, conversation_id, user_msg, active, pending,
+        is_new=False,
+        # Judul otomatis hanya bila pesan pertama percakapan baru akhirnya terjawab.
+        schedule_title=conv_svc.is_first_message(conversation_id, message_id),
+    )
+
+
 def _chat_sources(nb_svc: NotebookService, user: CurrentUser, notebook_id: str):
     """Sumber aktif (dicentang & ready) + nama sumber yang masih diproses."""
     nb_svc.get(user, notebook_id)
