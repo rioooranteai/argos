@@ -87,7 +87,7 @@ def test_missing_token_401(client):
 
 def test_valid_user(client):
     c, repo, _ = client
-    repo.upsert_on_login("u1", "Staff@corp.com", "Staff", None)
+    repo.upsert_on_login("u1", "Staff@corp.com", "Staff", None, new_user_id="u1")
     r = c.get("/me", headers={"Authorization": f"Bearer {_token('u1')}"})
     assert r.status_code == 200
     assert r.json() == {"id": "u1", "is_admin": False}
@@ -101,7 +101,7 @@ def test_unknown_user_rejected(client):
 
 def test_inactive_user_rejected(client):
     c, repo, database = client
-    repo.upsert_on_login("u1", "staff@corp.com", "Staff", None)
+    repo.upsert_on_login("u1", "staff@corp.com", "Staff", None, new_user_id="u1")
     with database.get_connection() as conn:
         conn.execute("UPDATE users SET is_active = 0 WHERE id = 'u1'")
     r = c.get("/me", headers={"Authorization": f"Bearer {_token('u1')}"})
@@ -111,7 +111,20 @@ def test_inactive_user_rejected(client):
 
 def test_admin_only(client):
     c, repo, _ = client
-    repo.upsert_on_login("u1", "staff@corp.com", "Staff", None)
-    repo.upsert_on_login("u2", "boss@corp.com", "Boss", None)
+    repo.upsert_on_login("u1", "staff@corp.com", "Staff", None, new_user_id="u1")
+    repo.upsert_on_login("u2", "boss@corp.com", "Boss", None, new_user_id="u2")
     assert c.get("/admin", headers={"Authorization": f"Bearer {_token('u1')}"}).status_code == 403
     assert c.get("/admin", headers={"Authorization": f"Bearer {_token('u2')}"}).status_code == 200
+
+
+
+def test_login_is_keyed_by_google_sub_and_ids_are_uuid(client):
+    import uuid
+
+    _, repo, _ = client
+    first = repo.upsert_on_login("google-123", "Staff@corp.com", "Staff", None)
+    again = repo.upsert_on_login("google-123", "staff@corp.com", "Staff Baru", "pic")
+    assert str(uuid.UUID(first.id)) == first.id          # UUID, bukan ID Google
+    assert again.id == first.id and again.name == "Staff Baru"
+    other = repo.upsert_on_login("google-456", "lain@corp.com", "Lain", None)
+    assert other.id != first.id

@@ -22,5 +22,5 @@ class LLMCall:
     output_tokens: int | None = None
     request_id: str | None = None
     version_id: str | None = None
-    message_id: int | None = None
+    message_id: str | None = None  # UUID pesan user pemicu
     ts: datetime = field(default_factory=lambda: datetime.now(UTC))

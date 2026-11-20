@@ -6,7 +6,7 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class User:
-    id: str  # Google `sub`
+    id: str  # UUID (ID akun Google ada di kolom users.google_sub, hanya untuk login)
     email: str
     name: str | None
     picture: str | None

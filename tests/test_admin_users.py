@@ -32,9 +32,9 @@ def env(tmp_path, monkeypatch):
     with db.get_connection() as conn:
         run_migrations(conn)
     users = SQLiteUserRepository(db)
-    users.upsert_on_login("u1", "alice@corp.com", "Alice", None)
-    users.upsert_on_login("u2", "bob@corp.com", "Bob", None)
-    users.upsert_on_login("admin", "boss@corp.com", "Boss", None)
+    users.upsert_on_login("u1", "alice@corp.com", "Alice", None, new_user_id="u1")
+    users.upsert_on_login("u2", "bob@corp.com", "Bob", None, new_user_id="u2")
+    users.upsert_on_login("admin", "boss@corp.com", "Boss", None, new_user_id="admin")
     library_repo = SQLiteLibraryRepository(db)
     library = LibraryService(library_repo, tmp_path / "queue", AppConfig(), users=users)
     svc = AdminService(users, library_repo)

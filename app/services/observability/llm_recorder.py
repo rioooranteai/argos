@@ -160,7 +160,7 @@ class LLMCallRecorder:
                     output_tokens=handle.output_tokens,
                     request_id=get_request_id(),
                     version_id=log_context.get("version_id"),
-                    message_id=int(message_id) if message_id is not None else None,
+                    message_id=str(message_id) if message_id is not None else None,
                     ts=datetime.now(UTC),
                 )
             )

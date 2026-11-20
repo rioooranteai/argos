@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
 from app.core.database import Database
 from app.infrastructure.interface.feature_repository import BaseFeatureRepository
@@ -41,13 +42,13 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
             conn.executemany(
                 """
                 INSERT INTO features (
-                    document_id, version_id, section_hash, section_heading, page_number,
+                    id, document_id, version_id, section_hash, section_heading, page_number,
                     brand_name, product_name, price, price_currency, advantages, disadvantages
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
-                        document_id, version_id, f.section_hash, f.section_heading, f.page_number,
+                        str(uuid.uuid4()), document_id, version_id, f.section_hash, f.section_heading, f.page_number,
                         f.brand_name, f.product_name, f.price, f.price_currency,
                         f.advantages, f.disadvantages,
                     )

@@ -104,3 +104,15 @@ class TestMessages:
         repo.add_message(c2.id, "user", "in-c2")
         repo.delete_conversation(c1.id, "u1")
         assert [m.content for m in repo.list_messages(c2.id)] == ["in-c2"]
+
+
+def test_message_ids_are_uuid_and_order_survives_same_second(repo):
+    import uuid
+
+    conv = repo.create_conversation(user_id="u1", title="t")
+    for i in range(12):  # jauh lebih cepat dari 1 detik → created_at sama
+        repo.add_message(conv.id, role="user" if i % 2 == 0 else "assistant", content=str(i))
+    msgs = repo.list_messages(conv.id)
+    assert [m.content for m in msgs] == [str(i) for i in range(12)]
+    assert all(str(uuid.UUID(m.id)) == m.id for m in msgs)
+    assert [m.content for m in repo.list_messages(conv.id, limit=1)] == ["0"]

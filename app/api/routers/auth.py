@@ -54,7 +54,7 @@ async def google_callback(request: Request):
 
     user_repo = request.app.state.user_repo
     user = user_repo.upsert_on_login(
-        user_id=google_user["sub"],
+        google_sub=google_user["sub"],
         email=google_user["email"],
         name=google_user.get("name"),
         picture=google_user.get("picture"),

@@ -55,13 +55,13 @@ class BaseConversationRepository(ABC):
         caller (ConversationService) wajib sudah memverifikasi ownership."""
 
     @abstractmethod
-    def get_message(self, message_id: int) -> Message | None:
+    def get_message(self, message_id: str) -> Message | None:
         """Satu pesan berdasarkan ID. Tidak owner-checked."""
 
     @abstractmethod
     def set_message_status(
         self,
-        message_id: int,
+        message_id: str,
         status: str,
         error_code: str | None = None,
         source_snapshot: list[str] | None = None,

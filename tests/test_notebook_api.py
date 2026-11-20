@@ -68,7 +68,7 @@ def env(tmp_path):
     with db.get_connection() as conn:
         run_migrations(conn)
     for u in (ALICE, BOB):
-        SQLiteUserRepository(db).upsert_on_login(u.id, u.email, u.name, None)
+        SQLiteUserRepository(db).upsert_on_login(u.id, u.email, u.name, None, new_user_id=u.id)
     cfg = AppConfig()
     library_repo = SQLiteLibraryRepository(db)
     library = LibraryService(library_repo, tmp_path / "queue", cfg)

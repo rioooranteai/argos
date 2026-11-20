@@ -127,13 +127,17 @@ class SQLiteConversationRepository(BaseConversationRepository):
             raise ValueError(
                 f"Invalid role: {role!r}. Must be 'user' or 'assistant'."
             )
+        msg_id = str(uuid.uuid4())
         with self._db.get_connection() as conn:
-            cursor = conn.execute(
+            # seq = urutan insert (internal). Dihitung di statement yang sama → atomik.
+            conn.execute(
                 """
-                INSERT INTO messages (conversation_id, role, content, source_snapshot, citations, trace)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO messages
+                    (id, seq, conversation_id, role, content, source_snapshot, citations, trace)
+                VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM messages), ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    msg_id,
                     conversation_id,
                     role,
                     content,
@@ -142,21 +146,17 @@ class SQLiteConversationRepository(BaseConversationRepository):
                     json.dumps(trace, ensure_ascii=False, default=str) if trace else None,
                 ),
             )
-            msg_id = cursor.lastrowid
-            row = conn.execute(
-                "SELECT * FROM messages WHERE id = ?",
-                (msg_id,),
-            ).fetchone()
+            row = conn.execute("SELECT * FROM messages WHERE id = ?", (msg_id,)).fetchone()
         return self._row_to_message(row)
 
-    def get_message(self, message_id: int) -> Message | None:
+    def get_message(self, message_id: str) -> Message | None:
         with self._db.get_connection() as conn:
             row = conn.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
         return self._row_to_message(row) if row else None
 
     def set_message_status(
         self,
-        message_id: int,
+        message_id: str,
         status: str,
         error_code: str | None = None,
         source_snapshot: list[str] | None = None,
@@ -181,7 +181,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
         if status is not None:
             sql += " AND status = ?"
             params.append(status)
-        sql += " ORDER BY created_at ASC, id ASC"
+        sql += " ORDER BY seq ASC"
         if limit is not None:
             sql += " LIMIT ?"
             params.append(limit)

@@ -131,7 +131,7 @@ class ConversationService:
         self._repo.touch(conversation_id)
         return msg
 
-    def mark_failed(self, message_id: int, error_code: str) -> None:
+    def mark_failed(self, message_id: str, error_code: str) -> None:
         """Pesan user tidak mendapat jawaban (DESIGN_GROUP_C.md §4)."""
         self._repo.set_message_status(message_id, "failed", error_code)
 
@@ -139,7 +139,7 @@ class ConversationService:
             self,
             conversation_id: str,
             user_id: str,
-            message_id: int,
+            message_id: str,
             source_snapshot: list[str],
     ) -> Message:
         """Validasi & buka kembali pesan user `failed` untuk dijalankan ulang.
@@ -163,7 +163,7 @@ class ConversationService:
         self._repo.touch(conversation_id)
         return self._repo.get_message(message_id)  # type: ignore[return-value]
 
-    def is_first_message(self, conversation_id: str, message_id: int) -> bool:
+    def is_first_message(self, conversation_id: str, message_id: str) -> bool:
         first = self._repo.list_messages(conversation_id, limit=1)
         return bool(first) and first[0].id == message_id
 

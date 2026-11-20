@@ -40,7 +40,7 @@ def rec(repo):
 
 def _rows(repo) -> list[dict]:
     with repo._db.get_connection() as conn:
-        return [dict(r) for r in conn.execute("SELECT * FROM llm_calls ORDER BY id")]
+        return [dict(r) for r in conn.execute("SELECT * FROM llm_calls ORDER BY seq")]
 
 
 def _request():
@@ -87,7 +87,7 @@ def test_classify_follows_cause_chain():
 def test_success_and_failure_are_written_with_context(rec, repo):
     token = _request_id_var.set("req-7")
     try:
-        with log_context.scoped(message_id=42, version_id="v1"):
+        with log_context.scoped(message_id="m-42", version_id="v1"):
             with rec.track("router", "gpt-x") as call:
                 call.usage(input_tokens=10, output_tokens=3)
             with pytest.raises(TimeoutError):
@@ -101,7 +101,7 @@ def test_success_and_failure_are_written_with_context(rec, repo):
     assert (ok["purpose"], ok["model"], ok["status"], ok["input_tokens"], ok["output_tokens"]) == (
         "router", "gpt-x", "ok", 10, 3,
     )
-    assert (ok["request_id"], ok["message_id"], ok["version_id"]) == ("req-7", 42, "v1")
+    assert (ok["request_id"], ok["message_id"], ok["version_id"]) == ("req-7", "m-42", "v1")
     assert (failed["status"], failed["error_code"], failed["input_tokens"]) == (
         "error", "LLM_TIMEOUT", None,
     )
@@ -130,14 +130,14 @@ def test_context_survives_to_thread_and_collect_sees_child_tasks(rec, repo):
             await asyncio.sleep(0)
 
     async def main():
-        with log_context.scoped(message_id=5), rec.collect() as calls:
+        with log_context.scoped(message_id="m-5"), rec.collect() as calls:
             await asyncio.gather(asyncio.to_thread(sync_embed), router_call())
         return calls
 
     calls = asyncio.run(main())
     rec.flush()
     assert sorted(c.purpose for c in calls) == ["embedding", "router"]
-    assert {r["message_id"] for r in _rows(repo)} == {5}
+    assert {r["message_id"] for r in _rows(repo)} == {"m-5"}
 
 
 def test_last_calls_tracks_latest_status_per_purpose(rec):
@@ -171,10 +171,10 @@ def test_purge_older_than(repo):
 
 def test_list_for_message(repo):
     repo.insert_many([
-        LLMCall(purpose="router", model="m", latency_ms=1, status="ok", message_id=1, input_tokens=4),
-        LLMCall(purpose="router", model="m", latency_ms=1, status="ok", message_id=2),
+        LLMCall(purpose="router", model="m", latency_ms=1, status="ok", message_id="m-1", input_tokens=4),
+        LLMCall(purpose="router", model="m", latency_ms=1, status="ok", message_id="m-2"),
     ])
-    calls = repo.list_for_message(1)
+    calls = repo.list_for_message("m-1")
     assert [c.input_tokens for c in calls] == [4]
 
 

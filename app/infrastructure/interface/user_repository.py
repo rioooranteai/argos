@@ -7,12 +7,20 @@ from app.services.user.model import User
 
 class BaseUserRepository(ABC):
     @abstractmethod
-    def upsert_on_login(self, user_id: str, email: str, name: str | None, picture: str | None) -> User:
-        """Buat user baru atau perbarui profil + last_login_at. Tidak mengubah is_active."""
+    def upsert_on_login(
+        self,
+        google_sub: str,
+        email: str,
+        name: str | None,
+        picture: str | None,
+        new_user_id: str | None = None,
+    ) -> User:
+        """Cari user lewat ID akun Google; buat baru (ID UUID) atau perbarui profil +
+        last_login_at. Tidak mengubah is_active. `new_user_id` hanya untuk test/seed."""
 
     @abstractmethod
     def get(self, user_id: str) -> User | None:
-        """Ambil user berdasarkan id (Google `sub`)."""
+        """Ambil user berdasarkan id (UUID)."""
 
     @abstractmethod
     def list_all(self) -> list[User]:

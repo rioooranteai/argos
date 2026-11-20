@@ -57,7 +57,7 @@ def env(tmp_path):
         run_migrations(conn)
     users = SQLiteUserRepository(db)
     for u in (ALICE, BOB):
-        users.upsert_on_login(u.id, u.email, u.name, None)
+        users.upsert_on_login(u.id, u.email, u.name, None, new_user_id=u.id)
     repo = SQLiteLibraryRepository(db)
     queue = tmp_path / "queue"
     cfg = dataclasses.replace(AppConfig(), NOTEBOOK_MAX_SOURCES=3)

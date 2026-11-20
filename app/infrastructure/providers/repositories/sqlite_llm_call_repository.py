@@ -1,6 +1,7 @@
 """SQLite adapter untuk catatan panggilan AI (tabel ``llm_calls``)."""
 from __future__ import annotations
 
+import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -27,18 +28,21 @@ class SQLiteLLMCallRepository(BaseLLMCallRepository):
         if not calls:
             return
         with self._db.get_connection() as conn:
+            # Kunci tulis dulu, agar MAX(seq) dan INSERT berada di transaksi yang sama.
+            conn.execute("BEGIN IMMEDIATE")
+            next_seq = conn.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM llm_calls").fetchone()[0]
             conn.executemany(
                 """INSERT INTO llm_calls
-                   (ts, purpose, model, input_tokens, output_tokens, latency_ms,
+                   (id, seq, ts, purpose, model, input_tokens, output_tokens, latency_ms,
                     status, error_code, request_id, version_id, message_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (
-                        _ts_out(c.ts), c.purpose, c.model, c.input_tokens, c.output_tokens,
-                        c.latency_ms, c.status, c.error_code, c.request_id, c.version_id,
-                        c.message_id,
+                        str(uuid.uuid4()), next_seq + i, _ts_out(c.ts), c.purpose, c.model,
+                        c.input_tokens, c.output_tokens, c.latency_ms, c.status, c.error_code,
+                        c.request_id, c.version_id, c.message_id,
                     )
-                    for c in calls
+                    for i, c in enumerate(calls)
                 ],
             )
 
@@ -49,10 +53,10 @@ class SQLiteLLMCallRepository(BaseLLMCallRepository):
             )
             return cur.rowcount
 
-    def list_for_message(self, message_id: int) -> list[LLMCall]:
+    def list_for_message(self, message_id: str) -> list[LLMCall]:
         with self._db.get_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM llm_calls WHERE message_id = ? ORDER BY id", (message_id,)
+                "SELECT * FROM llm_calls WHERE message_id = ? ORDER BY seq", (message_id,)
             ).fetchall()
         return [
             LLMCall(

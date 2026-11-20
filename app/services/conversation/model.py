@@ -20,7 +20,7 @@ class Conversation:
 class Message:
     """Satu pesan (user atau assistant) dalam sebuah thread."""
 
-    id: int
+    id: str  # UUID
     conversation_id: str
     role: str  # 'user' | 'assistant'
     content: str
@@ -41,7 +41,7 @@ class ConversationOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    id: int
+    id: str
     role: str
     content: str
     created_at: datetime

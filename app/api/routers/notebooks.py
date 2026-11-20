@@ -313,7 +313,7 @@ async def send_message(
 async def retry_message(
     notebook_id: str,
     conversation_id: str,
-    message_id: int,
+    message_id: str,
     user: CurrentUser = Depends(get_current_user),
     nb_svc: NotebookService = Depends(get_notebook_service),
     conv_svc: ConversationService = Depends(get_conversation_service),

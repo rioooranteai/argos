@@ -100,7 +100,7 @@ def test_success_stores_trace_and_degraded_flag(chat):
     body = _send(client, nb_id, "harga?").json()
     meta = body["metadata"]
     assert meta["degraded"] is True and meta["issues"] == [{"component": "vector", "code": "LLM_TIMEOUT"}]
-    assert isinstance(meta["user_message_id"], int) and isinstance(meta["assistant_message_id"], int)
+    assert len(meta["user_message_id"]) == 36 and len(meta["assistant_message_id"]) == 36  # UUID
 
     bot = _messages(client, nb_id, body["conversation_id"])[1]
     assert bot["status"] == "ok" and bot["degraded"] is True
@@ -153,7 +153,7 @@ def test_retry_rules(chat):
     # Pesan assistant / tidak ada
     r = _retry(client, nb_id, conv_id, ok["metadata"]["assistant_message_id"])
     assert r.status_code == 404 and r.json()["error"]["code"] == "MESSAGE_NOT_FOUND"
-    assert _retry(client, nb_id, conv_id, 999999).status_code == 404
+    assert _retry(client, nb_id, conv_id, "00000000-0000-4000-8000-000000000000").status_code == 404
     # Milik user lain
     state["user"] = BOB
     assert _retry(client, nb_id, conv_id, failed_id).status_code == 404

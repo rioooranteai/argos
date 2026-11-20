@@ -27,7 +27,7 @@ def client(tmp_path):
     database = Database(db_path=tmp_path / "t.db")
     with database.get_connection() as conn:
         run_migrations(conn)
-    SQLiteUserRepository(database).upsert_on_login(ALICE.id, ALICE.email, ALICE.name, None)
+    SQLiteUserRepository(database).upsert_on_login(ALICE.id, ALICE.email, ALICE.name, None, new_user_id=ALICE.id)
     svc = LibraryService(SQLiteLibraryRepository(database), tmp_path / "queue", AppConfig())
 
     app = FastAPI()
