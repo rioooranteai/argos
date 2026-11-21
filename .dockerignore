@@ -1,9 +1,9 @@
-# Secrets — jangan pernah masuk ke image (env dimasukkan lewat env_file saat runtime)
+# Secrets — never in the image (env comes in through env_file at runtime)
 .env
 .env.*
 !.env.example
 
-# Virtual environment (folder project ini juga venv)
+# Virtual environment (this project folder is also a venv)
 Lib/
 Scripts/
 Include/
@@ -14,7 +14,7 @@ pyvenv.cfg
 venv/
 env/
 
-# Data runtime (dipasang lewat volume)
+# Runtime data (mounted as a volume)
 data/
 *.db
 *.db-shm

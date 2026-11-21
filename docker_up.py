@@ -1,13 +1,13 @@
 """
-Jalankan Docker Compose dengan deteksi GPU otomatis.
+Run Docker Compose with automatic GPU detection.
 
-Cara pakai:
-    python docker_up.py                 # auto: GPU kalau ada, kalau tidak CPU
-    python docker_up.py --device cpu    # paksa CPU
-    python docker_up.py --device cuda   # paksa GPU
-    python docker_up.py -- logs -f      # perintah compose lain (default: up -d --build)
+Usage:
+    python docker_up.py                 # auto: GPU if there is one, otherwise CPU
+    python docker_up.py --device cpu    # force CPU
+    python docker_up.py --device cuda   # force GPU
+    python docker_up.py -- logs -f      # any other compose command (default: up -d --build)
 
-Pilihan file:
+Compose files:
     CPU -> docker-compose.yml
     GPU -> docker-compose.yml + docker-compose.gpu.yml
 """
@@ -28,19 +28,19 @@ ROOT = Path(__file__).resolve().parent
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
-    parser.add_argument("compose_args", nargs="*", help="argumen untuk docker compose (setelah --)")
+    parser.add_argument("compose_args", nargs="*", help="arguments for docker compose (after --)")
     args = parser.parse_args()
 
     if not shutil.which("docker"):
-        print("Docker tidak ditemukan. Install / jalankan Docker Desktop dulu.")
+        print("Docker not found. Install / start Docker Desktop first.")
         return 1
 
     device = args.device
     if device == "auto":
         gpu = detect_nvidia_gpu()
         device = "cuda" if gpu else "cpu"
-        print(f"GPU terdeteksi: {gpu}" if gpu else "GPU NVIDIA tidak terdeteksi.", flush=True)
-    print(f"Mode Docker: {device.upper()}", flush=True)
+        print(f"GPU detected: {gpu}" if gpu else "No NVIDIA GPU detected.", flush=True)
+    print(f"Docker mode: {device.upper()}", flush=True)
 
     files = ["-f", str(ROOT / "docker-compose.yml")]
     if device == "cuda":

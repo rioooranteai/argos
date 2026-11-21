@@ -1,16 +1,16 @@
 """
-Installer dependency ArgosAI dengan deteksi GPU otomatis.
+ArgosAI dependency installer with automatic GPU detection.
 
-Cara pakai (jalankan dengan python dari venv/project Anda):
-    python install.py              # auto: deteksi GPU NVIDIA
-    python install.py --device cpu # paksa versi CPU
+Usage (run it with the python of your venv/project):
+    python install.py              # auto: detect an NVIDIA GPU
+    python install.py --device cpu # force the CPU build
     python install.py --device cuda
 
-Yang dilakukan:
-  1. Cek apakah ada GPU NVIDIA (lewat `nvidia-smi`).
-  2. Pasang PyTorch versi CUDA (kalau ada GPU) atau versi CPU.
-  3. Pasang sisa dependency dari requirements.txt.
-  4. Verifikasi: tampilkan apakah torch bisa melihat GPU.
+What it does:
+  1. Checks for an NVIDIA GPU (via `nvidia-smi`).
+  2. Installs the CUDA build of PyTorch (with a GPU) or the CPU build.
+  3. Installs the remaining dependencies from requirements.txt.
+  4. Verifies: shows whether torch can see the GPU.
 """
 
 from __future__ import annotations
@@ -24,13 +24,13 @@ from pathlib import Path
 
 TORCH_VERSION = "2.8.0"
 TORCHVISION_VERSION = "0.23.0"
-CUDA_TAG = "cu129"  # butuh driver NVIDIA yang mendukung CUDA 12.9 (>= 576.x)
+CUDA_TAG = "cu129"  # needs an NVIDIA driver that supports CUDA 12.9 (>= 576.x)
 INDEX_BASE = "https://download.pytorch.org/whl"
 ROOT = Path(__file__).resolve().parent
 
 
 def detect_nvidia_gpu() -> str | None:
-    """Kembalikan nama GPU NVIDIA kalau ada, selain itu None."""
+    """Return the NVIDIA GPU name if there is one, otherwise None."""
     exe = shutil.which("nvidia-smi")
     if not exe:
         return None
@@ -57,37 +57,37 @@ def main() -> int:
     args = parser.parse_args()
 
     if not ((3, 11) <= sys.version_info[:2] <= (3, 13)):
-        print(f"Python {platform.python_version()} tidak didukung. Pakai Python 3.11 - 3.13.")
+        print(f"Python {platform.python_version()} is not supported. Use Python 3.11 - 3.13.")
         return 1
 
     if platform.system() == "Darwin" and platform.machine() == "x86_64":
-        print("Mac Intel tidak didukung PyTorch versi ini. Jalankan lewat Docker (lihat README).")
+        print("Intel Macs are not supported by this PyTorch version. Run it with Docker (see README).")
         return 1
 
     if sys.prefix == sys.base_prefix:
-        print("PERINGATAN: Anda tidak sedang di virtual environment. "
-              "Paket akan dipasang ke Python global.")
+        print("WARNING: you are not in a virtual environment. "
+              "Packages will be installed into the global Python.")
 
     env_file, env_example = ROOT / ".env", ROOT / ".env.example"
     if not env_file.exists() and env_example.exists():
         shutil.copyfile(env_example, env_file)
-        print("File .env dibuat dari .env.example — isi API key Anda di sana.")
+        print("Created .env from .env.example — put your API keys there.")
 
     device = args.device
     if device == "auto":
         gpu = detect_nvidia_gpu()
         if gpu:
-            print(f"GPU NVIDIA terdeteksi: {gpu} -> pasang PyTorch {CUDA_TAG}")
+            print(f"NVIDIA GPU detected: {gpu} -> installing PyTorch {CUDA_TAG}")
             device = "cuda"
         else:
-            print("GPU NVIDIA tidak terdeteksi -> pasang PyTorch versi CPU")
+            print("No NVIDIA GPU detected -> installing the CPU build of PyTorch")
             device = "cpu"
 
     pip("install", "--upgrade", "pip")
 
     torch_pkgs = [f"torch=={TORCH_VERSION}", f"torchvision=={TORCHVISION_VERSION}"]
     if platform.system() == "Darwin":
-        # macOS: wheel PyPI biasa (sudah termasuk dukungan MPS / Apple Silicon)
+        # macOS: the regular PyPI wheel (already includes MPS / Apple Silicon support)
         pip("install", *torch_pkgs)
     else:
         tag = CUDA_TAG if device == "cuda" else "cpu"
@@ -95,24 +95,24 @@ def main() -> int:
 
     pip("install", "-r", str(ROOT / "requirements.txt"))
 
-    print("\n=== Verifikasi ===")
+    print("\n=== Verification ===")
     check = subprocess.run([
         sys.executable, "-c",
         "import torch, docling, fastapi; ok = torch.cuda.is_available(); "
-        "print('torch', torch.__version__, '| CUDA tersedia:', ok, "
+        "print('torch', torch.__version__, '| CUDA available:', ok, "
         "'|', torch.cuda.get_device_name(0) if ok else 'CPU'); "
         "raise SystemExit(0 if ok else 3)",
     ], check=False)
     if check.returncode not in (0, 3):
-        print("Verifikasi gagal: paket inti tidak bisa di-import.")
+        print("Verification failed: the core packages cannot be imported.")
         return 1
     if device == "cuda" and check.returncode == 3:
-        print("PERINGATAN: PyTorch CUDA terpasang tapi GPU tidak terbaca "
-              "(driver NVIDIA mungkin terlalu lama). Aplikasi tetap jalan di CPU. "
-              "Update driver, atau jalankan: python install.py --device cpu")
+        print("WARNING: CUDA PyTorch is installed but the GPU is not visible "
+              "(the NVIDIA driver may be too old). The app still runs on CPU. "
+              "Update the driver, or run: python install.py --device cpu")
 
-    print("\nSelesai. Jalankan aplikasi:  python -m uvicorn app.main:app --reload")
-    print("Device Docling diatur lewat DOCLING_DEVICE di .env (auto/cuda/cpu), default 'auto'.")
+    print("\nDone. Start the app:  python -m uvicorn app.main:app --reload")
+    print("The Docling device is set by the DOCLING_DEVICE environment variable (auto/cuda/cpu), default 'auto'.")
     return 0
 
 

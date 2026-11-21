@@ -1,6 +1,6 @@
-# Override untuk menjalankan dengan GPU NVIDIA.
-# Pakai:  docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
-# Syarat: driver NVIDIA + Docker Desktop (WSL2) atau NVIDIA Container Toolkit di Linux.
+# Override for running with an NVIDIA GPU.
+# Usage:  docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+# Needs:  an NVIDIA driver + Docker Desktop (WSL2), or the NVIDIA Container Toolkit on Linux.
 services:
   argos-api:
     build:

@@ -7,11 +7,11 @@ services:
     env_file:
       - .env
     environment:
-      # Nilai infrastruktur per mesin (bukan rahasia, tidak di .env).
-      # Semua data (SQLite, Chroma, antrean upload) ada di DATA_DIR.
+      # Per-machine infrastructure values (not secrets, not in .env).
+      # All data (SQLite, Chroma, upload queue) lives in DATA_DIR.
       DATA_DIR: /app/data
       DOCLING_DEVICE: auto
-      # Cache model Docling/HuggingFace agar tidak download ulang tiap restart
+      # Cache the Docling/HuggingFace models so they are not downloaded again on every restart
       HF_HOME: /app/data/hf_cache
     volumes:
       - ./data:/app/data
@@ -21,6 +21,6 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 3
-    # Beri worker waktu menyelesaikan tahap yang sedang berjalan (WORKER_SHUTDOWN_GRACE = 20 dtk).
+    # Give the worker time to finish the stage it is running (WORKER_SHUTDOWN_GRACE = 20 s).
     stop_grace_period: 30s
     restart: unless-stopped

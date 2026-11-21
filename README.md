@@ -27,7 +27,7 @@ flowchart TD
         JWT["JWT issuer\n(sub · email · name · picture)"]
         GOOGLE --> JWT
     end
-    UI <-->|Bearer token on every request| JWT
+    UI <-->|HttpOnly session cookie on every request| JWT
 
     %% ─── Ingestion + Extraction ───
     DOC["📄 PDF / Markdown"] -->|Upload| ING
@@ -102,7 +102,7 @@ cd argos
 cp .env.example .env        # Windows (cmd/PowerShell): copy .env.example .env
 ```
 
-Open `.env` and fill the values marked **[WAJIB]**:
+Open `.env` and fill in all of these values:
 
 | Variable | Where to get it |
 |---|---|

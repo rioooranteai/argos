@@ -1,5 +1,5 @@
-# LOCK FILE — jangan diedit manual. Generate ulang dengan: python lock.py
-# PyTorch tidak ada di sini: dipasang oleh install.py / Dockerfile (CPU atau CUDA).
+# LOCK FILE — do not edit by hand. Regenerate with: python lock.py
+# PyTorch is not listed here: install.py / Dockerfile install it (CPU or CUDA).
 accelerate==1.13.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
