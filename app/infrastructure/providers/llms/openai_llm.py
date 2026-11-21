@@ -24,7 +24,7 @@ class OpenAILLM(BaseLLM):
         purpose: str = "synthesizer",
     ):
         logger.info(
-            "Membangun mesin OpenAILLM (Tujuan: %s, Model: %s, Temp: %s, Timeout: %ss, Retry: %s)",
+            "Building OpenAILLM (purpose: %s, model: %s, temp: %s, timeout: %ss, retries: %s)",
             purpose, model, temperature, timeout, max_retries,
         )
         self._model = model

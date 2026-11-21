@@ -50,11 +50,11 @@ def _resolve_device(name: str) -> AcceleratorDevice:
         device = AcceleratorDevice.CPU
 
     if device == AcceleratorDevice.CUDA or (device == AcceleratorDevice.AUTO and cuda_ok):
-        logger.info("Docling memakai GPU: %s", gpu_name)
+        logger.info("Docling is using the GPU: %s", gpu_name)
     elif device == AcceleratorDevice.AUTO:
         logger.info("Docling auto mode: no CUDA detected, using CPU.")
     else:
-        logger.info("Docling memakai device: %s", device.value)
+        logger.info("Docling is using device: %s", device.value)
     return device
 
 

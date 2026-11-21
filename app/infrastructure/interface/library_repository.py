@@ -86,7 +86,7 @@ class BaseLibraryRepository(ABC):
     def transfer_ownership(self, from_user_id: str, to_user_id: str) -> int:
         """Transfer ownership of every document. Returns the number of documents."""
 
-    # ── Tahap 3: saran kemiripan ────────────────────────────────────────
+    # ── Stage 3: similarity suggestions ─────────────────────────────────
 
     @abstractmethod
     def list_fingerprints(self) -> list[tuple[str, str, bytes]]:

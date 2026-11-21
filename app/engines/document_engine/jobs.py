@@ -59,7 +59,7 @@ def classify(exc: BaseException) -> tuple[bool, str]:
         if isinstance(e, PermanentJobError):
             return False, str(e)
         if isinstance(e, (openai.AuthenticationError, openai.PermissionDeniedError)):
-            return False, "Konfigurasi layanan AI bermasalah. Hubungi admin."
+            return False, "The AI service is misconfigured. Contact the admin."
         if isinstance(e, (openai.BadRequestError, openai.UnprocessableEntityError)):
             # 400/422: the request was rejected — repeating the same request does not help.
             return False, "The AI service rejected this document's content."

@@ -99,7 +99,7 @@ class DocumentWorker:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Worker slot %d: error tak terduga di loop.", slot)
+                logger.exception("Worker slot %d: unexpected error in the loop.", slot)
                 worked = False
             if not worked:
                 try:

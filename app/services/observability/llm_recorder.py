@@ -100,7 +100,7 @@ class LLMCallRecorder:
         self._queue.put(done)
         done.wait(timeout)
 
-    # ── Pencatatan ──────────────────────────────────────────────────
+    # ── Recording ───────────────────────────────────────────────────
 
     @contextmanager
     def track(self, purpose: str, model: str) -> Iterator[_CallHandle]:
