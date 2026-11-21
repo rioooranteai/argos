@@ -23,15 +23,11 @@ chroma_db/
 chroma_data/
 temp_uploads/
 
-# Git, IDE, cache, test
+# Git, IDE, cache
 .git/
 .idea/
 .vscode/
 __pycache__/
 *.py[cod]
-.pytest_cache/
 .ruff_cache/
-.coverage
-htmlcov/
-tests/
 *.log

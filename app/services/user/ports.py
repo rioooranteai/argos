@@ -16,7 +16,7 @@ class BaseUserRepository(ABC):
         new_user_id: str | None = None,
     ) -> User:
         """Find the user by Google account ID; create a new one (UUID ID) or update the profile +
-        last_login_at. Does not change is_active. `new_user_id` is only for tests/seeding."""
+        last_login_at. Does not change is_active. `new_user_id` is only for seeding (e.g. eval/run_eval.py)."""
 
     @abstractmethod
     def get(self, user_id: str) -> User | None:

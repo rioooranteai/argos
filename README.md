@@ -325,8 +325,7 @@ Errors always have the same shape:
 ## 8. Development
 
 ```bash
-pytest tests/ -v
-ruff check app tests
+ruff check app
 ```
 
 ### Code structure
@@ -346,7 +345,7 @@ bootstrap ─► api ─► engines (orchestrators) ─► services (features) �
 | `app/tools/factory.py` | The only place that picks a concrete tool, from the `*_PROVIDER` constants in `config.py` |
 | `app/core/` | Shared kernel: config, errors, logging, request context, AI call recorder, database, security, session, middleware |
 
-Rules (enforced by `tests/test_architecture.py`):
+Rules:
 
 - Dependencies point inward: services never import engines or api; engines never import api.
 - Services, engines and routers use tools only through `app/tools/<tool>/base.py`; only
@@ -356,15 +355,6 @@ Rules (enforced by `tests/test_architecture.py`):
 
 **Switching a tool** (e.g. another vector database): add an implementation next to its
 `base.py`, add a branch in `tools/factory.py`, change the provider constant in `config.py`.
-
-**Testing with fakes**: `tests/fakes.py` has one fake per contract (`FakeLLM`,
-`FakeVectorStore`, `FakeParser`, `FakeVision`, `FakeExtractor`, `FakeEmbedder`, `FakeSTT`,
-`FakeTTS`). Each inherits its `Base…` class, so it breaks as soon as a contract changes.
-Pass them to the constructor of the service under test, e.g.
-`VoiceService(stt=FakeSTT(), tts=FakeTTS())`. Engines and orchestrators are never faked:
-tests run the real `ChatEngine` / `ChatOrchestrator` / `DocumentPipeline` and steer them
-through their tools (a `FakeVectorStore(error=...)` for a failing source, a
-`FakeLLM(delay=...)` for a slow answer).
 
 ### Dependencies
 
