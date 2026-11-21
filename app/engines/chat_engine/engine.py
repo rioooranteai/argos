@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from app.core.errors import UpstreamTimeout
 from app.engines.chat_engine.graph import build_graph
 from app.engines.chat_engine.outcome import ChatResult, NodeTrace, issues_from
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.services.conversation.model import Message
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.model import ActiveSource

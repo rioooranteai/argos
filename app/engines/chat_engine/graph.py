@@ -9,7 +9,7 @@ from app.engines.chat_engine.nodes.sql_node import sql_node
 from app.engines.chat_engine.nodes.synthesizer import synthesizer_node
 from app.engines.chat_engine.nodes.vector_node import vector_node
 from app.engines.chat_engine.state import ChatState, RouteDecision
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.service import NL2SQLService
 from app.services.vector_store.service import VectorStoreService
 from langchain_core.messages import AIMessage

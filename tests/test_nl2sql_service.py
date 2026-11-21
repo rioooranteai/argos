@@ -6,7 +6,7 @@ from typing import Type
 import pytest
 from pydantic import BaseModel
 
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.service import MAX_RAW_ROWS, NL2SQLService
 from tests.test_nl2sql_executor import db_path  # noqa: F401  (fixture)
 

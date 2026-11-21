@@ -5,7 +5,7 @@ from typing import Any
 
 import chromadb
 
-from app.infrastructure.interface.embedder import BaseEmbedder
+from app.tools.embedding.base import BaseEmbedder
 from app.services.ingestion.model import IndexChunk
 from app.services.vector_store.base.vector_store_base import BaseVectorStoreProvider
 from app.services.vector_store.exceptions import VectorStoreInsertError, VectorStoreSearchError

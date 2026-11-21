@@ -5,7 +5,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from app.core.config import app_config
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.core.observability.recorder import recorder, usage_from_langchain
 
 logger = logging.getLogger(__name__)

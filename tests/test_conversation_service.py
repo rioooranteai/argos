@@ -13,7 +13,7 @@ import pytest
 
 from app.core.database import Database
 from app.core.migrations import run_migrations
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
 )

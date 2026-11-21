@@ -246,14 +246,14 @@ async def test_engine_total_timeout():
         await engine.chat("halo", sources=[])
 
 
-def test_llm_factory_sets_timeouts():
-    from app.infrastructure.factories.llm_factory import get_llm
+def test_tools_factory_sets_llm_timeouts():
+    from app.tools.factory import build_llm
 
     cfg = AppConfig()
-    router_llm = get_llm("router")
+    router_llm = build_llm("router")
     assert router_llm._client.request_timeout == cfg.LLM_TIMEOUT_ROUTER
-    assert get_llm("title")._client.max_retries == 0
-    assert get_llm("nl2sql")._client.request_timeout == cfg.LLM_TIMEOUT_NL2SQL
+    assert build_llm("title")._client.max_retries == 0
+    assert build_llm("nl2sql")._client.request_timeout == cfg.LLM_TIMEOUT_NL2SQL
     assert dataclasses.is_dataclass(cfg)
 
 

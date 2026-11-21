@@ -8,7 +8,7 @@ from app.core.llm_errors import classify_llm_error
 from app.engines.chat_engine.citations import CitationRegistry
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.outcome import COMPONENT_LABELS, RETRIEVAL_NODES, NodeTrace
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.service import NL2SQLResult
 
 logger = logging.getLogger(__name__)

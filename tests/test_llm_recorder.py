@@ -14,7 +14,7 @@ from app.core.database import Database
 from app.core.llm_errors import classify_llm_error
 from app.core.migrations import run_migrations
 from app.core.request_context import _request_id_var
-from app.infrastructure.providers.llms.openai_llm import OpenAILLM
+from app.tools.llm.openai_llm import OpenAILLM
 from app.infrastructure.providers.repositories.sqlite_llm_call_repository import (
     SQLiteLLMCallRepository,
 )

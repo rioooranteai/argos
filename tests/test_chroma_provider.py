@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.infrastructure.interface.embedder import BaseEmbedder
+from app.tools.embedding.base import BaseEmbedder
 from app.services.ingestion.model import IndexChunk
 from app.services.vector_store.providers.chroma_provider import ChromaProvider
 

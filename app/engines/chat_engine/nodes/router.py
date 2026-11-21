@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.outcome import NodeTrace
-from app.infrastructure.interface.llm import BaseLLM
+from app.tools.llm.base import BaseLLM
 
 logger = logging.getLogger(__name__)
 

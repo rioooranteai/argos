@@ -14,8 +14,7 @@ from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
-from app.infrastructure.factories.embedder_factory import get_embedder
-from app.infrastructure.factories.llm_factory import get_llm
+from app.tools.factory import build_embedder, build_llm
 from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
@@ -101,7 +100,7 @@ async def lifespan(app: FastAPI):
     app.state.llm_recorder = llm_recorder
 
     # --- AI providers ---
-    embedder = get_embedder()
+    embedder = build_embedder()
     limits = AILimits.from_config(app_config)
 
     # --- Services ---
@@ -161,7 +160,7 @@ async def lifespan(app: FastAPI):
     app.state.document_worker = worker
 
     app.state.nl2sql_service = NL2SQLService(
-        llm_provider=get_llm(model_type="nl2sql", temperature=0.0),
+        llm_provider=build_llm("nl2sql", temperature=0.0),
         db_path=DB_PATH,
         exec_timeout=app_config.SQL_EXEC_TIMEOUT,
     )
@@ -170,12 +169,12 @@ async def lifespan(app: FastAPI):
 
     app.state.conversation_service = ConversationService(
         repository=conversation_repo,
-        title_llm=get_llm(model_type="title", temperature=0.3),
+        title_llm=build_llm("title", temperature=0.3),
     )
 
     app.state.chat_engine = ChatEngine(
-        llm=get_llm(model_type="chat", temperature=0.3),
-        router_llm=get_llm(model_type="router", temperature=0.0),
+        llm=build_llm("chat", temperature=0.3),
+        router_llm=build_llm("router", temperature=0.0),
         nl2sql_svc=app.state.nl2sql_service,
         vector_svc=app.state.vector_store_svc,
         total_timeout=app_config.CHAT_TOTAL_TIMEOUT,

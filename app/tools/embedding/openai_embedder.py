@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_openai import OpenAIEmbeddings
 
-from app.infrastructure.interface.embedder import BaseEmbedder
+from app.tools.embedding.base import BaseEmbedder
 from app.core.observability.recorder import recorder
 
 _DIMENSIONS: dict[str, int] = {
