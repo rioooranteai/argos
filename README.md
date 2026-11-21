@@ -271,8 +271,10 @@ scanned PDFs. Turning it on makes processing slower, especially on CPU.
 **Upload limits** (defaults) — PDF or Markdown, 10 MB per file, 100 pages, 5 files and 30 MB
 per upload.
 
-**Logs** — JSON lines on stdout with a request ID and context (user, notebook, version,
-stage). Every OpenAI call is recorded in the `llm_calls` table (model, tokens, latency,
+**Logs** — in a terminal, aligned and coloured lines (time, level, component, message);
+in Docker or when redirected to a file, JSON lines. Both carry the request ID and context
+(user, notebook, version, stage). Force one with `LOG_FORMAT = "json"` or `"text"` in
+`config.py`; set `NO_COLOR=1` to turn colours off. Every OpenAI call is recorded in the `llm_calls` table (model, tokens, latency,
 status — never prompts or document content) and kept for 90 days.
 
 ### Docker commands
