@@ -46,6 +46,21 @@ def _route_condition(state: ChatState) -> list[str]:
         return ["synthesizer_node"]
 
 
+def _after_sql(state: ChatState) -> str:
+    """Route `sql` came back with no rows → also search the documents before answering.
+
+    The structured columns only hold name/brand/price/pros/cons, so an attribute such as
+    "7 seats" may only be found in the document text. With route `both` the vector search
+    already ran in parallel, so this only applies to `sql` alone. A failed SQL query is not
+    retried through this path (the synthesizer reports the failure).
+    """
+    sql_result = state.get("sql_result")
+    if state.get("route") == "sql" and sql_result is not None and sql_result.status == "empty":
+        logger.info("[graph] SQL returned no rows; falling back to document search.")
+        return "vector_node"
+    return "synthesizer_node"
+
+
 def build_graph(
         llm: BaseLLM,
         nl2sql_svc: NL2SQLService,
@@ -82,8 +97,13 @@ def build_graph(
         },
     )
 
-    # sql & vector → synthesizer (after both finish, when run in parallel)
-    builder.add_edge("sql_node", "synthesizer_node")
+    # sql → synthesizer, or → vector first when route `sql` found no rows (fallback).
+    # With route `both`, sql & vector run in the same step, so the synthesizer runs once.
+    builder.add_conditional_edges(
+        "sql_node",
+        _after_sql,
+        {"vector_node": "vector_node", "synthesizer_node": "synthesizer_node"},
+    )
     builder.add_edge("vector_node", "synthesizer_node")
 
     # synthesizer → END

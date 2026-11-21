@@ -60,6 +60,17 @@ ROUTING RULES:
    entirely outside the competitive intelligence domain.
 5. When in doubt between "sql" and "both", prefer "both" to avoid
    missing relevant context.
+6. The structured columns are only: product name, brand, price,
+   currency, advantages, disadvantages. If the question filters or
+   asks by any other attribute — seats or capacity ("seven seater"),
+   size, weight, engine, specifications, features, category or type
+   ("SUV", "laptop 14 inch"), dates, fees or terms — route to "both":
+   that detail usually lives in the document text, not in a column.
+7. Use "none" only when no document could ever answer it (greetings,
+   small talk, jokes, requests for your personal opinion or general
+   knowledge unrelated to products, prices or companies). A question
+   that names a product, brand, category, price or company is never
+   "none", even if you think the sources may not cover it.
 
 OUTPUT FORMAT:
 Reply ONLY with the following JSON. No preamble, no markdown,
