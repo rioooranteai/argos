@@ -44,6 +44,34 @@ class TestVerifyGoogleIdentity:
         assert e.value.code == "EMAIL_NOT_VERIFIED"
 
 
+GMAIL = Secrets(_env_file=None, ALLOWED_GOOGLE_DOMAIN="gmail.com")
+
+
+class TestGmailMode:
+    def test_gmail_account_allowed(self):
+        verify_google_identity({"email_verified": True, "email": "Rio.Labs@Gmail.com"}, GMAIL)
+
+    def test_workspace_account_rejected(self):
+        with pytest.raises(PermissionDenied) as e:
+            verify_google_identity(
+                {"email_verified": True, "email": "x@corp.com", "hd": "corp.com"}, GMAIL
+            )
+        assert e.value.code == "DOMAIN_NOT_ALLOWED"
+
+    def test_non_gmail_address_rejected(self):
+        with pytest.raises(PermissionDenied):
+            verify_google_identity({"email_verified": True, "email": "x@yahoo.com"}, GMAIL)
+
+    def test_lookalike_domain_rejected(self):
+        with pytest.raises(PermissionDenied):
+            verify_google_identity({"email_verified": True, "email": "x@evilgmail.com"}, GMAIL)
+
+    def test_unverified_gmail_rejected(self):
+        with pytest.raises(PermissionDenied) as e:
+            verify_google_identity({"email_verified": False, "email": "x@gmail.com"}, GMAIL)
+        assert e.value.code == "EMAIL_NOT_VERIFIED"
+
+
 def test_is_admin():
     assert is_admin("boss@CORP.com", POLICY)
     assert not is_admin("staff@corp.com", POLICY)
