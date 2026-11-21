@@ -493,9 +493,13 @@ the answers are, once in **Indonesian** and once in **English**.
   setups should move to PostgreSQL.
 - **OpenAI costs are per call.** A chat message triggers 3–5 calls (router, NL→SQL, embedding,
   synthesizer, plus a title on the first turn), and each document triggers vision, embedding
-  and extraction calls. The router and title use a cheaper model than the synthesizer; the
-  models are set in `app/core/config.py`, and every call is recorded in `llm_calls` so costs
-  can be monitored.
+  and extraction calls. All text and vision calls use `gpt-6-luna` (OpenAI's cheapest current
+  model) with a reasoning effort per use; speech uses `gpt-transcribe` and `gpt-4o-mini-tts`.
+  The models are set in `app/core/config.py`, every call is recorded in `llm_calls`, and with
+  telemetry on, Langfuse shows the cost per call.
+- **Text-to-speech has no successor yet.** `gpt-4o-mini-tts` (like `tts-1`) shuts down on
+  2027-01-06 and OpenAI's replacement is a Realtime API model, not a drop-in for the
+  `audio/speech` endpoint Argos uses — "listen to the answer" needs a change before then.
 
 ---
 

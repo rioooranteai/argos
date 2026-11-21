@@ -1,11 +1,10 @@
-import io
 import logging
 
 from openai import AsyncOpenAI
 
 from app.core.config import app_config, secrets
 from app.core.observability.recorder import recorder
-from app.tools.speech.base import BaseSTT, STTError, STTRequest, STTResult, STTSegment
+from app.tools.speech.base import BaseSTT, STTError, STTRequest, STTResult
 
 logger = logging.getLogger(__name__)
 
@@ -26,22 +25,28 @@ MIME_TO_EXT = {
     "audio/x-m4a": "m4a",
 }
 
-def _report(call, request: STTRequest, audio_bytes: bytes, response) -> None:
-    """Audio length (for pricing) and the transcript for the trace; never the audio itself."""
-    call.units(audio_seconds=getattr(response, "duration", None))
-    call.content(
-        input={"language": request.language or "auto", "format": request.audio_format,
-               "audio_bytes": len(audio_bytes)},
-        output={"text": response.text, "language": getattr(response, "language", None)},
-    )
+def _detected_language(data: dict) -> str | None:
+    """gpt-transcribe returns ``languages: [{"code": "id"}]`` (empty when unsure);
+    whisper-1 returned a single ``language``."""
+    languages = data.get("languages") or []
+    if languages and isinstance(languages[0], dict):
+        return languages[0].get("code")
+    return data.get("language")
+
+
+def _duration_seconds(data: dict) -> float | None:
+    usage = data.get("usage") or {}
+    return usage.get("seconds") if usage.get("type") == "duration" else data.get("duration")
 
 
 class OpenAISTT(BaseSTT):
     """
-    STT provider using the OpenAI Whisper API (cloud).
-    Model  : whisper-1
-    Cost   : $0.006 per minute of audio
-    Docs   : https://platform.openai.com/docs/guides/speech-to-text
+    STT provider using OpenAI's transcription API (model from config: gpt-transcribe).
+    Docs: https://developers.openai.com/api/docs/guides/speech-to-text
+
+    gpt-transcribe accepts only ``json``/``text`` responses (no ``verbose_json``, so no
+    segment timestamps); it detects the language itself and reports the audio length in
+    ``usage.seconds``.
     """
 
     def __init__(self):
@@ -49,12 +54,11 @@ class OpenAISTT(BaseSTT):
 
     @property
     def provider_name(self) -> str:
-        return "openai_whisper"
+        return "openai"
 
     @property
     def supported_languages(self) -> list[str]:
-        # The Whisper API supports 57 languages; return ['*'] for all
-        return ["*"]
+        return ["*"]  # automatic language detection
 
     @property
     def supported_formats(self) -> list[str]:
@@ -66,65 +70,38 @@ class OpenAISTT(BaseSTT):
             request: STTRequest,
     ) -> STTResult:
         self.validate_language(request.language)
-        self._model = app_config.OPENAI_TRANSCRIBE_MODEL
+        model = app_config.OPENAI_TRANSCRIBE_MODEL
+        if request.with_timestamps:
+            logger.warning("[OpenAI STT] %s has no segment timestamps; returning text only.", model)
+
+        ext = MIME_TO_EXT.get(request.audio_format, "webm")
+        options: dict = {"response_format": "json"}
+        if request.prompt:
+            options["prompt"] = request.prompt
+        if request.language:
+            # A hint; without it the model detects the language. gpt-transcribe takes a list
+            # in `languages` (instead of `language`).
+            if model == "whisper-1":
+                options["language"] = request.language
+            else:
+                options["extra_body"] = {"languages": [request.language]}
 
         try:
-            logger.info(
-                f"[OpenAI STT] Transcribing {len(audio_bytes)} bytes "
-                f"| lang={request.language} | timestamps={request.with_timestamps}"
-            )
-
-            ext = MIME_TO_EXT.get(request.audio_format, "webm")
-            filename = f"audio.{ext}"
-
-            audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = filename
-
-            # Only send language/prompt when set: without `language` Whisper detects it.
-            optional = {
-                k: v for k, v in (("language", request.language), ("prompt", request.prompt))
-                if v is not None
-            }
-
-            if request.with_timestamps:
-                with recorder.track("stt", self._model) as call:
-                    response = await self._client.audio.transcriptions.create(
-                        model=self._model,
-                        file=audio_file,
-                        response_format="verbose_json",
-                        timestamp_granularities=["segment"],
-                        **optional,
-                    )
-                    _report(call, request, audio_bytes, response)
-                segments = [
-                    STTSegment(
-                        start=round(s.start, 2),
-                        end=round(s.end, 2),
-                        text=s.text.strip(),
-                    )
-                    for s in (response.segments or [])
-                ]
-                return STTResult(
-                    text=response.text,
-                    language=response.language,
-                    segments=segments,
-                    provider=self.provider_name,
+            logger.info("[OpenAI STT] Transcribing %d bytes | model=%s | lang=%s",
+                        len(audio_bytes), model, request.language or "auto")
+            with recorder.track("stt", model) as call:
+                response = await self._client.audio.transcriptions.create(
+                    model=model, file=(f"audio.{ext}", audio_bytes), **options,
                 )
-            else:
-                with recorder.track("stt", "whisper-1") as call:
-                    response = await self._client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=(filename, audio_bytes),
-                        response_format="verbose_json",  # includes the detected language
-                        **optional,
-                    )
-                    _report(call, request, audio_bytes, response)
-                return STTResult(
-                    text=response.text,
-                    language=getattr(response, "language", None),
-                    provider=self.provider_name,
+                data = response.model_dump()
+                language = _detected_language(data)
+                call.units(audio_seconds=_duration_seconds(data))
+                call.content(
+                    input={"language": request.language or "auto", "format": request.audio_format,
+                           "audio_bytes": len(audio_bytes)},
+                    output={"text": response.text, "language": language},
                 )
-
+            return STTResult(text=response.text, language=language, provider=self.provider_name)
         except Exception as e:
             logger.error(f"[OpenAI STT] Error: {e}")
             raise STTError(f"OpenAI STT failed: {e}") from e

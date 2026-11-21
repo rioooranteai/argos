@@ -62,11 +62,18 @@ class TelemetryConfig:
     CAPTURE_CONTENT: bool = True
     MAX_CONTENT_CHARS: int = 20_000    # per input/output field; longer text is cut
 
-    # USD per 1M tokens: model → (input, output). Fill in the prices you pay; a model that
-    # is missing here still reports token usage, just without cost.
-    MODEL_PRICES_USD_PER_1M_TOKENS: dict[str, tuple[float, float]] = field(default_factory=dict)
-    # Non-token pricing (optional): Whisper per audio minute, TTS per 1M characters.
-    STT_PRICE_USD_PER_MINUTE: dict[str, float] = field(default_factory=dict)
+    # USD per 1M tokens: model → (input, output). Standard tier from OpenAI's pricing page
+    # (2026-11-21); update when prices or models change. A model missing here still reports
+    # token usage, just without cost. Cached input is not priced separately.
+    MODEL_PRICES_USD_PER_1M_TOKENS: dict[str, tuple[float, float]] = field(default_factory=lambda: {
+        "gpt-6-luna": (0.10, 0.50),
+        "text-embedding-3-small": (0.02, 0.0),  # LangChain reports no embedding tokens yet
+    })
+    # Non-token pricing: transcription per audio minute, TTS per 1M characters.
+    STT_PRICE_USD_PER_MINUTE: dict[str, float] = field(default_factory=lambda: {
+        "gpt-transcribe": 0.0045,
+    })
+    # gpt-4o-mini-tts is priced per audio token, not per character → no cost shown for TTS.
     TTS_PRICE_USD_PER_1M_CHARS: dict[str, float] = field(default_factory=dict)
 
     def otlp_traces_url(self) -> str:

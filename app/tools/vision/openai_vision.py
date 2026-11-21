@@ -17,19 +17,18 @@ class OpenAIVision(BaseVisionModel):
     asynchronously so the main pipeline is not blocked.
     """
 
-    def __init__(self, prompt_template: str): # <--- Receives the prompt from the factory
-        self.prompt_template = prompt_template
-        try:
-            self.vision_model = ChatOpenAI(
-                model=app_config.OPENAI_VLM_MODEL,
-                api_key=secrets.OPENAI_API_KEY,
-                temperature=0.0,
-                max_tokens=1500,
-                timeout=app_config.VISION_TIMEOUT,
-                max_retries=2,
-            )
-        except Exception as e:
-            raise
+    def __init__(self, prompt_template: str, reasoning_effort: str | None = None):
+        self.prompt_template = prompt_template  # loaded by tools/factory.py
+        # A reasoning model takes reasoning_effort and only the default temperature.
+        sampling = {"reasoning_effort": reasoning_effort} if reasoning_effort else {"temperature": 0.0}
+        self.vision_model = ChatOpenAI(
+            model=app_config.OPENAI_VLM_MODEL,
+            api_key=secrets.OPENAI_API_KEY,
+            max_tokens=1500,
+            timeout=app_config.VISION_TIMEOUT,
+            max_retries=2,
+            **sampling,
+        )
 
     def supports(self, element: DocumentElement) -> bool:
         """Only processes FIGURE elements that have image bytes."""

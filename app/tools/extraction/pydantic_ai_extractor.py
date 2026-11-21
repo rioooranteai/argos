@@ -3,7 +3,7 @@ from pathlib import Path
 
 from openai import AsyncOpenAI
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.core.config import PROJECT_ROOT, app_config, secrets
@@ -25,7 +25,13 @@ def _load_prompt(path: Path) -> str:
 
 
 class PydanticAIExtractor(BaseExtractor):
-    def __init__(self, model: str | None = None, timeout: float | None = None, max_retries: int = 2):
+    def __init__(
+        self,
+        model: str | None = None,
+        timeout: float | None = None,
+        max_retries: int = 2,
+        reasoning_effort: str | None = None,
+    ):
         resolved_model = model or app_config.OPENAI_LLM_MODEL
         system_prompt = _load_prompt(_PROMPT_PATH)
 
@@ -41,6 +47,11 @@ class PydanticAIExtractor(BaseExtractor):
             model=OpenAIChatModel(resolved_model, provider=OpenAIProvider(openai_client=client)),
             output_type=list[ExtractedFeature],
             system_prompt=system_prompt,
+            # Function calling (the structured output) only works with reasoning off.
+            model_settings=(
+                OpenAIChatModelSettings(openai_reasoning_effort=reasoning_effort)
+                if reasoning_effort else None
+            ),
         )
         logger.info(f"PydanticAIExtractor ready with model: '{resolved_model}'")
 

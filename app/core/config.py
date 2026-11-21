@@ -12,7 +12,7 @@ Rules (see DESIGN_GROUP_A.md §13):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -103,14 +103,28 @@ class AppConfig:
     TTS_PROVIDER: str = "openai"
 
     # ── Models ───────────────────────────────────────────────────────
-    OPENAI_LLM_MODEL: str = "gpt-5.4"
-    OPENAI_VLM_MODEL: str = "gpt-5-mini"
+    # Cheapest current models (OpenAI pricing page, 2026-11-21). gpt-6-luna reads images too.
+    OPENAI_LLM_MODEL: str = "gpt-6-luna"
+    OPENAI_VLM_MODEL: str = "gpt-6-luna"
+    # No non-realtime replacement exists yet; gpt-4o-mini-tts shuts down on 2027-01-06.
     OPENAI_VOICE_MODEL: str = "gpt-4o-mini-tts"
-    OPENAI_TRANSCRIBE_MODEL: str = "whisper-1"
-    OPENAI_EXTRACTION_MODEL: str = "gpt-5.4-mini"
-    OPENAI_TITLE_MODEL: str = "gpt-4o-mini"
-    OPENAI_CHAT_MODEL: str = "gpt-5.4-mini"
-    OPENAI_ROUTER_MODEL: str = "gpt-4o-mini"
+    OPENAI_TRANSCRIBE_MODEL: str = "gpt-transcribe"
+    OPENAI_EXTRACTION_MODEL: str = "gpt-6-luna"
+    OPENAI_TITLE_MODEL: str = "gpt-6-luna"
+    OPENAI_CHAT_MODEL: str = "gpt-6-luna"
+    OPENAI_ROUTER_MODEL: str = "gpt-6-luna"
+    # Reasoning effort per use (none | low | medium | high). gpt-6-luna is a reasoning model:
+    # with an effort set, `temperature` is not sent (it only accepts the default). The
+    # extraction agent needs "none" — function calling only works without reasoning.
+    OPENAI_REASONING_EFFORT: dict[str, str] = field(default_factory=lambda: {
+        "router": "none",
+        "title": "none",
+        "nl2sql": "none",
+        "extraction": "none",
+        "chat": "low",
+        "llm": "low",
+        "vision": "low",
+    })
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_CHUNK_SIZE: int = 400
 

@@ -54,6 +54,7 @@ def build_llm(profile: str = "llm", temperature: float = 0.0) -> BaseLLM:
             timeout=timeout,
             max_retries=retries,
             purpose=purpose,
+            reasoning_effort=app_config.OPENAI_REASONING_EFFORT.get(profile),
         )
     raise _unknown("LLM", provider)
 
@@ -95,14 +96,19 @@ def build_vision() -> BaseVisionModel:
             prompt = _VISION_PROMPT.read_text(encoding="utf-8")
         except FileNotFoundError:
             prompt = _VISION_FALLBACK_PROMPT
-        return OpenAIVision(prompt_template=prompt)
+        return OpenAIVision(
+            prompt_template=prompt, reasoning_effort=app_config.OPENAI_REASONING_EFFORT.get("vision")
+        )
     raise _unknown("vision", provider)
 
 
 def build_extractor() -> BaseExtractor:
     provider = app_config.EXTRACTION_PROVIDER.lower()
     if provider == "pydantic_ai":
-        return PydanticAIExtractor(model=app_config.OPENAI_EXTRACTION_MODEL)
+        return PydanticAIExtractor(
+            model=app_config.OPENAI_EXTRACTION_MODEL,
+            reasoning_effort=app_config.OPENAI_REASONING_EFFORT.get("extraction"),
+        )
     raise _unknown("extraction", provider)
 
 

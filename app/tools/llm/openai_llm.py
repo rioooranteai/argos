@@ -11,6 +11,14 @@ from app.tools.llm.base import BaseLLM
 logger = logging.getLogger(__name__)
 
 
+def _sampling(temperature: float, reasoning_effort: str | None) -> dict:
+    """Reasoning models (gpt-6-luna) take ``reasoning_effort`` and reject a custom
+    ``temperature`` (only the default is accepted), so it is sent for one or the other."""
+    if reasoning_effort:
+        return {"reasoning_effort": reasoning_effort}
+    return {"temperature": temperature}
+
+
 class OpenAILLM(BaseLLM):
     """Concrete implementation for the OpenAI provider."""
 
@@ -22,10 +30,12 @@ class OpenAILLM(BaseLLM):
         timeout: float = 60,
         max_retries: int = 1,
         purpose: str = "synthesizer",
+        reasoning_effort: str | None = None,
     ):
         logger.info(
-            "Building OpenAILLM (purpose: %s, model: %s, temp: %s, timeout: %ss, retries: %s)",
-            purpose, model, temperature, timeout, max_retries,
+            "Building OpenAILLM (purpose: %s, model: %s, temp: %s, reasoning: %s, timeout: %ss, retries: %s)",
+            purpose, model, "default" if reasoning_effort else temperature, reasoning_effort,
+            timeout, max_retries,
         )
         self._model = model
         self._purpose = purpose  # the `purpose` column in llm_calls
@@ -34,9 +44,9 @@ class OpenAILLM(BaseLLM):
         self._client = ChatOpenAI(
             api_key=api_key,
             model=model,
-            temperature=temperature,
             timeout=timeout,
             max_retries=max_retries,
+            **_sampling(temperature, reasoning_effort),
         )
 
     def _build_messages(self, prompt: str, system: str | None) -> list:
