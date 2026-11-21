@@ -78,6 +78,10 @@ def _token(sub: str) -> str:
     return jwt.encode({"sub": sub, "given_name": "X"}, "test-secret", algorithm=app_config.JWT_ALGORITHM)
 
 
+def _cookie(token: str) -> dict:
+    return {"Cookie": f"{app_config.SESSION_COOKIE_NAME}={token}"}
+
+
 def test_missing_token_401(client):
     c, _, _ = client
     r = c.get("/me")
@@ -88,14 +92,14 @@ def test_missing_token_401(client):
 def test_valid_user(client):
     c, repo, _ = client
     repo.upsert_on_login("u1", "Staff@corp.com", "Staff", None, new_user_id="u1")
-    r = c.get("/me", headers={"Authorization": f"Bearer {_token('u1')}"})
+    r = c.get("/me", headers=_cookie(_token("u1")))
     assert r.status_code == 200
     assert r.json() == {"id": "u1", "is_admin": False}
 
 
 def test_unknown_user_rejected(client):
     c, _, _ = client
-    r = c.get("/me", headers={"Authorization": f"Bearer {_token('ghost')}"})
+    r = c.get("/me", headers=_cookie(_token("ghost")))
     assert r.status_code == 401
 
 
@@ -104,7 +108,7 @@ def test_inactive_user_rejected(client):
     repo.upsert_on_login("u1", "staff@corp.com", "Staff", None, new_user_id="u1")
     with database.get_connection() as conn:
         conn.execute("UPDATE users SET is_active = 0 WHERE id = 'u1'")
-    r = c.get("/me", headers={"Authorization": f"Bearer {_token('u1')}"})
+    r = c.get("/me", headers=_cookie(_token("u1")))
     assert r.status_code == 403
     assert r.json()["error"]["code"] == "USER_INACTIVE"
 
@@ -113,8 +117,8 @@ def test_admin_only(client):
     c, repo, _ = client
     repo.upsert_on_login("u1", "staff@corp.com", "Staff", None, new_user_id="u1")
     repo.upsert_on_login("u2", "boss@corp.com", "Boss", None, new_user_id="u2")
-    assert c.get("/admin", headers={"Authorization": f"Bearer {_token('u1')}"}).status_code == 403
-    assert c.get("/admin", headers={"Authorization": f"Bearer {_token('u2')}"}).status_code == 200
+    assert c.get("/admin", headers=_cookie(_token("u1"))).status_code == 403
+    assert c.get("/admin", headers=_cookie(_token("u2"))).status_code == 200
 
 
 

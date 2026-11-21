@@ -96,8 +96,9 @@ def test_cookie_post_without_fetch_metadata_needs_matching_origin(client):
     assert client.post("/api/v1/notebooks", headers={"origin": "http://testserver"}).status_code == 200
 
 
-def test_bearer_post_without_cookie_is_not_origin_checked(client):
-    r = client.post("/api/v1/notebooks", headers={"authorization": "Bearer t"})
+def test_post_without_cookie_is_not_origin_checked(client):
+    # Tanpa cookie tidak ada risiko CSRF; login dicek di lapisan berikutnya.
+    r = client.post("/api/v1/notebooks")
     assert r.status_code == 200
 
 

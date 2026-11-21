@@ -101,11 +101,12 @@ def test_inactive_user_cannot_log_in_or_use_old_cookie(env):
     assert r.headers["location"] == "/login?error=USER_INACTIVE"
 
 
-def test_bearer_header_still_works_for_non_browser_tools(env):
+def test_bearer_header_is_rejected(env):
+    # Hanya cookie yang diterima; token sah di header Bearer tetap 401.
     client, repo, _, _ = env
     user = repo.upsert_on_login("google-1", "a@corp.com", "A", None)
     r = client().get("/me", headers={"Authorization": f"Bearer {create_session_token(user.id)}"})
-    assert r.status_code == 200 and r.json()["id"] == user.id
+    assert r.status_code == 401 and r.json()["error"]["code"] == "UNAUTHENTICATED"
 
 
 @pytest.mark.parametrize("value", ["", "bukan-jwt", "a.b.c"])

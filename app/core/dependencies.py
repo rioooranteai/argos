@@ -1,5 +1,4 @@
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core import log_context
 from app.core.errors import AuthenticationError, PermissionDenied
@@ -15,9 +14,8 @@ from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User
 from app.services.voice.service import VoiceService
 
-# Header Bearer tetap diterima untuk alat non-browser (dan tombol "Authorize" di /docs).
-# Browser memakai cookie HttpOnly (DESIGN_GROUP_D.md D1).
-bearer = HTTPBearer(auto_error=False)
+# Sesi hanya dari cookie HttpOnly (DESIGN_GROUP_D.md D1). Argos hanya dipakai lewat
+# browser, jadi header ``Authorization: Bearer`` sengaja tidak diterima.
 
 
 def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | None:
@@ -33,12 +31,9 @@ def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | 
     return user, payload
 
 
-def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-) -> CurrentUser:
-    """Sesi dari cookie (browser) atau header Bearer (alat lain); user harus ada & aktif."""
-    token = session_token_from(request) or (credentials.credentials if credentials else None)
+def get_current_user(request: Request) -> CurrentUser:
+    """Sesi dari cookie HttpOnly; user harus ada & aktif. Header Bearer diabaikan."""
+    token = session_token_from(request)
     if not token:
         raise AuthenticationError()
 

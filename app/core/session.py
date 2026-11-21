@@ -56,12 +56,3 @@ def clear_session_cookie(response: Response, request: Request) -> None:
 
 def session_token_from(request: Request) -> str | None:
     return request.cookies.get(app_config.SESSION_COOKIE_NAME) or None
-
-
-def bearer_token_from(request: Request) -> str | None:
-    """Header ``Authorization: Bearer`` — untuk alat non-browser (skrip, Postman)."""
-    header = request.headers.get("authorization", "")
-    scheme, _, value = header.partition(" ")
-    if scheme.lower() != "bearer":
-        return None
-    return value.strip() or None

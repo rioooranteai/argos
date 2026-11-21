@@ -14,7 +14,7 @@ def register_middleware(app: FastAPI) -> None:
         allow_origins=secrets.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept", REQUEST_ID_HEADER],
+        allow_headers=["Content-Type", "Accept", REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],
     )
     # API tidak bisa dibuka dari address bar / situs lain (DESIGN_GROUP_D.md D2).

@@ -49,7 +49,7 @@ def env(tmp_path, monkeypatch):
 
 def auth(sub: str) -> dict:
     token = jwt.encode({"sub": sub}, "test-secret", algorithm=app_config.JWT_ALGORITHM)
-    return {"Authorization": f"Bearer {token}"}
+    return {"Cookie": f"{app_config.SESSION_COOKIE_NAME}={token}"}
 
 
 def test_only_admin_can_list(env):
