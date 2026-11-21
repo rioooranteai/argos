@@ -8,7 +8,7 @@ import pytest
 from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
-from app.services.extraction.model import ExtractedFeature
+from app.tools.extraction.base import ExtractedFeature
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import build_sections, build_units
 from app.tools.document_parser.base import DocumentElement, ElementType

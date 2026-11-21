@@ -14,6 +14,8 @@ from app.tools.document_parser.base import BaseDocumentParser
 from app.tools.document_parser.docling_process import DoclingProcess
 from app.tools.embedding.base import BaseEmbedder
 from app.tools.embedding.openai_embedder import OpenAIEmbedder
+from app.tools.extraction.base import BaseExtractor
+from app.tools.extraction.pydantic_ai_extractor import PydanticAIExtractor
 from app.tools.llm.base import BaseLLM
 from app.tools.llm.openai_llm import OpenAILLM
 from app.tools.vector_store.base import BaseVectorStore
@@ -92,3 +94,10 @@ def build_vision() -> BaseVisionModel:
             prompt = _VISION_FALLBACK_PROMPT
         return OpenAIVision(prompt_template=prompt)
     raise _unknown("vision", provider)
+
+
+def build_extractor() -> BaseExtractor:
+    provider = app_config.EXTRACTION_PROVIDER.lower()
+    if provider == "pydantic_ai":
+        return PydanticAIExtractor(model=app_config.OPENAI_EXTRACTION_MODEL)
+    raise _unknown("extraction", provider)

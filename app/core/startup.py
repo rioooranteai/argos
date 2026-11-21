@@ -18,6 +18,7 @@ from app.tools.document_parser.base import BaseDocumentParser
 from app.tools.factory import (
     build_document_parser,
     build_embedder,
+    build_extractor,
     build_llm,
     build_vector_store,
     build_vision,
@@ -41,7 +42,6 @@ from app.infrastructure.providers.repositories.sqlite_notebook_repository import
 )
 from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
 from app.services.conversation.service import ConversationService
-from app.services.extraction.providers.pydantic_ai_provider import PydanticAIExtractionProvider
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
         ),
         vector_store=app.state.vector_store,
         extraction=ExtractionService(
-            provider=PydanticAIExtractionProvider(model=app_config.OPENAI_EXTRACTION_MODEL),
+            provider=build_extractor(),
             cache=cache_repo,
             semaphore=limits.extraction,
             pipeline_version=app_config.PIPELINE_VERSION,

@@ -20,7 +20,7 @@ from app.infrastructure.providers.repositories.sqlite_job_repository import SQLi
 from app.infrastructure.providers.repositories.sqlite_library_repository import (
     SQLiteLibraryRepository,
 )
-from app.services.extraction.model import ExtractedFeature
+from app.tools.extraction.base import ExtractedFeature
 from app.services.extraction.service import ExtractionService
 from app.tools.document_parser.base import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber

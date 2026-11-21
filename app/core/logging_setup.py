@@ -65,6 +65,7 @@ _COMPONENTS = (
     ("uvicorn", "uvicorn"),
     ("app.tools.document_parser", "docling"),
     ("app.tools.vision", "vision"),
+    ("app.tools.extraction", "extraction"),
     ("app.services.ingestion", "ingestion"),
     ("app.tools.vector_store", "vector"),
     ("app.tools.llm", "llm"),

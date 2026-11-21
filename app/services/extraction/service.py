@@ -14,8 +14,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 
 from app.infrastructure.interface.cache_repository import BaseCacheRepository
-from app.services.extraction.base.extraction_base import BaseExtractionProvider
-from app.services.extraction.model import ExtractedFeature, FeatureRow
+from app.services.extraction.model import FeatureRow
+from app.tools.extraction.base import BaseExtractor, ExtractedFeature
 from app.services.ingestion.model import ExtractionUnit
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class ExtractionStats:
 class ExtractionService:
     def __init__(
         self,
-        provider: BaseExtractionProvider,
+        provider: BaseExtractor,
         cache: BaseCacheRepository,
         semaphore: asyncio.Semaphore,
         pipeline_version: str,
