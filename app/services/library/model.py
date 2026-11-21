@@ -60,10 +60,6 @@ class DocumentVersion:
     # {chunks, chunks_reused, units, units_cached, images, images_cached}; None before ready
     reuse_stats: dict[str, int] | None = None
 
-    @property
-    def is_final(self) -> bool:
-        return self.stage in FINAL_STAGES
-
 
 @dataclass(frozen=True)
 class NewVersion:

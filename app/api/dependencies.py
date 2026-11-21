@@ -11,7 +11,6 @@ from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.services.conversation.service import ConversationService
 from app.services.health.checker import HealthChecker
 from app.services.library.service import LibraryService
-from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User
@@ -102,10 +101,6 @@ def get_library_service(request: Request) -> LibraryService:
 
 def get_chat_orchestrator(request: Request) -> ChatOrchestrator:
     return request.app.state.chat_orchestrator
-
-
-def get_nl2sql_service(request: Request) -> NL2SQLService:
-    return request.app.state.nl2sql_service
 
 
 def get_voice_service(request: Request) -> VoiceService:

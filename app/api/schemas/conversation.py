@@ -45,10 +45,6 @@ class ConversationDetailOut(BaseModel):
     messages: list[MessageOut]
 
 
-class CreateConversationRequest(BaseModel):
-    title: str | None = Field(default=None, description="Optional initial title.")
-
-
 class RenameConversationRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
 

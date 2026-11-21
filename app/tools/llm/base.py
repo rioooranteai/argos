@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Type
-
-from pydantic import BaseModel
 
 
 class BaseLLM(ABC):
@@ -23,9 +20,3 @@ class BaseLLM(ABC):
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
         """Async version of invoke for FastAPI endpoints."""
 
-    @abstractmethod
-    def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
-        """
-        Return an LLM instance whose output is forced to match a Pydantic schema.
-        Used by the extraction agent for structured output.
-        """

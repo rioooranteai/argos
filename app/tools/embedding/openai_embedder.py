@@ -5,12 +5,6 @@ from langchain_openai import OpenAIEmbeddings
 from app.core.observability.ai_calls.recorder import recorder
 from app.tools.embedding.base import BaseEmbedder
 
-_DIMENSIONS: dict[str, int] = {
-    "text-embedding-3-small": 1536,
-    "text-embedding-3-large": 3072,
-    "text-embedding-ada-002": 1536,
-}
-
 
 class OpenAIEmbedder(BaseEmbedder):
     """Embeddings via LangChain OpenAIEmbeddings, with an explicit timeout & batch limit."""
@@ -46,6 +40,3 @@ class OpenAIEmbedder(BaseEmbedder):
             call.content(input=text)
             return self._embedder.embed_query(text)
 
-    @property
-    def dimension(self) -> int:
-        return _DIMENSIONS.get(self.model_name, 1536)

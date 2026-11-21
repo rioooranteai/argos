@@ -60,7 +60,7 @@ class DoclingProcess(BaseDocumentParser):
         self._start_timeout = start_timeout
         self._process: multiprocessing.process.BaseProcess | None = None
         self._conn: Connection | None = None
-        self._lock = asyncio.Lock()  # one document at a time (DOCLING_CONCURRENCY=1)
+        self._lock = asyncio.Lock()  # one document at a time (a single subprocess)
 
     @property
     def is_alive(self) -> bool:

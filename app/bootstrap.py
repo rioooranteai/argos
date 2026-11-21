@@ -166,7 +166,6 @@ async def lifespan(app: FastAPI):
     )
     app.state.docling = docling
     app.state.document_pipeline = pipeline  # used by eval/run_eval.py for instrumentation
-    app.state.document_worker = worker
 
     app.state.nl2sql_service = NL2SQLService(
         llm_provider=build_llm("nl2sql", temperature=0.0),

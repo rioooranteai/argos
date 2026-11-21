@@ -71,9 +71,6 @@ class RateLimiter:
             self._hits.clear()
             self._since_cleanup = 0
 
-    def tracked_keys(self) -> int:
-        return len(self._hits)
-
     def _cleanup(self, now: float) -> None:
         stale = [k for k, b in self._hits.items() if not b or b[-1] <= now - self._window]
         for k in stale:

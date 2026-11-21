@@ -62,9 +62,6 @@ class ConversationService:
         self._repo = repository
         self._title_llm = title_llm
 
-    def list_for_user(self, user_id: str, limit: int = 100) -> list[Conversation]:
-        return self._repo.list_conversations(user_id, limit=limit)
-
     def get_with_messages(
             self, conversation_id: str, user_id: str
     ) -> ConversationWithMessages | None:

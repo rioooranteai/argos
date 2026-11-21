@@ -14,5 +14,3 @@ class BaseLLMCallRepository(ABC):
     def purge_older_than(self, days: int) -> int:
         """Delete records older than ``days`` days. Returns the number of deleted rows."""
 
-    @abstractmethod
-    def list_for_message(self, message_id: str) -> list[LLMCall]: ...

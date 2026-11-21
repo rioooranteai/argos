@@ -39,10 +39,5 @@ class Database:
         finally:
             conn.close()
 
-    def get_db(self) -> Generator[sqlite3.Connection, None, None]:
-        """FastAPI-compatible dependency. Use with Depends(db.get_db)."""
-        with self.get_connection() as conn:
-            yield conn
-
 
 db = Database()

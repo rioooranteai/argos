@@ -53,24 +53,3 @@ class SQLiteLLMCallRepository(BaseLLMCallRepository):
             )
             return cur.rowcount
 
-    def list_for_message(self, message_id: str) -> list[LLMCall]:
-        with self._db.get_connection() as conn:
-            rows = conn.execute(
-                "SELECT * FROM llm_calls WHERE message_id = ? ORDER BY seq", (message_id,)
-            ).fetchall()
-        return [
-            LLMCall(
-                purpose=r["purpose"],
-                model=r["model"],
-                latency_ms=r["latency_ms"],
-                status=r["status"],
-                error_code=r["error_code"],
-                input_tokens=r["input_tokens"],
-                output_tokens=r["output_tokens"],
-                request_id=r["request_id"],
-                version_id=r["version_id"],
-                message_id=r["message_id"],
-                ts=datetime.strptime(r["ts"], _TS_FORMAT).replace(tzinfo=UTC),
-            )
-            for r in rows
-        ]

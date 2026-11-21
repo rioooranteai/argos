@@ -1,8 +1,6 @@
 import logging
-from typing import Type
 
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel
 
 from app.core.config import app_config
 from app.core.observability.ai_calls.recorder import recorder, usage_from_langchain
@@ -86,5 +84,3 @@ class OpenAILLM(BaseLLM):
         if app_config.LOG_PROMPTS:
             logger.debug("[%s] respons: %s", self._purpose, content)
 
-    def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
-        raise NotImplementedError("with_structured_output is not implemented yet")

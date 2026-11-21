@@ -133,14 +133,6 @@ class LLMCallRecorder:
             thread.join(timeout)
         self._repo = None
 
-    def flush(self, timeout: float = 5.0) -> None:
-        """Wait until the current queue is written (for tests & shutdown)."""
-        if self._thread is None:
-            return
-        done = threading.Event()
-        self._queue.put(done)
-        done.wait(timeout)
-
     # ── Recording ───────────────────────────────────────────────────
 
     @contextmanager

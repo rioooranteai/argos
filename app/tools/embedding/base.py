@@ -19,8 +19,3 @@ class BaseEmbedder(ABC):
         Embed one query text.
         Used during retrieval to embed the user's question.
         """
-
-    @property
-    @abstractmethod
-    def dimension(self) -> int:
-        """Dimension of the produced vectors (e.g. 1536 for OpenAI)."""

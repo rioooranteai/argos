@@ -131,7 +131,6 @@ class AppConfig:
     # ── Docling ──────────────────────────────────────────────────────
     DOCLING_NUM_THREADS: int = 4
     DOCLING_OCR: bool = False  # True only for scanned PDFs (slower)
-    DOCLING_CONCURRENCY: int = 1
     DOCLING_TIMEOUT_BASE: int = 30  # seconds
     DOCLING_TIMEOUT_PER_PAGE: int = 3  # seconds per page
 

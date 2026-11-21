@@ -21,8 +21,6 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
 
-FIELDS = ("user_id", "session_id", "notebook_id", "version_id", "stage", "message_id")
-
 _log_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", default=None)
 
 
