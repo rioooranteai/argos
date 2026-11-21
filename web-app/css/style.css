@@ -705,7 +705,7 @@ body {
 }
 
 /* Conversations and sources share one row pattern: 8px inset, 6px vertical padding,
-   hover = --bg-hover, selected = --bg-active with a 2px accent bar on the left. */
+   hover = --bg-hover, selected = --bg-active. */
 .history-item {
   display: flex;
   align-items: center;
@@ -771,7 +771,6 @@ body {
 /* ── Conversation list: selected / empty ── */
 .history-item.active {
   background: var(--bg-active);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .history-item.active .history-item-title { color: var(--text-primary); }
