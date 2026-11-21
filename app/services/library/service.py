@@ -18,7 +18,6 @@ import uuid
 from typing import Literal, Protocol
 from pathlib import Path, PurePath
 
-from fastapi import UploadFile
 
 from app.core.config import AppConfig
 from app.core.errors import (
@@ -36,6 +35,7 @@ from app.services.library.model import (
     RECLAIMABLE_STAGES,
     DocumentListItem,
     DocumentVersion,
+    IncomingFile,
     NewVersion,
     PendingUpload,
     UploadFileResult,
@@ -83,7 +83,7 @@ class LibraryService:
     # ── Upload ─────────────────────────────────────────────────────────
 
     async def upload_documents(
-        self, user: CurrentUser, files: list[UploadFile], max_files: int | None = None
+        self, user: CurrentUser, files: list[IncomingFile], max_files: int | None = None
     ) -> list[UploadFileResult]:
         """Upload one batch of new documents. Results are reported per file.
 
@@ -136,7 +136,7 @@ class LibraryService:
         return results
 
     async def upload_new_version(
-        self, user: CurrentUser, document_id: str, file: UploadFile
+        self, user: CurrentUser, document_id: str, file: IncomingFile
     ) -> UploadFileResult:
         document = self._repo.get_document(document_id)
         if document is None or document.status != "active":

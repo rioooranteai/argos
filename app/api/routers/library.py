@@ -5,15 +5,15 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, statu
 
 from app.api.dependencies import get_current_user, get_library_service
 from app.core.rate_limit import rate_limit
-from app.services.library.model import (
+from app.api.schemas.library import (
     DocumentDetailOut,
     DocumentOut,
     RenameDocumentRequest,
     ResolvePendingRequest,
     UploadBatchOut,
-    UploadFileResult,
     VersionOut,
 )
+from app.services.library.model import UploadFileResult
 from app.services.library.service import LibraryService
 from app.services.user.model import CurrentUser
 

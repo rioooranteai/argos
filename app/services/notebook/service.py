@@ -8,7 +8,6 @@ import logging
 import uuid
 from typing import Literal
 
-from fastapi import UploadFile
 
 from app.core.config import AppConfig
 from app.core.errors import NotFoundError, ValidationError
@@ -17,7 +16,7 @@ from app.services.notebook.ports import (
     BaseNotebookRepository,
     SourceLimitReached,
 )
-from app.services.library.model import FINAL_STAGES, STAGE_READY, UploadFileResult
+from app.services.library.model import FINAL_STAGES, STAGE_READY, IncomingFile, UploadFileResult
 from app.services.library.service import LibraryService
 from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 from app.services.user.model import CurrentUser
@@ -92,7 +91,7 @@ class NotebookService:
         return self._repo.list_sources(notebook_id)
 
     async def upload(
-        self, user: CurrentUser, notebook_id: str, files: list[UploadFile]
+        self, user: CurrentUser, notebook_id: str, files: list[IncomingFile]
     ) -> tuple[list[UploadFileResult], list[NotebookSource]]:
         """Upload to the Library and add to the notebook right away (limited to the free slots)."""
         self.get(user, notebook_id)

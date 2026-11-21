@@ -17,7 +17,7 @@ from app.api.dependencies import (
 )
 from app.core.rate_limit import rate_limit
 from app.engines.chat_engine.orchestrator import ChatOrchestrator, ChatReply
-from app.services.conversation.model import (
+from app.api.schemas.conversation import (
     ChatRequest,
     ChatResponse,
     ConversationDetailOut,
@@ -25,20 +25,19 @@ from app.services.conversation.model import (
     MessageOut,
     RenameConversationRequest,
 )
-from app.services.conversation.service import ConversationService
-from app.services.library.model import ResolvePendingRequest
-from app.services.notebook.model import (
+from app.api.schemas.library import ResolvePendingRequest
+from app.api.schemas.notebook import (
     AddSourcesRequest,
     CreateNotebookRequest,
-    Notebook,
     NotebookDetailOut,
     NotebookOut,
-    NotebookSource,
     NotebookSourceOut,
     RenameNotebookRequest,
     SourceUploadOut,
     UpdateSourceRequest,
 )
+from app.services.conversation.service import ConversationService
+from app.services.notebook.model import Notebook, NotebookSource
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 

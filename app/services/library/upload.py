@@ -14,9 +14,9 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
-from fastapi import UploadFile
 
 from app.core.errors import PayloadTooLarge, ValidationError
+from app.services.library.model import IncomingFile
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def file_extension(filename: str) -> str:
     return PurePath(filename).suffix.lower()
 
 
-async def receive_upload(file: UploadFile, dest_dir: Path, max_bytes: int) -> ReceivedFile:
+async def receive_upload(file: IncomingFile, dest_dir: Path, max_bytes: int) -> ReceivedFile:
     """Store the upload in ``dest_dir/tmp-<uuid><ext>`` while computing its hash & size.
 
     Raises:
