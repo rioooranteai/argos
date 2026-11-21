@@ -26,9 +26,6 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
-chroma_db/
-chroma_data/
-faiss_index/
 
 # DOCUMENT UPLOADS (runtime files)
 uploads/
@@ -65,10 +62,5 @@ build/
 
 share
 
-# DATABASE
-chroma_db
-competitor_data.db
-competitor_data.db-shm
-competitor_data.db-wal
+# RUNTIME DATA (SQLite, Chroma, upload queue, model cache — see DATA_DIR)
 data/
-temp_uploads/

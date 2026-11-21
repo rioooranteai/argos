@@ -19,9 +19,6 @@ data/
 *.db
 *.db-shm
 *.db-wal
-chroma_db/
-chroma_data/
-temp_uploads/
 
 # Git, IDE, cache
 .git/
