@@ -4,7 +4,9 @@ import asyncio
 import logging
 
 from app.core.llm_errors import LLM_ERROR, classify_llm_error
+from app.core.telemetry import spans
 from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace
 from app.tools.vector_store.base import BaseVectorStore
 
@@ -14,6 +16,22 @@ DEFAULT_VECTOR_LIMIT = 5
 VECTOR_STORE_FAILED = "VECTOR_STORE_FAILED"
 
 
+def _hits(result: dict) -> list[dict] | None:
+    hits = result.get("vector_result")
+    if hits is None:
+        return None
+    return [
+        {"text": h["text"], "version_id": h["metadata"].get("version_id"),
+         "page": h["metadata"].get("page_number"), "distance": h["distance"]}
+        for h in hits
+    ]
+
+
+@traced_node(
+    "vector_search", spans.RETRIEVER,
+    inputs=lambda state: {"query": state["user_input"], "version_ids": state.get("active_versions")},
+    outputs=_hits,
+)
 async def vector_node(state: dict, vector_store: BaseVectorStore) -> dict:
     user_input = state["user_input"]
     version_ids = state.get("active_versions")

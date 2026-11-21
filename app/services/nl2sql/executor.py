@@ -46,13 +46,19 @@ _ALLOWED_ACTIONS = {
 class SQLExecutionTimeout(Exception):
     """The query went over the execution time limit."""
 
+    code = "SQL_TIMEOUT"
+
 
 class SQLRejected(ValueError):
     """The database rejected the query (authorizer / not an allowed SELECT)."""
 
+    code = "SQL_REJECTED"
+
 
 class SQLExecutionFailed(ValueError):
     """The query is well-formed but failed to run (e.g. a missing column/table)."""
+
+    code = "SQL_FAILED"
 
 
 def _authorizer(action: int, arg1: str | None, arg2: str | None, db: str | None, src: str | None) -> int:

@@ -14,6 +14,8 @@ import logging
 from dataclasses import dataclass
 
 from app.core import log_context
+from app.core.telemetry import spans
+from app.core.telemetry.context import bind_trace, trace_attributes, trace_scope
 from app.core.errors import ArgosError, InternalError, ValidationError
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.chat_engine.outcome import ChatResult
@@ -68,7 +70,8 @@ class ChatOrchestrator:
             conversation_id, user.id, question, source_snapshot=[s.version_id for s in active]
         )
         return await self._answer(
-            user, conversation_id, user_msg, active, pending, is_new=is_new, schedule_title=is_new
+            user, conversation_id, user_msg, active, pending,
+            is_new=is_new, retry=False, schedule_title=is_new,
         )
 
     async def retry(
@@ -84,6 +87,7 @@ class ChatOrchestrator:
         return await self._answer(
             user, conversation_id, user_msg, active, pending,
             is_new=False,
+            retry=True,
             # Auto-title only when the first message of a new conversation finally gets an answer.
             schedule_title=self._conversations.is_first_message(conversation_id, message_id),
         )
@@ -118,10 +122,49 @@ class ChatOrchestrator:
         pending: list[str],
         *,
         is_new: bool,
+        retry: bool,
+        schedule_title: bool,
+    ) -> ChatReply:
+        """One trace per answered message: chat.message → routing / sql / vector_search /
+        synthesis (DESIGN_GROUP_F.md §2). Session = conversation."""
+        # goes into the logs, llm_calls and every span of this trace
+        log_context.bind_request(message_id=user_msg.id, session_id=conversation_id)
+        with trace_scope(), spans.span("chat.message", spans.CHAIN) as root:
+            spans.set_attributes(root, **{"langfuse.trace.name": "chat.message"})
+            bind_trace(
+                tags=["retry"] if retry else [],
+                new_conversation=is_new,
+                sources_used=len(active),
+                pending_sources=len(pending),
+            )
+            spans.set_input(root, user_msg.content)
+            try:
+                reply = await self._run(
+                    user, conversation_id, user_msg, active, pending,
+                    is_new=is_new, schedule_title=schedule_title,
+                )
+                spans.set_output(root, {"answer": reply.result.answer, "citations": reply.result.citations})
+                if reply.result.degraded:
+                    bind_trace(tags=["degraded"])
+                    codes = ", ".join(f"{i.component}:{i.code}" for i in reply.result.issues)
+                    spans.set_warning(root, f"degraded: {codes}")
+                return reply
+            finally:
+                # Tags/metadata collected during the run (route, degraded, …) on the root too.
+                spans.set_attributes(root, **trace_attributes())
+
+    async def _run(
+        self,
+        user: CurrentUser,
+        conversation_id: str,
+        user_msg: Message,
+        active: list[ActiveSource],
+        pending: list[str],
+        *,
+        is_new: bool,
         schedule_title: bool,
     ) -> ChatReply:
         """Run the chat for `user_msg`. On failure → the message is marked `failed` (C3)."""
-        log_context.bind_request(message_id=user_msg.id)  # goes into the logs & llm_calls
         failure_ref = {"conversation_id": conversation_id, "message_id": user_msg.id}
         conversations = self._conversations
         try:
@@ -129,6 +172,9 @@ class ChatOrchestrator:
             result = await self._engine.chat(
                 user_input=user_msg.content, history=history, sources=active
             )
+            trace_id = spans.current_trace_id()
+            if trace_id:
+                result.trace["trace_id"] = trace_id  # "Show AI process" → open the trace in Langfuse
             bot_msg = conversations.append_assistant_message(
                 conversation_id, result.answer, citations=result.citations, trace=result.trace
             )

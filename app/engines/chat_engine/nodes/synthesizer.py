@@ -6,7 +6,9 @@ from pathlib import Path
 from app.core.errors import UpstreamError
 from app.core.llm_errors import classify_llm_error
 from app.engines.chat_engine.citations import CitationRegistry
+from app.core.telemetry import spans
 from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import COMPONENT_LABELS, RETRIEVAL_NODES, NodeTrace
 from app.services.nl2sql.service import NL2SQLResult
 from app.tools.llm.base import BaseLLM
@@ -140,6 +142,11 @@ def _chunk_refs(vector_result: list | None, registry: CitationRegistry) -> list[
     return refs
 
 
+@traced_node(
+    "synthesis", spans.CHAIN,
+    inputs=lambda state: {"question": state["user_input"], "route": state.get("route")},
+    outputs=lambda result: {"answer": result["final_answer"], "citations": result["citations"]},
+)
 async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
     clock = Stopwatch()
     user_input = state["user_input"]

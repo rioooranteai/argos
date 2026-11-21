@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from app.core.llm_errors import classify_llm_error
+from app.core.telemetry import spans
 from app.services.nl2sql.exceptions import InvalidQuestionError
 from app.services.nl2sql.executor import (
     SQLExecutionFailed,
@@ -96,9 +97,13 @@ class NL2SQLService:
         sql: str | None = None
         try:
             sql = await self._generate_sql(user_question.strip())
-            rows, truncated = await asyncio.to_thread(
-                execute_scoped_sql, sql, self._db_path, version_ids, self._exec_timeout, MAX_RAW_ROWS
-            )
+            with spans.span("sql.execute") as span:
+                spans.set_input(span, {"sql": sql, "version_ids": version_ids})
+                rows, truncated = await asyncio.to_thread(
+                    execute_scoped_sql, sql, self._db_path, version_ids, self._exec_timeout, MAX_RAW_ROWS
+                )
+                spans.set_output(span, rows)
+                spans.set_metadata(span, row_count=len(rows), truncated=truncated)
         except InvalidQuestionError as e:
             # Not a system failure: the question does not fit the structured data.
             return NL2SQLResult(status="empty", message=str(e))

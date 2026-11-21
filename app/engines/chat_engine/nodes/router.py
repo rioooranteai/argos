@@ -4,7 +4,10 @@ import json
 import logging
 from pathlib import Path
 
+from app.core.telemetry import spans
+from app.core.telemetry.context import bind_trace
 from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace
 from app.tools.llm.base import BaseLLM
 
@@ -24,6 +27,20 @@ def _load_prompt(filename: str) -> str:
 _ROUTER_SYSTEM = _load_prompt("router_agent.md")
 
 
+def _record_decision(result: dict) -> None:
+    """The router's decision becomes a trace tag + metadata, filterable in Langfuse."""
+    fallback = any(t.status == "error" for t in result.get("node_traces", []))
+    tags = [f"route:{result['route']}"] + (["route:fallback"] if fallback else [])
+    bind_trace(tags=tags, route=result["route"], router_reasoning=result.get("router_reasoning"))
+
+
+@traced_node(
+    "routing", spans.CHAIN,
+    inputs=lambda state: state["user_input"],
+    outputs=lambda result: {"route": result["route"], "reasoning": result.get("router_reasoning")},
+    error_is_warning=True,  # a failed router falls back to `both`; the chat still answers
+    after=_record_decision,
+)
 async def router_node(state: dict, llm: BaseLLM) -> dict:
     user_input = state["user_input"]
     messages = state.get("messages", [])

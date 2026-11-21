@@ -3,13 +3,25 @@ from __future__ import annotations
 import logging
 
 from app.core.llm_errors import classify_llm_error
+from app.core.telemetry import spans
 from app.engines.chat_engine.nodes.timing import Stopwatch
+from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace
 from app.services.nl2sql.service import NL2SQLResult, NL2SQLService
 
 logger = logging.getLogger(__name__)
 
 
+@traced_node(
+    "sql", spans.CHAIN,
+    inputs=lambda state: {"question": state["user_input"], "version_ids": state.get("active_versions")},
+    outputs=lambda result: {
+        "status": result["sql_result"].status,
+        "sql": result["sql_result"].sql_query,
+        "row_count": result["sql_result"].row_count,
+        "truncated": result["sql_result"].truncated,
+    },
+)
 async def sql_node(state: dict, nl2sql_svc: NL2SQLService) -> dict:
     user_input = state["user_input"]
     version_ids = state.get("active_versions") or []
