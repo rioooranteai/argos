@@ -39,8 +39,8 @@ def main() -> int:
     if device == "auto":
         gpu = detect_nvidia_gpu()
         device = "cuda" if gpu else "cpu"
-        print(f"GPU terdeteksi: {gpu}" if gpu else "GPU NVIDIA tidak terdeteksi.")
-    print(f"Mode Docker: {device.upper()}")
+        print(f"GPU terdeteksi: {gpu}" if gpu else "GPU NVIDIA tidak terdeteksi.", flush=True)
+    print(f"Mode Docker: {device.upper()}", flush=True)
 
     files = ["-f", str(ROOT / "docker-compose.yml")]
     if device == "cuda":
@@ -48,7 +48,7 @@ def main() -> int:
 
     compose_args = args.compose_args or ["up", "-d", "--build"]
     cmd = ["docker", "compose", *files, *compose_args]
-    print("$", " ".join(cmd))
+    print("$", " ".join(cmd), flush=True)
     return subprocess.run(cmd, cwd=ROOT).returncode
 
 

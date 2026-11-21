@@ -126,6 +126,9 @@ docker compose up -d --build
 
 Requires an NVIDIA driver, plus Docker Desktop with the WSL2 backend (Windows) or the
 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) (Linux).
+The CUDA build of PyTorch is large: plan for roughly 15 GB of free space on the drive that
+holds Docker's data (on Windows this is usually `C:`). If the disk fills mid-build, Docker
+Desktop crashes with `failed to receive status: ... EOF`.
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
