@@ -99,6 +99,8 @@ class AppConfig:
     DOCUMENT_PARSER_PROVIDER: str = "docling"
     VISION_PROVIDER: str = "openai"
     EXTRACTION_PROVIDER: str = "pydantic_ai"
+    STT_PROVIDER: str = "openai"
+    TTS_PROVIDER: str = "openai"
     OPENAI_LLM_MODEL: str = "gpt-5.4"
     OPENAI_VLM_MODEL: str = "gpt-5-mini"
     OPENAI_VOICE_MODEL: str = "gpt-4o-mini-tts"

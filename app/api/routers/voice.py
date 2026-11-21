@@ -10,13 +10,14 @@ from app.core.config import app_config
 from app.core.dependencies import get_current_user, get_voice_service
 from app.core.errors import PayloadTooLarge, UnsupportedMediaType, UpstreamError, ValidationError
 from app.core.rate_limit import rate_limit
-from app.services.voice.exceptions import (
+from app.services.voice.service import VoiceService
+from app.tools.speech.base import (
+    SpeechError,
+    STTRequest,
+    TTSRequest,
     UnsupportedFormatError,
     UnsupportedLanguageError,
-    VoiceServiceError,
 )
-from app.services.voice.model import STTRequest, TTSRequest
-from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ def _voice_errors() -> Iterator[None]:
         yield
     except (UnsupportedFormatError, UnsupportedLanguageError) as e:
         raise ValidationError(str(e), code="VOICE_UNSUPPORTED") from e
-    except VoiceServiceError as e:
+    except SpeechError as e:
         # OpenAI details only go to the log (the global handler logs 5xx errors with the stack).
         raise UpstreamError(
             "The voice service is unavailable right now. Try again shortly.", code="VOICE_UNAVAILABLE"

@@ -2,15 +2,13 @@ import logging
 
 from app.core.config import app_config, secrets
 from app.core.observability.recorder import recorder
-from app.services.voice.base.tts_base import BaseTTSProvider
-from app.services.voice.exceptions import TTSError
-from app.services.voice.model import TTSRequest, TTSResult
+from app.tools.speech.base import BaseTTS, TTSError, TTSRequest, TTSResult
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAITTSProvider(BaseTTSProvider):
+class OpenAITTS(BaseTTS):
     """
     TTS provider using the OpenAI Text-to-Speech API.
     """

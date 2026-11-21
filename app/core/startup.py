@@ -20,6 +20,8 @@ from app.tools.factory import (
     build_embedder,
     build_extractor,
     build_llm,
+    build_stt,
+    build_tts,
     build_vector_store,
     build_vision,
 )
@@ -169,7 +171,7 @@ async def lifespan(app: FastAPI):
         exec_timeout=app_config.SQL_EXEC_TIMEOUT,
     )
 
-    app.state.voice_service = VoiceService()
+    app.state.voice_service = VoiceService(stt=build_stt(), tts=build_tts())
 
     app.state.conversation_service = ConversationService(
         repository=conversation_repo,

@@ -71,7 +71,7 @@ def test_unsupported_and_empty_audio_use_error_contract(monkeypatch):
 
 
 def test_provider_failure_is_503_without_details(monkeypatch):
-    from app.services.voice.exceptions import STTError, UnsupportedLanguageError
+    from app.tools.speech.base import STTError, UnsupportedLanguageError
 
     r = _post(_client(monkeypatch, 1, FakeVoice(STTError("OpenAI STT failed: sk-secret"))))
     assert r.status_code == 503 and r.json()["error"]["code"] == "VOICE_UNAVAILABLE"
@@ -101,11 +101,11 @@ class _FakeTranscriptions:
 async def test_openai_stt_omits_language_when_auto():
     from types import SimpleNamespace
 
-    from app.services.voice.model import STTRequest
-    from app.services.voice.providers.openai_stt import OpenAISTTProvider
+    from app.tools.speech.base import STTRequest
+    from app.tools.speech.openai_stt import OpenAISTT
 
     calls = _FakeTranscriptions()
-    provider = object.__new__(OpenAISTTProvider)
+    provider = object.__new__(OpenAISTT)
     provider._client = SimpleNamespace(audio=SimpleNamespace(transcriptions=calls))
 
     result = await provider.transcribe(b"x", STTRequest())

@@ -18,6 +18,9 @@ from app.tools.extraction.base import BaseExtractor
 from app.tools.extraction.pydantic_ai_extractor import PydanticAIExtractor
 from app.tools.llm.base import BaseLLM
 from app.tools.llm.openai_llm import OpenAILLM
+from app.tools.speech.base import BaseSTT, BaseTTS
+from app.tools.speech.openai_stt import OpenAISTT
+from app.tools.speech.openai_tts import OpenAITTS
 from app.tools.vector_store.base import BaseVectorStore
 from app.tools.vector_store.chroma import ChromaVectorStore
 from app.tools.vision.base import BaseVisionModel
@@ -101,3 +104,17 @@ def build_extractor() -> BaseExtractor:
     if provider == "pydantic_ai":
         return PydanticAIExtractor(model=app_config.OPENAI_EXTRACTION_MODEL)
     raise _unknown("extraction", provider)
+
+
+def build_stt() -> BaseSTT:
+    provider = app_config.STT_PROVIDER.lower()
+    if provider == "openai":
+        return OpenAISTT()
+    raise _unknown("speech-to-text", provider)
+
+
+def build_tts() -> BaseTTS:
+    provider = app_config.TTS_PROVIDER.lower()
+    if provider == "openai":
+        return OpenAITTS()
+    raise _unknown("text-to-speech", provider)

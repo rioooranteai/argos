@@ -3,9 +3,7 @@ import io
 
 from app.core.config import app_config, secrets
 from app.core.observability.recorder import recorder
-from app.services.voice.base.stt_base import BaseSTTProvider
-from app.services.voice.exceptions import STTError
-from app.services.voice.model import STTRequest, STTResult, STTSegment
+from app.tools.speech.base import BaseSTT, STTError, STTRequest, STTResult, STTSegment
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
@@ -27,7 +25,7 @@ MIME_TO_EXT = {
     "audio/x-m4a": "m4a",
 }
 
-class OpenAISTTProvider(BaseSTTProvider):
+class OpenAISTT(BaseSTT):
     """
     STT provider using the OpenAI Whisper API (cloud).
     Model  : whisper-1
