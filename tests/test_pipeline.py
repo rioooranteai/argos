@@ -12,6 +12,10 @@ from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
+from app.services.extraction.service import ExtractionService
+from app.services.ingestion.service import FigureDescriber
+from app.services.library.model import NewVersion
+from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.storage.sqlite.cache import SQLiteCacheRepository
 from app.tools.storage.sqlite.feature import (
     SQLiteFeatureRepository,
@@ -20,12 +24,7 @@ from app.tools.storage.sqlite.job import SQLiteJobRepository
 from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.services.extraction.service import ExtractionService
-from app.tools.document_parser.base import DocumentElement, ElementType
-from app.services.ingestion.service import FigureDescriber
-from app.services.library.model import NewVersion
 from tests.fakes import FakeExtractor, FakeParser, FakeVectorStore, FakeVision
-
 
 ELEMENTS = [
     DocumentElement(element_type=ElementType.TEXT, content="Toyota Avanza harga Rp 230 jt",

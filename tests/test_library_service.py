@@ -9,12 +9,12 @@ from app.core.config import AppConfig
 from app.core.database import Database
 from app.core.errors import ConflictError, PermissionDenied, ValidationError
 from app.core.migrations import run_migrations
+from app.services.library.service import LibraryService, queued_file_path
+from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.library.service import LibraryService, queued_file_path
-from app.services.user.model import CurrentUser
 from tests.library_helpers import make_pdf, upload
 
 ALICE = CurrentUser(id="u1", email="alice@corp.com", name="Alice", given_name="", picture="", is_admin=False)

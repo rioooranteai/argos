@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime
 
 from app.core.database import Database
-from app.services.user.ports import BaseUserRepository
 from app.services.user.model import User
+from app.services.user.ports import BaseUserRepository
 
 
 def _ts(value) -> datetime | None:

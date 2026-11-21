@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from app.core.llm_errors import classify_llm_error
-from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.exceptions import InvalidQuestionError
 from app.services.nl2sql.executor import (
     SQLExecutionFailed,
@@ -17,6 +16,7 @@ from app.services.nl2sql.executor import (
     features_schema_ddl,
 )
 from app.services.nl2sql.security import validate_generated_sql
+from app.tools.llm.base import BaseLLM
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from langchain_openai import OpenAIEmbeddings
 
-from app.tools.embedding.base import BaseEmbedder
 from app.core.observability.recorder import recorder
+from app.tools.embedding.base import BaseEmbedder
 
 _DIMENSIONS: dict[str, int] = {
     "text-embedding-3-small": 1536,

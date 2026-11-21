@@ -1,7 +1,8 @@
 import base64
 import logging
-from langchain_openai import ChatOpenAI
+
 from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
 from app.core.config import app_config, secrets
 from app.core.observability.recorder import recorder, usage_from_langchain

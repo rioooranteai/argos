@@ -8,20 +8,25 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.routers.notebooks import router
-from app.core.config import AppConfig
-from app.core.database import Database
-from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.api.dependencies import (
     get_chat_orchestrator,
     get_conversation_service,
     get_current_user,
     get_notebook_service,
 )
+from app.api.routers.notebooks import router
+from app.core.config import AppConfig
+from app.core.database import Database
 from app.core.errors import UpstreamTimeout, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
+from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.engines.chat_engine.outcome import ChatResult
+from app.services.conversation.service import ConversationService
+from app.services.library.service import LibraryService
+from app.services.nl2sql.service import NL2SQLResult
+from app.services.notebook.service import NotebookService
+from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.conversation import (
     SQLiteConversationRepository,
 )
@@ -36,11 +41,6 @@ from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.conversation.service import ConversationService
-from app.services.library.service import LibraryService
-from app.services.nl2sql.service import NL2SQLResult
-from app.services.notebook.service import NotebookService
-from app.services.user.model import CurrentUser
 from app.tools.vector_store.base import SearchHit
 from tests.library_helpers import make_pdf
 

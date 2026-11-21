@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from app.core.database import Database
+from app.services.library.model import DocumentVersion
 from app.services.library.ports import BaseJobRepository
 from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.services.library.model import DocumentVersion
 
 # Every timestamp uses SQLite's CURRENT_TIMESTAMP format (UTC, 'YYYY-MM-DD HH:MM:SS'),
 # so comparing strings = comparing times.

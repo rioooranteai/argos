@@ -4,11 +4,11 @@ import sqlite3
 from datetime import datetime
 
 from app.core.database import Database
+from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 from app.services.notebook.ports import (
     BaseNotebookRepository,
     SourceLimitReached,
 )
-from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 
 
 def _ts(value) -> datetime | None:

@@ -7,6 +7,9 @@ from app.core.config import AppConfig
 from app.core.database import Database
 from app.core.errors import ConflictError, NotFoundError, PermissionDenied
 from app.core.migrations import run_migrations
+from app.services.library.service import LibraryService, queued_file_path
+from app.services.notebook.service import NotebookService
+from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.feature import (
     SQLiteFeatureRepository,
 )
@@ -18,11 +21,8 @@ from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.library.service import LibraryService, queued_file_path
-from app.services.notebook.service import NotebookService
-from app.services.user.model import CurrentUser
-from tests.library_helpers import make_pdf, upload
 from tests.fakes import FakeVectorStore
+from tests.library_helpers import make_pdf, upload
 
 ALICE = CurrentUser(id="u1", email="a@corp.com", name="Alice", given_name="", picture="", is_admin=False)
 BOB = CurrentUser(id="u2", email="b@corp.com", name="Bob", given_name="", picture="", is_admin=False)

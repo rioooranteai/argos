@@ -6,9 +6,9 @@ import dataclasses
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user, get_voice_service
 from app.api.routers import voice
 from app.core.config import AppConfig
-from app.api.dependencies import get_current_user, get_voice_service
 from app.core.errors import AuthenticationError, register_exception_handlers
 from app.services.user.model import CurrentUser
 from app.services.voice.service import VoiceService

@@ -6,10 +6,10 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
 
+from app.api.dependencies import get_current_user
 from app.api.routers import auth
 from app.core.config import app_config, secrets
 from app.core.database import Database
-from app.api.dependencies import get_current_user
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
 from app.core.session import create_session_token

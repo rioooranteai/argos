@@ -5,18 +5,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user, get_library_service, get_user_repo
 from app.api.routers.library import router
 from app.core.config import AppConfig
 from app.core.database import Database
-from app.api.dependencies import get_current_user, get_library_service, get_user_repo
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
+from app.services.library.service import LibraryService
+from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.library.service import LibraryService
-from app.services.user.model import CurrentUser
 from tests.library_helpers import make_pdf
 
 ALICE = CurrentUser(id="u1", email="alice@corp.com", name="Alice", given_name="", picture="", is_admin=False)

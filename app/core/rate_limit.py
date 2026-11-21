@@ -15,7 +15,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 
-from fastapi import Depends, Request
+from fastapi import Request
 
 from app.core.config import app_config
 from app.core.errors import RateLimited
@@ -96,15 +96,3 @@ limiter = RateLimiter(
 def client_ip(request: Request) -> str:
     """Client IP (behind a proxy: from X-Forwarded-For when uvicorn trusts the proxy)."""
     return request.client.host if request.client else "unknown"
-
-
-def rate_limit(group: str) -> Callable[..., None]:
-    """FastAPI dependency: the `group` limit per signed-in user."""
-    from app.api.dependencies import get_current_user  # avoid a circular import
-    from app.services.user.model import CurrentUser
-
-    def _check(user: CurrentUser = Depends(get_current_user)) -> None:
-        limiter.check(group, user.id)
-
-    _check.__name__ = f"rate_limit_{group}"
-    return _check

@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 
-
 @dataclass
 class Conversation:
     """One conversation thread (an entry in the UI sidebar)."""

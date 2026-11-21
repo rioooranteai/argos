@@ -15,8 +15,8 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
-from app.core.config import PROJECT_ROOT
 from app.api.dependencies import user_from_token
+from app.core.config import PROJECT_ROOT
 from app.core.session import session_token_from
 
 WEB_DIR = PROJECT_ROOT / "web-app"

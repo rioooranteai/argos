@@ -6,10 +6,9 @@ from contextlib import contextmanager
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
+from app.api.dependencies import get_current_user, get_voice_service, rate_limit
 from app.core.config import app_config
-from app.api.dependencies import get_current_user, get_voice_service
 from app.core.errors import PayloadTooLarge, UnsupportedMediaType, UpstreamError, ValidationError
-from app.core.rate_limit import rate_limit
 from app.services.voice.service import VoiceService
 from app.tools.speech.base import (
     SpeechError,

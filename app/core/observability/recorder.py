@@ -32,9 +32,9 @@ from datetime import UTC, datetime
 
 from app.core import log_context
 from app.core.llm_errors import classify_llm_error
-from app.core.request_context import get_request_id
-from app.core.observability.ports import BaseLLMCallRepository
 from app.core.observability.model import LLMCall
+from app.core.observability.ports import BaseLLMCallRepository
+from app.core.request_context import get_request_id
 
 logger = logging.getLogger(__name__)
 

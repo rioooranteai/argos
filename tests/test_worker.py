@@ -11,13 +11,12 @@ from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.engines.document_engine.jobs import JobCancelled, PermanentJobError, classify
 from app.engines.document_engine.worker import DocumentWorker
+from app.services.library.model import NewVersion
+from app.tools.document_parser.base import DocumentLoadError, ParserTimeout
 from app.tools.storage.sqlite.job import SQLiteJobRepository
 from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.tools.document_parser.base import DocumentLoadError
-from app.tools.document_parser.base import ParserTimeout
-from app.services.library.model import NewVersion
 
 
 @pytest.fixture

@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from app.tools.embedding.base import BaseEmbedder
 from app.tools.document_parser.base import DocumentElement, ElementType
+from app.tools.embedding.base import BaseEmbedder
 from app.tools.vector_store.base import IndexChunk
 from app.tools.vector_store.chroma import ChromaVectorStore
+from tests.fakes import FakeVectorStore
 from tests.test_pipeline import (  # noqa: F401 — the `env` fixture is reused
     _build,
     _q,
     _version,
     env,
 )
-from tests.fakes import FakeVectorStore
 
 
 def _el(text: str, heading: str, page: int = 1) -> DocumentElement:

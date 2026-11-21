@@ -8,17 +8,16 @@ import logging
 import uuid
 from typing import Literal
 
-
 from app.core.config import AppConfig
 from app.core.errors import NotFoundError, ValidationError
+from app.services.library.model import FINAL_STAGES, STAGE_READY, IncomingFile, UploadFileResult
 from app.services.library.ports import BaseJobRepository, BaseLibraryRepository
+from app.services.library.service import LibraryService
+from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 from app.services.notebook.ports import (
     BaseNotebookRepository,
     SourceLimitReached,
 )
-from app.services.library.model import FINAL_STAGES, STAGE_READY, IncomingFile, UploadFileResult
-from app.services.library.service import LibraryService
-from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 from app.services.user.model import CurrentUser
 
 logger = logging.getLogger(__name__)

@@ -10,6 +10,9 @@ from app.core.config import AppConfig
 from app.core.database import Database
 from app.core.errors import NotFoundError, ValidationError
 from app.core.migrations import run_migrations
+from app.services.library.service import LibraryService
+from app.services.notebook.service import NotebookService
+from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.feature import (
     SQLiteFeatureRepository,
 )
@@ -21,9 +24,6 @@ from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.library.service import LibraryService
-from app.services.notebook.service import NotebookService
-from app.services.user.model import CurrentUser
 from tests.library_helpers import make_pdf, upload
 
 ALICE = CurrentUser(id="u1", email="a@corp.com", name="Alice", given_name="", picture="", is_admin=False)

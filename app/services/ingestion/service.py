@@ -9,8 +9,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from app.services.ingestion.ports import BaseCacheRepository
 from app.services.ingestion.model import Section
+from app.services.ingestion.ports import BaseCacheRepository
 from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.vision.base import BaseVisionModel
 

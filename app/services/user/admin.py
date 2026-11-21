@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from app.core.errors import NotFoundError, ValidationError
 from app.core.security import is_admin
 from app.services.library.ports import BaseLibraryRepository
-from app.services.user.ports import BaseUserRepository
 from app.services.user.model import CurrentUser, User
+from app.services.user.ports import BaseUserRepository
 
 logger = logging.getLogger(__name__)
 

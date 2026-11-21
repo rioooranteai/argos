@@ -1,10 +1,11 @@
-import logging
 import io
+import logging
+
+from openai import AsyncOpenAI
 
 from app.core.config import app_config, secrets
 from app.core.observability.recorder import recorder
 from app.tools.speech.base import BaseSTT, STTError, STTRequest, STTResult, STTSegment
-from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 

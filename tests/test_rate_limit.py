@@ -5,10 +5,10 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user, rate_limit
 from app.core.config import AppConfig
-from app.api.dependencies import get_current_user
 from app.core.errors import RateLimited, register_exception_handlers
-from app.core.rate_limit import RateLimiter, limiter, rate_limit
+from app.core.rate_limit import RateLimiter, limiter
 from app.services.user.model import CurrentUser
 
 

@@ -12,8 +12,8 @@ import uuid
 from datetime import datetime
 
 from app.core.database import Database
-from app.services.conversation.ports import BaseConversationRepository
 from app.services.conversation.model import Conversation, Message
+from app.services.conversation.ports import BaseConversationRepository
 
 
 def _parse_ts(value) -> datetime:

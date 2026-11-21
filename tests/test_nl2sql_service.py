@@ -1,12 +1,11 @@
 """NL2SQLService: LLM → validator → isolated execution, typed results."""
 from __future__ import annotations
 
-
 import pytest
 
 from app.services.nl2sql.service import MAX_RAW_ROWS, NL2SQLService
-from tests.test_nl2sql_executor import db_path  # noqa: F401  (fixture)
 from tests.fakes import FakeLLM
+from tests.test_nl2sql_executor import db_path  # noqa: F401  (fixture)
 
 
 def svc(llm, db_path):  # noqa: F811

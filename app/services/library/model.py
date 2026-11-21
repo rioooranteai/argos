@@ -6,6 +6,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
+
 class IncomingFile(Protocol):
     """An uploaded file as the services see it. FastAPI's ``UploadFile`` fits this shape,
     so services do not depend on the web framework (DESIGN_GROUP_E.md §3.7)."""

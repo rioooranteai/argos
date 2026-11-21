@@ -13,17 +13,16 @@ import pytest
 
 from app.core.database import Database
 from app.core.migrations import run_migrations
-from app.tools.llm.base import BaseLLM
-from app.tools.storage.sqlite.conversation import (
-    SQLiteConversationRepository,
-)
 from app.services.conversation.service import (
     ConversationService,
     _normalize_title,
     _placeholder_title_from_message,
 )
+from app.tools.llm.base import BaseLLM
+from app.tools.storage.sqlite.conversation import (
+    SQLiteConversationRepository,
+)
 from tests.fakes import FakeLLM
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 

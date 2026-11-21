@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from fastapi import Depends, Request
 
 from app.core import log_context
@@ -76,6 +78,16 @@ def get_current_user(
         picture=user.picture or "",
         is_admin=is_admin(user.email),
     )
+
+
+def rate_limit(group: str) -> Callable[..., None]:
+    """FastAPI dependency: the `group` limit per signed-in user (DESIGN_GROUP_D.md D9)."""
+
+    def _check(user: CurrentUser = Depends(get_current_user)) -> None:
+        limiter.check(group, user.id)
+
+    _check.__name__ = f"rate_limit_{group}"
+    return _check
 
 
 def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:

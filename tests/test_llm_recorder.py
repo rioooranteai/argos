@@ -13,13 +13,13 @@ from app.core import log_context
 from app.core.database import Database
 from app.core.llm_errors import classify_llm_error
 from app.core.migrations import run_migrations
+from app.core.observability.model import LLMCall
+from app.core.observability.recorder import LLMCallRecorder, recorder
 from app.core.request_context import _request_id_var
 from app.tools.llm.openai_llm import OpenAILLM
 from app.tools.storage.sqlite.llm_call import (
     SQLiteLLMCallRepository,
 )
-from app.core.observability.recorder import LLMCallRecorder, recorder
-from app.core.observability.model import LLMCall
 
 
 @pytest.fixture

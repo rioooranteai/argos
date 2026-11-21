@@ -8,15 +8,13 @@ import logging
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 
-from app.core import log_context
 from app.api.dependencies import (
     get_chat_orchestrator,
     get_conversation_service,
     get_current_user,
     get_notebook_service,
+    rate_limit,
 )
-from app.core.rate_limit import rate_limit
-from app.engines.chat_engine.orchestrator import ChatOrchestrator, ChatReply
 from app.api.schemas.conversation import (
     ChatRequest,
     ChatResponse,
@@ -36,6 +34,8 @@ from app.api.schemas.notebook import (
     SourceUploadOut,
     UpdateSourceRequest,
 )
+from app.core import log_context
+from app.engines.chat_engine.orchestrator import ChatOrchestrator, ChatReply
 from app.services.conversation.service import ConversationService
 from app.services.notebook.model import Notebook, NotebookSource
 from app.services.notebook.service import NotebookService

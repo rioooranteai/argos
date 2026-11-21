@@ -7,11 +7,11 @@ import pytest
 
 from app.core.database import Database
 from app.core.migrations import run_migrations
-from app.tools.storage.sqlite.cache import SQLiteCacheRepository
-from app.tools.extraction.base import ExtractedFeature
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import build_sections, build_units
 from app.tools.document_parser.base import DocumentElement, ElementType
+from app.tools.extraction.base import ExtractedFeature
+from app.tools.storage.sqlite.cache import SQLiteCacheRepository
 from tests.fakes import FakeExtractor
 
 

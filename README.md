@@ -329,6 +329,40 @@ pytest tests/ -v
 ruff check app tests
 ```
 
+### Code structure
+
+```
+bootstrap ─► api ─► engines (orchestrators) ─► services (features) ─► tools (Base… contracts)
+                                                                       core (shared kernel)
+```
+
+| Folder | What lives there |
+|---|---|
+| `app/bootstrap.py` | The composition root: builds every tool, repository, service and engine once at startup and wires them through constructors |
+| `app/api/` | Routers, FastAPI dependencies (`dependencies.py`) and HTTP schemas (`schemas/`). Routers only translate HTTP; they get everything through `Depends` |
+| `app/engines/` | Orchestrators that use several services: the chat flow (`ChatOrchestrator`, the LangGraph `ChatEngine`) and the document pipeline + worker |
+| `app/services/<feature>/` | One feature each (library, notebook, conversation, nl2sql, ingestion, extraction, user, voice): entities (`model.py`), repository contracts (`ports.py`) and use cases (`service.py`) |
+| `app/tools/<tool>/` | External tools behind a contract: `base.py` (abstract class + its types) and the implementations — `llm`, `embedding`, `vector_store`, `document_parser`, `vision`, `extraction`, `speech`, and `storage/sqlite` (implements the services' ports) |
+| `app/tools/factory.py` | The only place that picks a concrete tool, from the `*_PROVIDER` constants in `config.py` |
+| `app/core/` | Shared kernel: config, errors, logging, request context, AI call recorder, database, security, session, middleware |
+
+Rules (enforced by `tests/test_architecture.py`):
+
+- Dependencies point inward: services never import engines or api; engines never import api.
+- Services, engines and routers use tools only through `app/tools/<tool>/base.py`; only
+  `bootstrap.py` and `tools/factory.py` know the implementations.
+- `core/` imports nothing from the other layers.
+- Services, engines and tools do not import FastAPI.
+
+**Switching a tool** (e.g. another vector database): add an implementation next to its
+`base.py`, add a branch in `tools/factory.py`, change the provider constant in `config.py`.
+
+**Testing with fakes**: `tests/fakes.py` has one fake per contract (`FakeLLM`,
+`FakeVectorStore`, `FakeParser`, `FakeVision`, `FakeExtractor`, `FakeEmbedder`, `FakeSTT`,
+`FakeTTS`). Each inherits its `Base…` class, so it breaks as soon as a contract changes.
+Pass them to the constructor of the service under test, e.g.
+`VoiceService(stt=FakeSTT(), tts=FakeTTS())`.
+
 ### Dependencies
 
 - `requirements.in` — the **direct** dependencies (edit this one).

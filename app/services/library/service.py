@@ -15,9 +15,8 @@ import logging
 import os
 import sqlite3
 import uuid
-from typing import Literal, Protocol
 from pathlib import Path, PurePath
-
+from typing import Literal, Protocol
 
 from app.core.config import AppConfig
 from app.core.errors import (
@@ -28,8 +27,6 @@ from app.core.errors import (
     PermissionDenied,
     ValidationError,
 )
-from app.services.library.ports import BaseJobRepository, BaseLibraryRepository
-from app.services.user.ports import BaseUserRepository
 from app.services.library.model import (
     FINAL_STAGES,
     RECLAIMABLE_STAGES,
@@ -40,9 +37,11 @@ from app.services.library.model import (
     PendingUpload,
     UploadFileResult,
 )
+from app.services.library.ports import BaseJobRepository, BaseLibraryRepository
 from app.services.library.similarity import SimilarDocument, extract_text, fingerprint, most_similar
 from app.services.library.upload import ReceivedFile, count_pages, receive_upload
 from app.services.user.model import CurrentUser
+from app.services.user.ports import BaseUserRepository
 
 logger = logging.getLogger(__name__)
 

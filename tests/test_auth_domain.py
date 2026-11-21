@@ -6,9 +6,9 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 from jose import jwt
 
+from app.api.dependencies import get_current_user, require_admin
 from app.core.config import Secrets, app_config, secrets
 from app.core.database import Database
-from app.api.dependencies import get_current_user, require_admin
 from app.core.errors import PermissionDenied, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.core.security import is_admin, verify_google_identity

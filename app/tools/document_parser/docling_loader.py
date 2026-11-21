@@ -3,6 +3,13 @@ import logging
 import threading
 
 import tiktoken
+from docling.chunking import HybridChunker
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
+
 from app.core.config import app_config, infra
 from app.tools.document_parser.base import (
     BaseDocumentLoader,
@@ -10,12 +17,6 @@ from app.tools.document_parser.base import (
     DocumentLoadError,
     ElementType,
 )
-from docling.chunking import HybridChunker
-from docling.datamodel.accelerator_options import AcceleratorOptions, AcceleratorDevice
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
 logger = logging.getLogger(__name__)
 

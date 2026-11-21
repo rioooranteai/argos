@@ -9,9 +9,9 @@ import openai
 
 from app.core import log_context
 from app.core.errors import ArgosError
+from app.services.library.model import DocumentVersion
 from app.services.library.ports import BaseJobRepository
 from app.tools.document_parser.base import DocumentLoadError, ParserTimeout, ParserUnavailable
-from app.services.library.model import DocumentVersion
 
 
 class JobCancelled(Exception):

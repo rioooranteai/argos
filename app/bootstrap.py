@@ -11,10 +11,20 @@ from app.core.concurrency import AILimits
 from app.core.config import app_config, infra, secrets, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
+from app.core.observability.recorder import recorder as llm_recorder
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
+from app.services.conversation.service import ConversationService
+from app.services.extraction.service import ExtractionService
+from app.services.ingestion.service import FigureDescriber
+from app.services.library.service import LibraryService
+from app.services.nl2sql.service import NL2SQLService
+from app.services.notebook.service import NotebookService
+from app.services.observability.health import HealthChecker
+from app.services.user.admin import AdminService
+from app.services.voice.service import VoiceService
 from app.tools.document_parser.base import BaseDocumentParser
 from app.tools.factory import (
     build_document_parser,
@@ -44,16 +54,6 @@ from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
-from app.services.conversation.service import ConversationService
-from app.services.extraction.service import ExtractionService
-from app.services.ingestion.service import FigureDescriber
-from app.services.library.service import LibraryService
-from app.services.nl2sql.service import NL2SQLService
-from app.services.notebook.service import NotebookService
-from app.services.observability.health import HealthChecker
-from app.core.observability.recorder import recorder as llm_recorder
-from app.services.user.admin import AdminService
-from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
 
