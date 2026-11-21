@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk · Argos</title>
+    <title>Sign in · Argos</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,14 +43,14 @@
                             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
                         </svg>
                     </span>
-                    <span class="btn-google-text">Lanjut dengan Google</span>
+                    <span class="btn-google-text">Continue with Google</span>
                 </a>
             </div>
 
             <p class="login-error" id="loginError" role="alert" hidden></p>
 
             <p class="login-footer">
-                Dengan masuk, Anda menyetujui Ketentuan Layanan dan Kebijakan Privasi.
+                By signing in, you agree to the Terms of Service and Privacy Policy.
             </p>
         </div>
     </main>
@@ -58,15 +58,15 @@
 <script>
     (function () {
         var messages = {
-            DOMAIN_NOT_ALLOWED: "Gunakan akun Google perusahaan untuk masuk.",
-            EMAIL_NOT_VERIFIED: "Email Google Anda belum terverifikasi.",
-            USER_INACTIVE: "Akun Anda dinonaktifkan. Hubungi admin.",
-            RATE_LIMITED: "Terlalu banyak percobaan masuk. Coba lagi dalam satu menit."
+            DOMAIN_NOT_ALLOWED: "This Google account is not allowed to sign in.",
+            EMAIL_NOT_VERIFIED: "Your Google email is not verified.",
+            USER_INACTIVE: "Your account has been deactivated. Contact the admin.",
+            RATE_LIMITED: "Too many sign-in attempts. Try again in a minute."
         };
         var code = new URLSearchParams(window.location.search).get("error");
         if (!code) return;
         var el = document.getElementById("loginError");
-        el.textContent = messages[code] || "Login gagal. Silakan coba lagi.";
+        el.textContent = messages[code] || "Sign-in failed. Please try again.";
         el.hidden = false;
     })();
 </script>

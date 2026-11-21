@@ -5,24 +5,24 @@ const POLL_MS = 2500;
 const FINAL_STAGES = new Set(["ready", "failed", "cancelled"]);
 
 // ---------------------------------------------------------------------------
-// Autentikasi
+// Authentication
 // ---------------------------------------------------------------------------
 
-// Sesi = cookie HttpOnly yang dipasang server (DESIGN_GROUP_D.md D1). JavaScript tidak
-// pernah melihat token, dan tidak ada data sesi di localStorage. Halaman ini hanya
-// dikirim server kepada user yang sudah login; bila sesi habis, API menjawab 401.
+// Session = an HttpOnly cookie set by the server (DESIGN_GROUP_D.md D1). JavaScript never
+// sees the token, and there is no session data in localStorage. The server only sends
+// this page to signed-in users; when the session expires, the API answers 401.
 
 function toLogin() { window.location.href = "/login"; }
 
 async function logout() {
     try {
         await fetch(`${API}/auth/logout`, { method: "POST", credentials: "same-origin" });
-    } catch { /* tetap keluar walau jaringan bermasalah */ }
+    } catch { /* sign out anyway, even if the network fails */ }
     toLogin();
 }
 
 // ---------------------------------------------------------------------------
-// API helper — semua error backend berbentuk {error: {code, message, request_id}}
+// API helper — every backend error looks like {error: {code, message, request_id}}
 // ---------------------------------------------------------------------------
 
 class ApiError extends Error {
@@ -31,7 +31,7 @@ class ApiError extends Error {
         this.code = code;
         this.requestId = requestId;
         this.status = status;
-        this.details = details;      // mis. {conversation_id, message_id} saat chat gagal
+        this.details = details;      // e.g. {conversation_id, message_id} when a chat fails
         this.retryable = retryable;
     }
 }
@@ -50,12 +50,12 @@ async function api(path, { method = "GET", json, form } = {}) {
     try {
         response = await fetch(`${API}${path}`, { method, headers, body, credentials: "same-origin" });
     } catch {
-        throw new ApiError("Tidak bisa terhubung ke server. Periksa koneksi Anda.", "NETWORK", null, 0);
+        throw new ApiError("Cannot reach the server. Check your connection.", "NETWORK", null, 0);
     }
 
     if (response.status === 401) {
         toLogin();
-        throw new ApiError("Sesi berakhir.", "UNAUTHENTICATED", null, 401);
+        throw new ApiError("Session expired.", "UNAUTHENTICATED", null, 401);
     }
     if (response.status === 204) return null;
 
@@ -63,7 +63,7 @@ async function api(path, { method = "GET", json, form } = {}) {
     if (!response.ok) {
         const err = data && data.error;
         throw new ApiError(
-            (err && err.message) || "Permintaan gagal diproses.",
+            (err && err.message) || "The request could not be processed.",
             (err && err.code) || `HTTP_${response.status}`,
             (err && err.request_id) || response.headers.get("X-Request-ID"),
             response.status,
@@ -112,17 +112,17 @@ const el = {
 
 const state = {
     notebooks: [],
-    notebook: null,          // detail notebook aktif (termasuk sources)
+    notebook: null,          // details of the active notebook (including sources)
     conversations: [],
     conversationId: null,
     pollTimer: null,
     sending: false,
-    citedVersion: null,      // versi yang sedang disorot oleh chip sitasi
-    me: null,                // {id, email, is_admin} dari /users/me
+    citedVersion: null,      // the version highlighted by a citation chip
+    me: null,                // {id, email, is_admin} from /users/me
 };
 
 // ---------------------------------------------------------------------------
-// Utilitas tampilan
+// Display helpers
 // ---------------------------------------------------------------------------
 
 function h(tag, attrs = {}, ...children) {
@@ -146,25 +146,25 @@ function formatDate(iso) {
     if (!iso) return "";
     const d = new Date(iso);
     if (isNaN(d)) return "";
-    return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+    return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function formatRelative(iso) {
     if (!iso) return "";
-    // Waktu dari server tanpa zona = UTC
+    // Server times without a zone are UTC
     const d = new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + "Z");
     if (isNaN(d)) return "";
     const diff = (Date.now() - d.getTime()) / 1000;
-    if (diff < 60) return "baru saja";
-    if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)} hari lalu`;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)} d ago`;
     return formatDate(iso);
 }
 
 function formatSize(bytes) {
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 let toastTimer = null;
@@ -177,11 +177,11 @@ function toast(message, kind = "info") {
 }
 
 function errorText(err) {
-    return err.requestId ? `${err.message} (kode: ${err.requestId})` : err.message;
+    return err.requestId ? `${err.message} (code: ${err.requestId})` : err.message;
 }
 
 // ---------------------------------------------------------------------------
-// Modal umum (konfirmasi / prompt / info)
+// Shared modal (confirm / prompt / info)
 // ---------------------------------------------------------------------------
 
 const MODAL_ICONS = {
@@ -216,7 +216,7 @@ modal.cancel.addEventListener("click", () => closeModal(null));
 modal.root.addEventListener("click", (e) => { if (e.target === modal.root) closeModal(null); });
 
 function openModal({ title, subtitle = "", icon = "info", kind = "confirm", defaultValue = "",
-                     placeholder = "", confirmLabel = "OK", cancelLabel = "Batal", danger = false }) {
+                     placeholder = "", confirmLabel = "OK", cancelLabel = "Cancel", danger = false }) {
     modal.returnFocus = document.activeElement;
     modal.icon.innerHTML = MODAL_ICONS[icon] || MODAL_ICONS.info;
     modal.title.textContent = title;
@@ -272,7 +272,7 @@ const closeNotebookMenu = setupMenu(el.notebookBtn, el.notebookMenu);
 $("logoutBtn").addEventListener("click", logout);
 
 // ---------------------------------------------------------------------------
-// Routing: #/nb/<notebook>  atau  #/nb/<notebook>/c/<conversation>
+// Routing: #/nb/<notebook>  or  #/nb/<notebook>/c/<conversation>
 // ---------------------------------------------------------------------------
 
 function parseRoute() {
@@ -316,14 +316,14 @@ async function defaultNotebookId() {
         toast(errorText(err), "error");
         return null;
     }
-    // Notebook yang terakhir dibuka (dicatat server, tidak ada localStorage).
+    // The last opened notebook (recorded by the server, no localStorage).
     const opened = state.notebooks.filter((n) => n.last_opened_at)
         .sort((a, b) => b.last_opened_at.localeCompare(a.last_opened_at));
     if (opened.length) return opened[0].id;
     if (state.notebooks.length) return state.notebooks[0].id;
-    // Pengguna baru: langsung siapkan satu notebook agar bisa mulai menambah sumber.
+    // New user: create one notebook right away so they can start adding sources.
     try {
-        const nb = await api("/notebooks", { method: "POST", json: { title: "Notebook saya" } });
+        const nb = await api("/notebooks", { method: "POST", json: { title: "My notebook" } });
         state.notebooks = [nb];
         return nb.id;
     } catch (err) {
@@ -371,7 +371,7 @@ function renderNotebookSwitcher() {
                 onclick: () => { closeNotebookMenu(); go(nb.id); },
             },
             h("span", { class: "notebook-menu-name", text: nb.title }),
-            h("span", { class: "notebook-menu-meta", text: `${nb.source_count} sumber` })),
+            h("span", { class: "notebook-menu-meta", text: `${nb.source_count} source(s)` })),
         ),
     );
 }
@@ -379,23 +379,23 @@ function renderNotebookSwitcher() {
 $("newNotebookBtn").addEventListener("click", async () => {
     closeNotebookMenu();
     const title = await openModal({
-        title: "Notebook baru", subtitle: "Satu notebook untuk satu topik riset, misalnya \"Harga MPV 2026\".",
-        icon: "edit", kind: "prompt", placeholder: "Judul notebook", confirmLabel: "Buat notebook",
+        title: "New notebook", subtitle: "One notebook per research topic, for example \"MPV prices 2026\".",
+        icon: "edit", kind: "prompt", placeholder: "Notebook title", confirmLabel: "Create notebook",
     });
     if (!title || !title.trim()) return;
     try {
         const nb = await api("/notebooks", { method: "POST", json: { title: title.trim() } });
         state.notebooks.unshift({ ...nb, source_count: 0 });
         go(nb.id);
-    } catch (err) { modalAlert("Notebook tidak dibuat", errorText(err)); }
+    } catch (err) { modalAlert("Notebook not created", errorText(err)); }
 });
 
 $("renameNotebookBtn").addEventListener("click", async () => {
     closeNotebookMenu();
     if (!state.notebook) return;
     const title = await openModal({
-        title: "Ganti nama notebook", icon: "edit", kind: "prompt",
-        defaultValue: state.notebook.title, placeholder: "Judul notebook", confirmLabel: "Simpan",
+        title: "Rename notebook", icon: "edit", kind: "prompt",
+        defaultValue: state.notebook.title, placeholder: "Notebook title", confirmLabel: "Save",
     });
     if (!title || !title.trim()) return;
     try {
@@ -404,16 +404,16 @@ $("renameNotebookBtn").addEventListener("click", async () => {
         const item = state.notebooks.find((n) => n.id === nb.id);
         if (item) item.title = nb.title;
         renderNotebookSwitcher();
-    } catch (err) { modalAlert("Nama tidak disimpan", errorText(err)); }
+    } catch (err) { modalAlert("Name not saved", errorText(err)); }
 });
 
 $("deleteNotebookBtn").addEventListener("click", async () => {
     closeNotebookMenu();
     if (!state.notebook) return;
     const ok = await openModal({
-        title: "Hapus notebook ini?",
-        subtitle: "Semua percakapan di notebook ini ikut terhapus. Dokumen tetap tersimpan di Library.",
-        icon: "danger", confirmLabel: "Hapus notebook", danger: true,
+        title: "Delete this notebook?",
+        subtitle: "Every conversation in this notebook is deleted too. The documents stay in the Library.",
+        icon: "danger", confirmLabel: "Delete notebook", danger: true,
     });
     if (!ok) return;
     try {
@@ -421,22 +421,22 @@ $("deleteNotebookBtn").addEventListener("click", async () => {
         const deletedId = state.notebook.id;
         state.notebook = null;
         state.notebooks = state.notebooks.filter((n) => n.id !== deletedId);
-        window.location.hash = "";  // memicu hashchange → handleRoute
-    } catch (err) { modalAlert("Notebook tidak dihapus", errorText(err)); }
+        window.location.hash = "";  // triggers hashchange → handleRoute
+    } catch (err) { modalAlert("Notebook not deleted", errorText(err)); }
 });
 
 // ---------------------------------------------------------------------------
-// Sumber
+// Sources
 // ---------------------------------------------------------------------------
 
 const STAGE_LABEL = {
-    queued: "Menunggu giliran",
-    parsing: "Membaca dokumen",
-    vision: "Membaca gambar",
-    indexing: "Mengindeks isi",
-    extracting: "Mengekstrak data",
-    failed: "Gagal diproses",
-    cancelled: "Dibatalkan",
+    queued: "Waiting in line",
+    parsing: "Reading the document",
+    vision: "Reading images",
+    indexing: "Indexing content",
+    extracting: "Extracting data",
+    failed: "Processing failed",
+    cancelled: "Cancelled",
 };
 
 function stageText(s) {
@@ -458,8 +458,8 @@ function renderSources() {
     if (!list.length) {
         el.sourceList.replaceChildren(
             h("li", { class: "source-empty" },
-                h("p", { text: "Belum ada sumber. Tambahkan dokumen agar Argos bisa menjawab dari isinya." }),
-                h("button", { type: "button", class: "btn-inline", text: "Tambah sumber", onclick: openSourceModal })),
+                h("p", { text: "No sources yet. Add documents so Argos can answer from their content." }),
+                h("button", { type: "button", class: "btn-inline", text: "Add sources", onclick: openSourceModal })),
         );
     } else {
         el.sourceList.replaceChildren(...list.map(renderSourceItem));
@@ -476,8 +476,8 @@ function renderSourceItem(s) {
 
     const meta = [];
     if (ready) {
-        meta.push(h("span", { text: `Versi ${s.version_no}, ${formatDate(s.uploaded_at)}` }));
-        if (s.archived) meta.push(h("span", { class: "source-warn", text: "Diarsipkan oleh pengunggah" }));
+        meta.push(h("span", { text: `Version ${s.version_no}, ${formatDate(s.uploaded_at)}` }));
+        if (s.archived) meta.push(h("span", { class: "source-warn", text: "Archived by the uploader" }));
         if (s.warnings.length) meta.push(h("span", { class: "source-warn", text: s.warnings[0] }));
     } else if (processing) {
         meta.push(h("span", { class: "source-stage" }, h("span", { class: "spinner", "aria-hidden": "true" }), stageText(s)));
@@ -500,15 +500,15 @@ function renderSourceItem(s) {
             h("span", { class: "source-name", text: s.display_name, title: s.display_name }),
             h("span", { class: "source-meta", id: `${id}-meta` }, ...meta)),
         h("button", {
-            type: "button", class: "source-remove", title: "Lepas dari notebook",
-            "aria-label": `Lepas ${s.display_name} dari notebook`, onclick: () => removeSource(s),
+            type: "button", class: "source-remove", title: "Remove from notebook",
+            "aria-label": `Remove ${s.display_name} from the notebook`, onclick: () => removeSource(s),
         }, iconX()),
     );
 
     if (s.update_available) {
         item.append(h("div", { class: "source-update" },
-            h("span", { text: `Versi ${s.latest_version_no} tersedia` }),
-            h("button", { type: "button", class: "btn-inline", text: "Pakai versi terbaru", onclick: () => updateSource(s) })));
+            h("span", { text: `Version ${s.latest_version_no} available` }),
+            h("button", { type: "button", class: "btn-inline", text: "Use the latest version", onclick: () => updateSource(s) })));
     }
     return item;
 }
@@ -532,11 +532,11 @@ const updateSource = (s) => patchSource(s, { use_latest_version: true });
 async function removeSource(s) {
     const processing = !FINAL_STAGES.has(s.stage);
     const ok = await openModal({
-        title: `Lepas "${s.display_name}"?`,
+        title: `Remove "${s.display_name}"?`,
         subtitle: processing
-            ? "Dokumen ini masih diproses. Jika tidak dipakai notebook lain, prosesnya dihentikan. Dokumen tetap ada di Library."
-            : "Sumber hanya dilepas dari notebook ini. Dokumen tetap ada di Library.",
-        icon: "danger", confirmLabel: "Lepas sumber", danger: true,
+            ? "This document is still being processed. If no other notebook uses it, processing stops. The document stays in the Library."
+            : "The source is only removed from this notebook. The document stays in the Library.",
+        icon: "danger", confirmLabel: "Remove source", danger: true,
     });
     if (!ok) return;
     try {
@@ -547,10 +547,10 @@ async function removeSource(s) {
 
 function renderScope() {
     const active = activeSources().length;
-    el.headerScope.textContent = active ? `Menjawab dari ${active} sumber` : "";
+    el.headerScope.textContent = active ? `Answering from ${active} source(s)` : "";
 }
 
-// Polling status sumber selama masih ada yang diproses
+// Poll source status while any are still being processed
 function schedulePoll() {
     clearTimeout(state.pollTimer);
     if (pendingSources().length && state.notebook) state.pollTimer = setTimeout(pollSources, POLL_MS);
@@ -566,16 +566,16 @@ async function pollSources() {
         state.notebook.sources = detail.sources;
         for (const s of detail.sources) {
             const prev = before.get(s.version_id);
-            if (prev && !FINAL_STAGES.has(prev) && s.stage === "ready") toast(`"${s.display_name}" siap dipakai.`, "success");
-            if (prev && !FINAL_STAGES.has(prev) && s.stage === "failed") toast(`"${s.display_name}" gagal diproses.`, "error");
+            if (prev && !FINAL_STAGES.has(prev) && s.stage === "ready") toast(`"${s.display_name}" is ready.`, "success");
+            if (prev && !FINAL_STAGES.has(prev) && s.stage === "failed") toast(`"${s.display_name}" failed to process.`, "error");
         }
         renderSources();
-    } catch { /* coba lagi pada putaran berikutnya */ }
+    } catch { /* try again on the next round */ }
     schedulePoll();
 }
 
 // ---------------------------------------------------------------------------
-// Modal "Tambah sumber"
+// "Add sources" modal
 // ---------------------------------------------------------------------------
 
 const LIMITS = { fileMb: 10, files: 5, batchMb: 30, ext: [".pdf", ".md"] };
@@ -597,7 +597,7 @@ function remainingSlots() {
 function openSourceModal() {
     if (!state.notebook) return;
     if (remainingSlots() <= 0) {
-        modalAlert("Notebook sudah penuh", `Satu notebook berisi maksimal ${state.notebook.max_sources} sumber. Lepas sumber yang tidak dipakai, lalu coba lagi.`);
+        modalAlert("Notebook is full", `A notebook holds at most ${state.notebook.max_sources} sources. Remove sources you do not need, then try again.`);
         return;
     }
     sm.returnFocus = document.activeElement;
@@ -614,7 +614,7 @@ function closeSourceModal() {
     sm.root.hidden = true;
     document.removeEventListener("keydown", sourceModalKeys);
     if (sm.returnFocus) sm.returnFocus.focus();
-    // File mirip yang belum diputuskan → dokumen terpisah (default, A §6.3).
+    // Similar files left undecided → separate documents (the default, A §6.3).
     const undecided = (sm.results || []).filter((r) => r.status === "similar");
     sm.results = null;
     if (undecided.length) resolveUndecided(undecided);
@@ -634,7 +634,7 @@ async function resolveUndecided(results) {
     if (added) {
         renderSources();
         schedulePoll();
-        toast(`${added} file yang mirip disimpan sebagai dokumen terpisah.`, "success");
+        toast(`${added} similar file(s) saved as separate documents.`, "success");
     }
 }
 
@@ -645,7 +645,7 @@ function resolvePendingRequest(pendingId, action) {
 }
 
 function sourceModalKeys(e) {
-    if (panel.root) return;  // panel kelola dokumen sedang terbuka di atasnya
+    if (panel.root) return;  // the document manager panel is open on top of it
     if (e.key === "Escape") { e.preventDefault(); closeSourceModal(); }
     else if (e.key === "Tab") trapFocus(e, sm.root);
 }
@@ -686,9 +686,9 @@ for (const tab of [sm.tabUpload, sm.tabLibrary]) {
 
 function validateFile(file) {
     const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    if (!LIMITS.ext.includes(ext)) return "Format tidak didukung, gunakan PDF atau Markdown";
-    if (file.size > LIMITS.fileMb * 1024 * 1024) return `Melebihi ${LIMITS.fileMb} MB`;
-    if (file.size === 0) return "File kosong";
+    if (!LIMITS.ext.includes(ext)) return "Unsupported format, use PDF or Markdown";
+    if (file.size > LIMITS.fileMb * 1024 * 1024) return `Larger than ${LIMITS.fileMb} MB`;
+    if (file.size === 0) return "Empty file";
     return null;
 }
 
@@ -717,17 +717,17 @@ function uploadProblems() {
     const limit = Math.min(LIMITS.files, remainingSlots());
     if (valid.length > limit) {
         return limit < LIMITS.files
-            ? `Notebook hanya punya ${limit} slot tersisa. Kurangi file.`
-            : `Maksimal ${LIMITS.files} file sekaligus.`;
+            ? `The notebook only has ${limit} slot(s) left. Remove some files.`
+            : `At most ${LIMITS.files} files at a time.`;
     }
     const total = valid.reduce((n, f) => n + f.file.size, 0);
-    if (total > LIMITS.batchMb * 1024 * 1024) return `Total upload melebihi ${LIMITS.batchMb} MB.`;
+    if (total > LIMITS.batchMb * 1024 * 1024) return `The upload is larger than ${LIMITS.batchMb} MB in total.`;
     return null;
 }
 
 const RESULT_TEXT = {
-    queued: "Diproses di background",
-    existing: "Sudah ada di Library, langsung dipakai",
+    queued: "Processing in the background",
+    existing: "Already in the Library, used right away",
 };
 
 function resultRow(r) {
@@ -737,26 +737,26 @@ function resultRow(r) {
             h("span", { class: "pick-name", text: r.filename }),
             h("span", { class: "pick-status", text: r.status === "rejected" ? r.error_message : (r.doneText || RESULT_TEXT[r.status]) }));
     }
-    // Mirip dokumen Library: user memilih versi baru atau dokumen terpisah.
+    // Similar to a Library document: the user picks new version or separate document.
     const percent = Math.round((r.similarity || 0) * 100);
-    const label = `Pilihan untuk ${r.filename}`;
+    const label = `Choice for ${r.filename}`;
     return h("li", { class: "pick-item is-similar" },
         fileIcon(),
         h("span", { class: "pick-name", text: r.filename }),
-        h("span", { class: "pick-status", text: r.busy ? "Menyimpan…" : `${percent}% mirip` }),
+        h("span", { class: "pick-status", text: r.busy ? "Saving…" : `${percent}% similar` }),
         h("div", { class: "similar-choice", role: "group", "aria-label": label },
             h("p", { class: "similar-text" },
-                r.candidateGone ? r.error_message : ["Isinya mirip dengan ", h("strong", { text: r.similar_document_name }),
-                    " di Library. Simpan sebagai versi barunya?"]),
+                r.candidateGone ? r.error_message : ["Its content is similar to ", h("strong", { text: r.similar_document_name }),
+                    " in the Library. Save it as a new version of it?"]),
             h("div", { class: "similar-actions" },
                 r.candidateGone ? null : h("button", {
                     type: "button", class: "similar-btn similar-btn--accent", disabled: r.busy,
                     onclick: () => resolveSimilar(r, "new_version"),
-                }, "Jadikan versi baru"),
+                }, "Make it a new version"),
                 h("button", {
                     type: "button", class: "similar-btn", disabled: r.busy,
                     onclick: () => resolveSimilar(r, "separate"),
-                }, "Dokumen terpisah"))));
+                }, "Separate document"))));
 }
 
 async function resolveSimilar(r, action) {
@@ -768,7 +768,7 @@ async function resolveSimilar(r, action) {
         const name = r.similar_document_name;
         Object.assign(r, res, {
             busy: false,
-            doneText: action === "new_version" ? `Disimpan sebagai versi baru ${name}` : "Disimpan sebagai dokumen baru",
+            doneText: action === "new_version" ? `Saved as a new version of ${name}` : "Saved as a new document",
         });
         state.notebook.sources = out.sources;
         renderSources();
@@ -794,12 +794,12 @@ function updateUploadNote() {
     const waiting = sm.results.filter((r) => r.status === "similar").length;
     delete sm.note.dataset.kind;
     if (waiting) {
-        sm.note.textContent = `${waiting} file mirip dokumen yang sudah ada. Pilih cara menyimpannya; `
-            + "jika jendela ini ditutup, file disimpan sebagai dokumen terpisah.";
+        sm.note.textContent = `${waiting} file(s) resemble existing documents. Choose how to save them; `
+            + "if you close this window, they are saved as separate documents.";
     } else {
         sm.note.textContent = added
-            ? `${added} sumber ditambahkan. Anda bisa menutup jendela ini; proses berjalan di background.`
-            : "Tidak ada file yang ditambahkan.";
+            ? `${added} source(s) added. You can close this window; processing continues in the background.`
+            : "No files were added.";
     }
 }
 
@@ -814,21 +814,21 @@ function renderUploadList() {
             h("span", { class: "pick-name", text: f.file.name }),
             h("span", { class: "pick-status", text: f.error || formatSize(f.file.size) }),
             h("button", {
-                type: "button", class: "pick-remove", "aria-label": `Hapus ${f.file.name} dari daftar`,
+                type: "button", class: "pick-remove", "aria-label": `Remove ${f.file.name} from the list`,
                 onclick: () => { sm.files.splice(i, 1); renderSourceModal(); },
             }, iconX())),
     ));
 }
 
 function reuseLine(stats) {
-    // Hanya ditampilkan bila ada hasil versi sebelumnya yang dipakai ulang (Tahap 3).
+    // Only shown when results from the previous version were reused (stage 3).
     if (!stats) return null;
     const parts = [];
-    if (stats.chunks_reused) parts.push(`${stats.chunks_reused} dari ${stats.chunks} potongan teks`);
-    if (stats.units_cached) parts.push(`${stats.units_cached} dari ${stats.units} bagian analisis AI`);
-    if (stats.images_cached) parts.push(`${stats.images_cached} dari ${stats.images} gambar`);
+    if (stats.chunks_reused) parts.push(`${stats.chunks_reused} of ${stats.chunks} text chunks`);
+    if (stats.units_cached) parts.push(`${stats.units_cached} of ${stats.units} AI analysis units`);
+    if (stats.images_cached) parts.push(`${stats.images_cached} of ${stats.images} images`);
     if (!parts.length) return null;
-    return h("span", { class: "version-reuse", text: `Dipakai ulang dari versi sebelumnya: ${parts.join(", ")}` });
+    return h("span", { class: "version-reuse", text: `Reused from the previous version: ${parts.join(", ")}` });
 }
 
 async function submitUpload() {
@@ -863,7 +863,7 @@ sm.search.addEventListener("input", () => {
 
 async function loadLibrary() {
     const q = sm.search.value.trim();
-    sm.libraryList.replaceChildren(h("li", { class: "pick-empty", text: "Memuat Library…" }));
+    sm.libraryList.replaceChildren(h("li", { class: "pick-empty", text: "Loading the Library…" }));
     try {
         sm.library = await api(`/library/documents?limit=100${q ? `&q=${encodeURIComponent(q)}` : ""}`);
     } catch (err) {
@@ -877,15 +877,15 @@ async function loadLibrary() {
 function renderLibraryList() {
     if (!sm.library.length) {
         sm.libraryList.replaceChildren(h("li", { class: "pick-empty",
-            text: sm.search.value.trim() ? "Tidak ada dokumen yang cocok." : "Library masih kosong. Upload dokumen pertama Anda di tab Upload baru." }));
+            text: sm.search.value.trim() ? "No matching documents." : "The Library is empty. Upload your first document in the New upload tab." }));
         return;
     }
     const inNotebook = new Set(sources().map((s) => s.document_id));
     sm.libraryList.replaceChildren(...sm.library.map((d) => {
         const already = inNotebook.has(d.id);
         const v = d.latest_version;
-        const status = !v ? "" : v.stage === "ready" ? `Versi ${v.version_no}, ${formatDate(v.uploaded_at)}`
-            : FINAL_STAGES.has(v.stage) ? STAGE_LABEL[v.stage] : "Sedang diproses";
+        const status = !v ? "" : v.stage === "ready" ? `Version ${v.version_no}, ${formatDate(v.uploaded_at)}`
+            : FINAL_STAGES.has(v.stage) ? STAGE_LABEL[v.stage] : "Processing";
         const id = `lib-${d.id}`;
         return h("li", { class: `pick-item library-item${already ? " is-disabled" : ""}` },
             h("input", {
@@ -896,10 +896,10 @@ function renderLibraryList() {
             h("label", { for: id, class: "library-body" },
                 h("span", { class: "pick-name", text: d.display_name }),
                 h("span", { class: "pick-status",
-                    text: already ? "Sudah ada di notebook ini" : [status, d.owner_name && `diunggah ${d.owner_name}`].filter(Boolean).join(", ") })),
+                    text: already ? "Already in this notebook" : [status, d.owner_name && `uploaded by ${d.owner_name}`].filter(Boolean).join(", ") })),
             h("button", {
-                type: "button", class: "btn-manage", text: "Kelola",
-                "aria-label": `Kelola ${d.display_name}`, onclick: () => openDocumentManager(d.id),
+                type: "button", class: "btn-manage", text: "Manage",
+                "aria-label": `Manage ${d.display_name}`, onclick: () => openDocumentManager(d.id),
             }));
     }));
 }
@@ -914,7 +914,7 @@ async function submitLibrary() {
         renderSources();
         schedulePoll();
         sm.busy = false;
-        toast(`${sm.picked.size} sumber ditambahkan.`, "success");
+        toast(`${sm.picked.size} source(s) added.`, "success");
         closeSourceModal();
     } catch (err) {
         sm.busy = false;
@@ -924,13 +924,13 @@ async function submitLibrary() {
     }
 }
 
-// ── Footer & tombol ──
+// ── Footer & buttons ──
 
 function renderSourceModal(keepNote = false) {
     const left = remainingSlots();
-    sm.slots.textContent = `${sources().length} dari ${state.notebook ? state.notebook.max_sources : 10} sumber terpakai`;
+    sm.slots.textContent = `${sources().length} of ${state.notebook ? state.notebook.max_sources : 10} sources used`;
     $("dropzoneLimits").textContent =
-        `PDF atau Markdown, maks. ${LIMITS.fileMb} MB per file, ${Math.min(LIMITS.files, Math.max(left, 0))} file sekaligus`;
+        `PDF or Markdown, max. ${LIMITS.fileMb} MB per file, ${Math.min(LIMITS.files, Math.max(left, 0))} files at a time`;
 
     if (!keepNote) { sm.note.textContent = ""; delete sm.note.dataset.kind; }
     sm.cancel.disabled = sm.busy;
@@ -939,7 +939,7 @@ function renderSourceModal(keepNote = false) {
     if (sm.tab === "upload") {
         renderUploadList();
         if (sm.results) {
-            sm.submit.textContent = "Selesai";
+            sm.submit.textContent = "Done";
             sm.submit.disabled = false;
             sm.submit.onclick = closeSourceModal;
             sm.cancel.hidden = true;
@@ -949,7 +949,7 @@ function renderSourceModal(keepNote = false) {
         const valid = validUploads().length;
         const problem = uploadProblems();
         if (problem && !keepNote) { sm.note.textContent = problem; sm.note.dataset.kind = "error"; }
-        sm.submit.textContent = sm.busy ? "Mengunggah…" : valid ? `Tambah ${valid} file` : "Tambah";
+        sm.submit.textContent = sm.busy ? "Uploading…" : valid ? `Add ${valid} file(s)` : "Add";
         sm.submit.disabled = sm.busy || !valid || !!problem;
         sm.submit.onclick = submitUpload;
     } else {
@@ -957,20 +957,20 @@ function renderSourceModal(keepNote = false) {
         sm.cancel.hidden = false;
         const n = sm.picked.size;
         const over = n > left;
-        if (over && !keepNote) { sm.note.textContent = `Notebook hanya punya ${left} slot tersisa.`; sm.note.dataset.kind = "error"; }
-        sm.submit.textContent = sm.busy ? "Menambahkan…" : n ? `Tambah ${n} dokumen` : "Tambah";
+        if (over && !keepNote) { sm.note.textContent = `The notebook only has ${left} slot(s) left.`; sm.note.dataset.kind = "error"; }
+        sm.submit.textContent = sm.busy ? "Adding…" : n ? `Add ${n} document(s)` : "Add";
         sm.submit.disabled = sm.busy || !n || over;
         sm.submit.onclick = submitLibrary;
     }
 }
 
 // ---------------------------------------------------------------------------
-// Percakapan
+// Conversations
 // ---------------------------------------------------------------------------
 
 function renderConversations() {
     if (!state.conversations.length) {
-        el.historyList.replaceChildren(h("div", { class: "history-empty", text: "Belum ada percakapan di notebook ini." }));
+        el.historyList.replaceChildren(h("div", { class: "history-empty", text: "No conversations in this notebook yet." }));
         return;
     }
     el.historyList.replaceChildren(...state.conversations.map((c) =>
@@ -981,7 +981,7 @@ function renderConversations() {
             onclick: () => { closeSidebarOnMobile(); go(state.notebook.id, c.id); },
         },
             h("span", { class: "history-item-content" },
-                h("span", { class: "history-item-title", text: c.title || "Tanpa judul" }),
+                h("span", { class: "history-item-title", text: c.title || "Untitled" }),
                 h("span", { class: "history-item-subtitle", text: formatRelative(c.updated_at) }))),
     ));
 }
@@ -991,7 +991,7 @@ async function refreshConversations() {
     try {
         state.conversations = await api(`/notebooks/${state.notebook.id}/conversations`);
         renderConversations();
-    } catch { /* daftar lama tetap ditampilkan */ }
+    } catch { /* the old list stays visible */ }
 }
 
 async function openConversation(conversationId) {
@@ -1004,15 +1004,15 @@ async function openConversation(conversationId) {
         return;
     }
     showChat();
-    el.headerTitle.textContent = "Memuat…";
+    el.headerTitle.textContent = "Loading…";
     try {
         const detail = await api(`/notebooks/${state.notebook.id}/conversations/${conversationId}`);
         if (state.conversationId !== conversationId) return;
-        el.headerTitle.textContent = detail.title || "Tanpa judul";
+        el.headerTitle.textContent = detail.title || "Untitled";
         const last = detail.messages[detail.messages.length - 1];
         detail.messages.forEach((m) =>
             m.role === "user"
-                // Hanya pesan terakhir yang bisa dikirim ulang (server menolak yang lain).
+                // Only the last message can be resent (the server rejects the others).
                 ? appendUserMessage(m.content, { ...m, conversationId, canRetry: m === last })
                 : appendBotMessage(m.content, m.citations || [], [], m));
         scrollToBottom();
@@ -1025,7 +1025,7 @@ async function openConversation(conversationId) {
 function showWelcome() {
     el.welcome.hidden = false;
     el.chatBox.hidden = true;
-    el.headerTitle.textContent = "Chat baru";
+    el.headerTitle.textContent = "New chat";
     el.renameThreadBtn.hidden = true;
     el.deleteThreadBtn.hidden = true;
     renderWelcome();
@@ -1046,18 +1046,18 @@ function renderWelcome() {
     let title, subtitle, cta = false, suggestions = false;
 
     if (!all.length) {
-        title = "Mulai dengan menambahkan sumber";
-        subtitle = "Upload pricelist, brosur, atau laporan kompetitor. Argos menjawab hanya dari dokumen yang Anda pilih, lengkap dengan sumbernya.";
+        title = "Start by adding sources";
+        subtitle = "Upload price lists, brochures or competitor reports. Argos answers only from the documents you choose, with citations.";
         cta = true;
     } else if (!active.length && pending.length) {
-        title = "Sumber sedang diproses";
-        subtitle = `${pending.length} dokumen sedang dibaca. Anda bisa mulai bertanya begitu statusnya siap.`;
+        title = "Sources are being processed";
+        subtitle = `${pending.length} document(s) being read. You can start asking once they are ready.`;
     } else if (!active.length) {
-        title = "Belum ada sumber yang dicentang";
-        subtitle = "Centang minimal satu sumber di panel kiri untuk mulai bertanya.";
+        title = "No sources checked";
+        subtitle = "Check at least one source in the left panel to start asking.";
     } else {
         title = state.notebook.title;
-        subtitle = `Tanyakan harga, fitur, atau kelemahan produk dari ${active.length} sumber yang dicentang.`;
+        subtitle = `Ask about prices, features or product weaknesses in the ${active.length} checked source(s).`;
         suggestions = true;
     }
     el.welcomeTitle.textContent = title;
@@ -1071,8 +1071,8 @@ $("newChatBtn").addEventListener("click", () => { closeSidebarOnMobile(); if (st
 el.renameThreadBtn.addEventListener("click", async () => {
     const current = state.conversations.find((c) => c.id === state.conversationId);
     const title = await openModal({
-        title: "Ganti nama percakapan", subtitle: "Beri nama yang singkat dan deskriptif.",
-        icon: "edit", kind: "prompt", defaultValue: current ? current.title : "", placeholder: "Nama percakapan", confirmLabel: "Simpan",
+        title: "Rename conversation", subtitle: "Give it a short, descriptive name.",
+        icon: "edit", kind: "prompt", defaultValue: current ? current.title : "", placeholder: "Conversation name", confirmLabel: "Save",
     });
     if (!title || !title.trim()) return;
     try {
@@ -1081,35 +1081,35 @@ el.renameThreadBtn.addEventListener("click", async () => {
         });
         el.headerTitle.textContent = conv.title;
         refreshConversations();
-    } catch (err) { modalAlert("Nama tidak disimpan", errorText(err)); }
+    } catch (err) { modalAlert("Name not saved", errorText(err)); }
 });
 
 el.deleteThreadBtn.addEventListener("click", async () => {
     const ok = await openModal({
-        title: "Hapus percakapan?",
-        subtitle: "Semua pesan dalam percakapan ini akan dihapus permanen.",
-        icon: "danger", confirmLabel: "Hapus", danger: true,
+        title: "Delete conversation?",
+        subtitle: "Every message in this conversation will be permanently deleted.",
+        icon: "danger", confirmLabel: "Delete", danger: true,
     });
     if (!ok) return;
     try {
         await api(`/notebooks/${state.notebook.id}/conversations/${state.conversationId}`, { method: "DELETE" });
         await refreshConversations();
         go(state.notebook.id);
-    } catch (err) { modalAlert("Percakapan tidak dihapus", errorText(err)); }
+    } catch (err) { modalAlert("Conversation not deleted", errorText(err)); }
 });
 
 document.querySelectorAll(".welcome-suggestion").forEach((btn) =>
     btn.addEventListener("click", () => { el.chatInput.value = btn.dataset.prompt; sendMessage(); }));
 
 // ---------------------------------------------------------------------------
-// Pesan & sitasi
+// Messages & citations
 // ---------------------------------------------------------------------------
 
 function scrollToBottom() { el.chatBox.scrollTop = el.chatBox.scrollHeight; }
 
 /**
- * Pesan user. `msg` (opsional, dari riwayat): {id, status, error_code, conversationId, canRetry}.
- * Mengembalikan elemen wrapper agar bisa ditandai gagal / dipulihkan.
+ * A user message. `msg` (optional, from history): {id, status, error_code, conversationId, canRetry}.
+ * Returns the wrapper element so it can be marked failed / restored.
  */
 function appendUserMessage(text, msg = {}) {
     const group = h("div", { class: "bubble-group" }, h("div", { class: "message user", text }));
@@ -1129,22 +1129,22 @@ function appendUserMessage(text, msg = {}) {
     return wrapper;
 }
 
-/** Tombol kecil yang menyalin request ID, untuk dilaporkan ke admin. */
+/** A small button that copies the request ID, to report to the admin. */
 function requestIdButton(requestId) {
     return h("button", {
         type: "button",
         class: "btn-copy-id",
-        title: "Salin kode ini bila melapor ke admin",
-        "aria-label": `Salin kode error ${requestId}`,
+        title: "Copy this code when reporting to the admin",
+        "aria-label": `Copy error code ${requestId}`,
         onclick: async () => {
             try {
                 await navigator.clipboard.writeText(requestId);
-                toast("Kode disalin.");
+                toast("Code copied.");
             } catch {
-                toast(`Kode: ${requestId}`);
+                toast(`Code: ${requestId}`);
             }
         },
-    }, `Kode: ${requestId}`);
+    }, `Code: ${requestId}`);
 }
 
 function appendNotice(text, requestId = null) {
@@ -1153,20 +1153,20 @@ function appendNotice(text, requestId = null) {
     scrollToBottom();
 }
 
-// Teks untuk pesan gagal yang dimuat dari riwayat (server hanya menyimpan kodenya).
+// Text for failed messages loaded from history (the server only stores the code).
 const FAILURE_TEXT = {
-    UPSTREAM_UNAVAILABLE: "layanan AI atau sumber data sedang tidak tersedia.",
-    CHAT_TIMEOUT: "jawaban terlalu lama dibuat.",
-    CANCELLED: "koneksi terputus sebelum jawaban selesai.",
-    INTERNAL_ERROR: "terjadi kesalahan pada sistem.",
+    UPSTREAM_UNAVAILABLE: "the AI service or a data source is unavailable.",
+    CHAT_TIMEOUT: "the answer took too long.",
+    CANCELLED: "the connection dropped before the answer finished.",
+    INTERNAL_ERROR: "something went wrong on our side.",
 };
 
 function failureText(code, message) {
     if (message) return message;
-    return `Gagal: ${FAILURE_TEXT[code] || "pesan ini belum terjawab."}`;
+    return `Failed: ${FAILURE_TEXT[code] || "this message has no answer yet."}`;
 }
 
-/** Tandai pesan user sebagai gagal (DESIGN_GROUP_C.md §4): redup + alasan + [Kirim ulang]. */
+/** Mark a user message as failed (DESIGN_GROUP_C.md §4): dimmed + reason + [Resend]. */
 function markFailed(wrapper, { code, message, requestId, messageId, conversationId, canRetry = true }) {
     clearFailed(wrapper);
     wrapper.classList.add("is-failed");
@@ -1178,7 +1178,7 @@ function markFailed(wrapper, { code, message, requestId, messageId, conversation
             type: "button",
             class: "btn-retry",
             onclick: () => retryMessage(wrapper, conversationId, messageId),
-        }, "Kirim ulang"));
+        }, "Resend"));
     }
     if (requestId) actions.append(requestIdButton(requestId));
     if (actions.childElementCount) row.append(actions);
@@ -1190,13 +1190,13 @@ function clearFailed(wrapper) {
     wrapper.querySelector(".msg-failure")?.remove();
 }
 
-/** Pesan baru membuat pesan gagal sebelumnya tidak lagi "terakhir" → tidak bisa dikirim ulang. */
+/** A new message makes the earlier failed one no longer "last" → it cannot be resent. */
 function clearRetryButtons() {
     el.chatBox.querySelectorAll(".btn-retry").forEach((b) => b.remove());
 }
 
 /**
- * Jawaban bot. `info` (opsional) = metadata respons chat atau pesan dari riwayat:
+ * A bot answer. `info` (optional) = chat response metadata or a message from history:
  * {degraded, issues, trace} (DESIGN_GROUP_C.md §3, §7.4).
  */
 function appendBotMessage(text, citations, pending = [], info = {}) {
@@ -1211,19 +1211,19 @@ function appendBotMessage(text, citations, pending = [], info = {}) {
     group.append(bubble);
 
     if (citations.length) {
-        group.append(h("ol", { class: "cite-list", "aria-label": "Sumber jawaban" },
+        group.append(h("ol", { class: "cite-list", "aria-label": "Answer sources" },
             ...citations.map((c) => h("li", { class: "cite-list-item", dataset: { label: c.label } },
                 h("span", { class: "cite-num", text: c.label }),
                 h("span", { class: "cite-list-text", text: citationLine(c) })))));
     }
     if (pending.length) {
         group.append(h("p", { class: "answer-note",
-            text: `Belum dipakai karena masih diproses: ${pending.join(", ")}.` }));
+            text: `Not used yet because they are still being processed: ${pending.join(", ")}.` }));
     }
 
     if (info.trace) group.append(tracePanel(info.trace));
 
-    const tts = h("button", { type: "button", class: "btn-action-icon btn-tts", title: "Dengarkan", "aria-label": "Dengarkan jawaban" });
+    const tts = h("button", { type: "button", class: "btn-action-icon btn-tts", title: "Listen", "aria-label": "Listen to the answer" });
     tts.innerHTML = iconSpeaker();
     tts.addEventListener("click", () => speakMessage(bubble.innerText, tts));
     group.append(h("div", { class: "bubble-actions" }, tts));
@@ -1235,48 +1235,48 @@ function appendBotMessage(text, citations, pending = [], info = {}) {
     scrollToBottom();
 }
 
-// ── Jawaban degraded & panel "Lihat proses AI" ─────────────────────────────
+// ── Degraded answers & the "Show AI process" panel ────────────────────────
 
 const COMPONENT_LABEL = {
-    router: "pemilihan sumber",
-    sql: "data terstruktur (SQL)",
-    vector: "pencarian dokumen",
+    router: "source selection",
+    sql: "structured data (SQL)",
+    vector: "document search",
 };
 
 function degradedBanner(issues) {
     const failed = [...new Set(issues.map((i) => i.component))].filter((c) => c !== "router");
     const parts = [];
     if (failed.length) {
-        parts.push(`Sebagian sumber gagal dibaca: ${failed.map((c) => COMPONENT_LABEL[c] || c).join(", ")}. `
-            + "Jawaban ini mungkin belum lengkap. Coba tanyakan lagi sebentar lagi.");
+        parts.push(`Some sources failed to load: ${failed.map((c) => COMPONENT_LABEL[c] || c).join(", ")}. `
+            + "This answer may be incomplete. Try asking again in a moment.");
     }
     if (issues.some((i) => i.component === "router")) {
-        parts.push("Pemilihan sumber gagal, jadi semua sumber dibaca.");
+        parts.push("Source selection failed, so every source was read.");
     }
     return h("div", { class: "degraded-banner", role: "note" }, iconAlert(), h("span", { text: parts.join(" ") }));
 }
 
 const TRACE_STEPS = [
-    ["router", "Memilih sumber"],
-    ["sql", "Data terstruktur (SQL)"],
-    ["vector", "Pencarian dokumen"],
-    ["synthesizer", "Menyusun jawaban"],
+    ["router", "Choosing sources"],
+    ["sql", "Structured data (SQL)"],
+    ["vector", "Document search"],
+    ["synthesizer", "Writing the answer"],
 ];
-const TRACE_STATUS = { ok: "berhasil", empty: "tidak ada data", error: "gagal" };
+const TRACE_STATUS = { ok: "succeeded", empty: "no data", error: "failed" };
 const ROUTE_LABEL = {
-    sql: "data terstruktur",
-    vector: "dokumen",
-    both: "data terstruktur + dokumen",
-    none: "tanpa sumber",
+    sql: "structured data",
+    vector: "documents",
+    both: "structured data + documents",
+    none: "no sources",
 };
 
 function formatMs(ms) {
-    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} dtk`;
+    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
-/** Panel lipat; isinya baru dibangun saat dibuka pertama kali. */
+/** Collapsible panel; its content is only built when first opened. */
 function tracePanel(trace) {
-    const panelEl = h("details", { class: "ai-trace" }, h("summary", { text: "Lihat proses AI" }));
+    const panelEl = h("details", { class: "ai-trace" }, h("summary", { text: "Show AI process" }));
     let built = false;
     panelEl.addEventListener("toggle", () => {
         if (panelEl.open && !built) {
@@ -1291,7 +1291,7 @@ function traceBody(t) {
     const body = h("div", { class: "ai-trace-body" });
 
     body.append(h("p", { class: "trace-route" },
-        h("span", { class: "trace-label", text: "Rute" }),
+        h("span", { class: "trace-label", text: "Route" }),
         h("span", { text: ROUTE_LABEL[t.route] || t.route || "-" }),
         t.router_reasoning ? h("span", { class: "trace-meta", text: ` — ${t.router_reasoning}` }) : null));
 
@@ -1301,9 +1301,9 @@ function traceBody(t) {
         if (!step) continue;
         const meta = [];
         if (key === "sql" && step.status !== "error") {
-            meta.push(`${step.row_count ?? 0} baris${step.truncated ? " (terpotong)" : ""}`);
+            meta.push(`${step.row_count ?? 0} row(s)${step.truncated ? " (truncated)" : ""}`);
         }
-        if (key === "vector" && step.hits !== undefined) meta.push(`${step.hits} potongan teks`);
+        if (key === "vector" && step.hits !== undefined) meta.push(`${step.hits} text chunk(s)`);
         if (step.duration_ms !== undefined) meta.push(formatMs(step.duration_ms));
         steps.append(h("li", { class: `trace-step is-${step.status}` },
             h("span", { class: "trace-dot", "aria-hidden": "true" }),
@@ -1316,36 +1316,36 @@ function traceBody(t) {
 
     if (t.sql && t.sql.query) {
         body.append(h("div", { class: "trace-block" },
-            h("div", { class: "trace-label", text: "SQL yang dijalankan" }),
+            h("div", { class: "trace-label", text: "SQL that ran" }),
             h("pre", { class: "trace-sql" }, h("code", { text: t.sql.query }))));
     }
 
     if (t.chunks && t.chunks.length) {
         body.append(h("div", { class: "trace-block" },
-            h("div", { class: "trace-label", text: "Potongan dokumen yang dibaca" }),
+            h("div", { class: "trace-label", text: "Document chunks that were read" }),
             h("ul", { class: "trace-chunks" }, ...t.chunks.map((c) => h("li", {},
                 h("span", { class: "cite-num", text: (c.label || "–").replace(/[[\]]/g, "") }),
-                h("span", { text: c.page ? `hal. ${c.page}` : "halaman tidak diketahui" }),
+                h("span", { text: c.page ? `p. ${c.page}` : "page unknown" }),
                 typeof c.distance === "number"
-                    ? h("span", { class: "trace-meta", text: `jarak ${c.distance.toFixed(3).replace(".", ",")}` })
+                    ? h("span", { class: "trace-meta", text: `distance ${c.distance.toFixed(3)}` })
                     : null)))));
     }
 
     if (t.llm) {
-        const n = (x) => (x || 0).toLocaleString("id-ID");
+        const n = (x) => (x || 0).toLocaleString("en-US");
         body.append(h("p", { class: "trace-meta trace-tokens",
-            text: `${t.llm.calls} panggilan AI · ${n(t.llm.input_tokens)} token masuk · ${n(t.llm.output_tokens)} token keluar` }));
+            text: `${t.llm.calls} AI call(s) · ${n(t.llm.input_tokens)} input tokens · ${n(t.llm.output_tokens)} output tokens` }));
     }
     return body;
 }
 
 function citationLine(c) {
-    const parts = [c.display_name, `versi ${c.version_no}`, `diunggah ${formatDate(c.uploaded_at)}`];
-    if (c.page_number) parts.push(`hal. ${c.page_number}`);
+    const parts = [c.display_name, `version ${c.version_no}`, `uploaded ${formatDate(c.uploaded_at)}`];
+    if (c.page_number) parts.push(`p. ${c.page_number}`);
     return parts.join(", ");
 }
 
-/** Ganti teks "[n]" di jawaban dengan chip yang bisa di-hover/fokus. */
+/** Replace "[n]" in the answer with chips that can be hovered/focused. */
 function linkCitations(root, byLabel) {
     if (!byLabel.size) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -1363,7 +1363,7 @@ function linkCitations(root, byLabel) {
             frag.append(node.nodeValue.slice(last, offset));
             frag.append(h("button", {
                 type: "button", class: "cite", dataset: { label: num },
-                "aria-label": `Sumber ${num}: ${citationLine(c)}`,
+                "aria-label": `Source ${num}: ${citationLine(c)}`,
                 onmouseenter: (e) => showCite(e.currentTarget, c),
                 onfocus: (e) => showCite(e.currentTarget, c),
                 onmouseleave: hideCite, onblur: hideCite,
@@ -1383,9 +1383,9 @@ function showCite(anchor, c) {
         h("span", { class: "cite-pop-num", text: c.label }),
         h("div", { class: "cite-pop-body" },
             h("strong", { class: "cite-pop-title", text: c.display_name }),
-            h("span", { class: "cite-pop-meta", text: `Versi ${c.version_no}, diunggah ${formatDate(c.uploaded_at)}` }),
+            h("span", { class: "cite-pop-meta", text: `Version ${c.version_no}, uploaded ${formatDate(c.uploaded_at)}` }),
             (c.page_number || c.section_heading) && h("span", { class: "cite-pop-where",
-                text: [c.page_number && `Halaman ${c.page_number}`, c.section_heading].filter(Boolean).join(", ") })),
+                text: [c.page_number && `Page ${c.page_number}`, c.section_heading].filter(Boolean).join(", ") })),
     );
     pop.hidden = false;
     const r = anchor.getBoundingClientRect();
@@ -1397,7 +1397,7 @@ function showCite(anchor, c) {
     pop.style.left = `${left}px`;
     pop.style.top = `${top}px`;
 
-    // Sumber yang sama ikut menyala di panel kiri (dipertahankan saat panel di-render ulang).
+    // The same source lights up in the left panel too (kept when the panel re-renders).
     state.citedVersion = c.version_id;
     document.querySelectorAll(".source-item.is-cited").forEach((n) => n.classList.remove("is-cited"));
     const row = el.sourceList.querySelector(`[data-version-id="${CSS.escape(c.version_id)}"]`);
@@ -1414,7 +1414,7 @@ document.addEventListener("click", hideCite);
 el.chatBox.addEventListener("scroll", hideCite, { passive: true });
 
 // ---------------------------------------------------------------------------
-// Kirim pesan
+// Send a message
 // ---------------------------------------------------------------------------
 
 async function sendMessage() {
@@ -1424,8 +1424,8 @@ async function sendMessage() {
     if (!activeSources().length) {
         renderWelcome();
         toast(pendingSources().length
-            ? "Sumber masih diproses. Tunggu sampai statusnya siap."
-            : "Centang minimal satu sumber yang sudah siap.", "error");
+            ? "Sources are still being processed. Wait until they are ready."
+            : "Check at least one ready source.", "error");
         return;
     }
 
@@ -1447,7 +1447,7 @@ async function sendMessage() {
     } catch (err) {
         if (!state.notebook || state.notebook.id !== notebookId) return;
         const d = err.details || {};
-        // Pesan tersimpan sebagai `failed` di server → percakapan baru pun sudah punya ID.
+        // The message is stored as `failed` on the server → even a new conversation already has an ID.
         if (d.conversation_id) adoptConversation(notebookId, d.conversation_id, question);
         markFailed(userEl, {
             code: err.code,
@@ -1462,7 +1462,7 @@ async function sendMessage() {
     }
 }
 
-/** Setelah pesan pertama: pakai ID percakapan dari server, perbarui URL & judul. */
+/** After the first message: use the server's conversation ID, update the URL & title. */
 function adoptConversation(notebookId, conversationId, question) {
     if (state.conversationId === conversationId) {
         refreshConversations();
@@ -1474,7 +1474,7 @@ function adoptConversation(notebookId, conversationId, question) {
     refreshTitleSoon();
 }
 
-/** Judul otomatis dibuat server di background; ambil lagi sebentar kemudian. */
+/** The server writes the auto-title in the background; fetch it again shortly after. */
 function refreshTitleSoon() {
     refreshConversations();
     setTimeout(async () => {
@@ -1484,7 +1484,7 @@ function refreshTitleSoon() {
     }, 2000);
 }
 
-/** Kirim ulang pesan gagal: server memakai baris pesan yang sama (tidak ada pertanyaan ganda). */
+/** Resend a failed message: the server reuses the same message row (no duplicate question). */
 async function retryMessage(wrapper, conversationId, messageId) {
     if (state.sending || !state.notebook) return;
     const notebookId = state.notebook.id;
@@ -1551,7 +1551,7 @@ async function speakMessage(text, btn) {
             const data = await response.json().catch(() => null);
             resetTts(btn);
             currentTtsBtn = null;
-            toast((data && data.error && data.error.message) || "Terlalu banyak permintaan.", "error");
+            toast((data && data.error && data.error.message) || "Too many requests.", "error");
             return;
         }
         if (!response.ok) throw new Error("tts");
@@ -1562,7 +1562,7 @@ async function speakMessage(text, btn) {
     } catch {
         resetTts(btn);
         currentTtsBtn = null;
-        toast("Suara tidak bisa diputar saat ini.", "error");
+        toast("The audio cannot be played right now.", "error");
     }
 }
 
@@ -1596,16 +1596,16 @@ el.micBtn.addEventListener("click", async () => {
         mediaRecorder.start();
         isRecording = true;
         el.micBtn.classList.add("recording");
-        el.chatInput.placeholder = "Mendengarkan… klik mikrofon untuk selesai";
+        el.chatInput.placeholder = "Listening… click the microphone to finish";
     } catch {
-        modalAlert("Akses mikrofon ditolak", "Izinkan akses mikrofon di pengaturan browser untuk merekam suara.");
+        modalAlert("Microphone access denied", "Allow microphone access in your browser settings to record your voice.");
     }
 });
 
 async function transcribe(blob) {
     el.micBtn.disabled = true;
     el.micBtn.classList.add("loading");
-    el.chatInput.placeholder = "Memproses suara…";
+    el.chatInput.placeholder = "Processing audio…";
     const form = new FormData();
     form.append("audio", blob, "recording.webm");
     try {
@@ -1616,12 +1616,12 @@ async function transcribe(blob) {
     } finally {
         el.micBtn.disabled = false;
         el.micBtn.classList.remove("loading");
-        el.chatInput.placeholder = "Tanyakan sesuatu tentang sumber Anda…";
+        el.chatInput.placeholder = "Ask something about your sources…";
     }
 }
 
 // ---------------------------------------------------------------------------
-// Ikon
+// Icons
 // ---------------------------------------------------------------------------
 
 function svg(markup, size = 14) {
@@ -1662,7 +1662,7 @@ function closeSidebarOnMobile() {
 }
 
 // ---------------------------------------------------------------------------
-// Panel modal generik (kelola dokumen, kelola pengguna)
+// Generic panel modal (manage documents, manage users)
 // ---------------------------------------------------------------------------
 
 const panel = { root: null, returnFocus: null, onClose: null };
@@ -1677,7 +1677,7 @@ function openPanel({ title, subtitle = "", onClose = null }) {
     const card = h("div", { class: "modal-card source-modal panel-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": titleId },
         h("header", { class: "source-modal-header" },
             h("div", {}, h("h2", { class: "source-modal-title", id: titleId, text: title }), sub),
-            h("button", { type: "button", class: "btn-modal-close", "aria-label": "Tutup", onclick: closePanel }, iconX())),
+            h("button", { type: "button", class: "btn-modal-close", "aria-label": "Close", onclick: closePanel }, iconX())),
         body);
     panel.root = h("div", { class: "modal-overlay panel-overlay", onclick: (e) => { if (e.target === panel.root) closePanel(); } }, card);
     document.body.append(panel.root);
@@ -1698,17 +1698,17 @@ function closePanel() {
 }
 
 function panelKeys(e) {
-    if (!modal.root.hidden) return;  // dialog konfirmasi sedang terbuka di atas panel
+    if (!modal.root.hidden) return;  // a confirm dialog is open on top of the panel
     if (e.key === "Escape") { e.preventDefault(); closePanel(); }
     else if (e.key === "Tab") trapFocus(e, panel.root);
 }
 
-// ── Kelola dokumen: riwayat versi, versi baru, hapus ──
+// ── Manage documents: version history, new version, delete ──
 
 async function openDocumentManager(documentId) {
     let changed = false;
     const { body, setSubtitle } = openPanel({
-        title: "Kelola dokumen",
+        title: "Manage document",
         onClose: () => {
             if (!changed) return;
             if (!sm.root.hidden) loadLibrary();
@@ -1718,7 +1718,7 @@ async function openDocumentManager(documentId) {
     const markChanged = () => { changed = true; };
 
     async function render() {
-        body.replaceChildren(h("p", { class: "pick-empty", text: "Memuat…" }));
+        body.replaceChildren(h("p", { class: "pick-empty", text: "Loading…" }));
         let doc;
         try {
             doc = await api(`/library/documents/${documentId}`);
@@ -1727,10 +1727,10 @@ async function openDocumentManager(documentId) {
             return;
         }
         const isOwner = state.me && (doc.owner_id === state.me.id);
-        setSubtitle(`${doc.display_name}, pemilik ${isOwner ? "Anda" : (doc.owner_name || "pengguna lain")}`);
+        setSubtitle(`${doc.display_name}, owner ${isOwner ? "you" : (doc.owner_name || "another user")}`);
 
         const versionRows = doc.versions.map((v) => {
-            const status = v.stage === "ready" ? "Siap"
+            const status = v.stage === "ready" ? "Ready"
                 : FINAL_STAGES.has(v.stage) ? (v.error || STAGE_LABEL[v.stage]) : stageText(v);
             const latest = doc.latest_version && doc.latest_version.id === v.id;
             return h("li", { class: "version-row" },
@@ -1738,14 +1738,14 @@ async function openDocumentManager(documentId) {
                 h("span", { class: "version-body" },
                     h("span", { class: "version-title" },
                         v.original_filename,
-                        latest ? h("span", { class: "version-badge", text: "Terbaru" }) : null),
+                        latest ? h("span", { class: "version-badge", text: "Latest" }) : null),
                     h("span", { class: "version-meta",
-                        text: `${formatDate(v.uploaded_at)}, ${v.page_count ? `${v.page_count} halaman, ` : ""}${status}` }),
+                        text: `${formatDate(v.uploaded_at)}, ${v.page_count ? `${v.page_count} pages, ` : ""}${status}` }),
                     reuseLine(v.reuse_stats)),
                 isOwner && doc.versions.length > 1
                     ? h("button", {
-                        type: "button", class: "source-remove version-delete", title: `Hapus versi ${v.version_no}`,
-                        "aria-label": `Hapus versi ${v.version_no}`, onclick: () => deleteVersion(doc, v),
+                        type: "button", class: "source-remove version-delete", title: `Delete version ${v.version_no}`,
+                        "aria-label": `Delete version ${v.version_no}`, onclick: () => deleteVersion(doc, v),
                     }, iconX())
                     : null);
         });
@@ -1754,15 +1754,15 @@ async function openDocumentManager(documentId) {
             onchange: (e) => uploadVersion(doc, e.target.files[0]) });
 
         body.replaceChildren(
-            h("h3", { class: "panel-heading", text: "Riwayat versi" }),
+            h("h3", { class: "panel-heading", text: "Version history" }),
             h("ol", { class: "version-list" }, ...versionRows),
             h("div", { class: "panel-actions" },
-                h("label", { class: "modal-btn modal-btn--ghost btn-file" }, fileInput, "Upload versi baru"),
+                h("label", { class: "modal-btn modal-btn--ghost btn-file" }, fileInput, "Upload a new version"),
                 isOwner ? h("button", { type: "button", class: "modal-btn modal-btn--danger",
-                    text: "Hapus dokumen", onclick: () => deleteDocument(doc) }) : null),
+                    text: "Delete document", onclick: () => deleteDocument(doc) }) : null),
             h("p", { class: "panel-note", text: isOwner
-                ? "Versi yang masih dipakai notebook tidak bisa dihapus. Menghapus dokumen yang masih dipakai notebook orang lain akan mengarsipkannya."
-                : "Siapa pun di tim boleh mengunggah versi baru. Hanya pengunggah yang bisa menghapus." }),
+                ? "A version still used by a notebook cannot be deleted. Deleting a document another user's notebook still uses archives it."
+                : "Anyone on the team can upload a new version. Only the uploader can delete it." }),
         );
     }
 
@@ -1775,39 +1775,39 @@ async function openDocumentManager(documentId) {
         try {
             const r = await api(`/library/documents/${doc.id}/versions`, { method: "POST", form });
             markChanged();
-            toast(r.status === "existing" ? "File ini sudah ada sebagai salah satu versi." : "Versi baru sedang diproses.", "success");
+            toast(r.status === "existing" ? "This file already exists as one of the versions." : "The new version is being processed.", "success");
             render();
         } catch (err) { toast(errorText(err), "error"); }
     }
 
     async function deleteVersion(doc, v) {
         const ok = await openModal({
-            title: `Hapus versi ${v.version_no}?`,
-            subtitle: "Data versi ini dihapus permanen. Nomor versinya tidak akan dipakai lagi.",
-            icon: "danger", confirmLabel: "Hapus versi", danger: true,
+            title: `Delete version ${v.version_no}?`,
+            subtitle: "This version's data is permanently deleted. Its version number will not be reused.",
+            icon: "danger", confirmLabel: "Delete version", danger: true,
         });
         if (!ok) return;
         try {
             await api(`/library/documents/${doc.id}/versions/${v.id}`, { method: "DELETE" });
             markChanged();
-            toast(`Versi ${v.version_no} dihapus.`, "success");
+            toast(`Version ${v.version_no} deleted.`, "success");
             render();
-        } catch (err) { modalAlert("Versi tidak dihapus", errorText(err)); }
+        } catch (err) { modalAlert("Version not deleted", errorText(err)); }
     }
 
     async function deleteDocument(doc) {
         const ok = await openModal({
-            title: `Hapus "${doc.display_name}"?`,
-            subtitle: "Dokumen dilepas dari notebook Anda. Jika masih dipakai notebook orang lain, dokumen diarsipkan dan baru terhapus setelah tidak dipakai lagi.",
-            icon: "danger", confirmLabel: "Hapus dokumen", danger: true,
+            title: `Delete "${doc.display_name}"?`,
+            subtitle: "The document is removed from your notebooks. If another user's notebook still uses it, it is archived and only deleted once nobody uses it.",
+            icon: "danger", confirmLabel: "Delete document", danger: true,
         });
         if (!ok) return;
         try {
             const r = await api(`/library/documents/${doc.id}`, { method: "DELETE" });
             markChanged();
-            toast(r.result === "archived" ? "Dokumen diarsipkan karena masih dipakai notebook lain." : "Dokumen dihapus.", "success");
+            toast(r.result === "archived" ? "The document was archived because another notebook still uses it." : "Document deleted.", "success");
             closePanel();
-        } catch (err) { modalAlert("Dokumen tidak dihapus", errorText(err)); }
+        } catch (err) { modalAlert("Document not deleted", errorText(err)); }
     }
 
     render();
@@ -1820,13 +1820,13 @@ async function refreshNotebook() {
         state.notebook.sources = detail.sources;
         renderSources();
         schedulePoll();
-    } catch { /* tetap tampilkan data lama */ }
+    } catch { /* keep showing the old data */ }
 }
 
-// ── Kelola pengguna (admin) ──
+// ── Manage users (admin) ──
 
 async function openUserManager() {
-    const { body } = openPanel({ title: "Kelola pengguna", subtitle: "Pengguna nonaktif tidak bisa masuk. Dokumen miliknya dialihkan ke Anda." });
+    const { body } = openPanel({ title: "Manage users", subtitle: "Inactive users cannot sign in. Their documents are transferred to you." });
 
     async function render() {
         let users;
@@ -1842,35 +1842,35 @@ async function openUserManager() {
                 h("span", { class: "user-row-body" },
                     h("span", { class: "user-row-name", text: u.name || u.email }),
                     h("span", { class: "user-row-meta",
-                        text: `${u.email}${u.is_admin ? ", admin" : ""}${u.last_login_at ? `, terakhir masuk ${formatRelative(u.last_login_at)}` : ""}` })),
-                u.is_admin ? h("span", { class: "user-row-state", text: "Aktif" })
+                        text: `${u.email}${u.is_admin ? ", admin" : ""}${u.last_login_at ? `, last sign-in ${formatRelative(u.last_login_at)}` : ""}` })),
+                u.is_admin ? h("span", { class: "user-row-state", text: "Active" })
                     : h("label", { class: "switch", for: id },
                         h("input", { type: "checkbox", id, role: "switch", checked: u.is_active,
-                            "aria-label": `${u.is_active ? "Nonaktifkan" : "Aktifkan"} ${u.email}`,
+                            "aria-label": `${u.is_active ? "Deactivate" : "Activate"} ${u.email}`,
                             onchange: (e) => setActive(u, e.target.checked, e.target) }),
                         h("span", { class: "switch-track", "aria-hidden": "true" }),
-                        h("span", { class: "user-row-state", text: u.is_active ? "Aktif" : "Nonaktif" })));
+                        h("span", { class: "user-row-state", text: u.is_active ? "Active" : "Inactive" })));
         })));
     }
 
     async function setActive(u, active, input) {
         if (!active) {
             const ok = await openModal({
-                title: `Nonaktifkan ${u.name || u.email}?`,
-                subtitle: "Pengguna langsung tidak bisa masuk. Dokumen miliknya dialihkan ke Anda; notebook-nya tetap disimpan.",
-                icon: "danger", confirmLabel: "Nonaktifkan", danger: true,
+                title: `Deactivate ${u.name || u.email}?`,
+                subtitle: "The user can no longer sign in. Their documents are transferred to you; their notebooks are kept.",
+                icon: "danger", confirmLabel: "Deactivate", danger: true,
             });
             if (!ok) { input.checked = true; return; }
         }
         try {
             const r = await api(`/admin/users/${u.id}`, { method: "PATCH", json: { is_active: active } });
-            toast(active ? "Pengguna diaktifkan kembali."
-                : `Pengguna dinonaktifkan; ${r.documents_transferred} dokumen dialihkan ke Anda.`, "success");
+            toast(active ? "User reactivated."
+                : `User deactivated; ${r.documents_transferred} document(s) transferred to you.`, "success");
         } catch (err) { toast(errorText(err), "error"); }
         render();
     }
 
-    body.replaceChildren(h("p", { class: "pick-empty", text: "Memuat…" }));
+    body.replaceChildren(h("p", { class: "pick-empty", text: "Loading…" }));
     render();
 }
 
@@ -1881,10 +1881,10 @@ async function loadMe() {
         state.me = await api("/users/me");
         $("manageUsersBtn").hidden = !state.me.is_admin;
         renderUserProfile(state.me);
-    } catch { /* menu admin tetap tersembunyi */ }
+    } catch { /* the admin menu stays hidden */ }
 }
 
-/** Nama & foto di sidebar, dari /users/me (bukan dari isi token). */
+/** Name & photo in the sidebar, from /users/me (not from the token). */
 function renderUserProfile(me) {
     const fullName = me.name || "";
     const firstName = me.given_name || fullName.split(" ")[0] || "User";
@@ -1897,7 +1897,7 @@ function renderUserProfile(me) {
     fallbackEl.textContent = (fullName || me.email || "U").trim().charAt(0).toUpperCase() || "U";
     avatarEl.querySelector("img")?.remove();
     if (me.picture) {
-        const img = h("img", { src: me.picture, alt: fullName || "Profil", referrerpolicy: "no-referrer" });
+        const img = h("img", { src: me.picture, alt: fullName || "Profile", referrerpolicy: "no-referrer" });
         img.onload = () => { fallbackEl.style.display = "none"; };
         img.onerror = () => { img.remove(); fallbackEl.style.display = "flex"; };
         avatarEl.prepend(img);
@@ -1907,7 +1907,7 @@ function renderUserProfile(me) {
 }
 
 // ---------------------------------------------------------------------------
-// Mulai
+// Start
 // ---------------------------------------------------------------------------
 
 loadMe();

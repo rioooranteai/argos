@@ -220,7 +220,7 @@ body {
    (Perplexity-style: avatar + first name + menu trigger)
 ══════════════════════════ */
 .sidebar-footer {
-  position: relative;            /* anchor untuk .user-menu absolute */
+  position: relative;            /* anchor for the absolute .user-menu */
   padding: 10px;
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
@@ -624,14 +624,14 @@ body {
 .message.bot h2,
 .message.bot h3 {
   font-family: var(--font-display);
-  font-size: 13.5px;      /* sama dengan body — heading terasa natural, tidak menonjol */
+  font-size: 13.5px;      /* same as body — headings feel natural, not loud */
   font-weight: 600;
   color: var(--text-primary);
   margin: 14px 0 5px;
   line-height: 1.4;
 }
 
-/* Hilangkan margin atas heading pertama */
+/* Remove the top margin of the first heading */
 .message.bot h1:first-child,
 .message.bot h2:first-child,
 .message.bot h3:first-child {
@@ -654,7 +654,7 @@ body {
   font-style: italic;
 }
 
-/* Inline code sudah ada, pastikan tidak konflik */
+/* Inline code already exists; make sure it does not conflict */
 .message.bot :not(pre) > code {
   background: var(--bg-hover);
   padding: 1px 6px;
@@ -1474,8 +1474,8 @@ body.login-body {
 }
 
 /* ═════════════════════════════════════════════════════════════════
-   NOTEBOOK UI — pemilih notebook, panel sumber, modal tambah sumber,
-   sitasi. Memakai token yang sama dengan bagian lain aplikasi.
+   NOTEBOOK UI — notebook picker, sources panel, add-sources modal,
+   citations. Uses the same tokens as the rest of the app.
 ═════════════════════════════════════════════════════════════════ */
 
 [hidden] { display: none !important; }
@@ -1563,7 +1563,7 @@ body.login-body {
 .notebook-menu-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notebook-menu-meta { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 
-/* ── Header bagian di sidebar ── */
+/* ── Section headers in the sidebar ── */
 .section-header {
   display: flex;
   align-items: center;
@@ -1608,7 +1608,7 @@ body.login-body {
 .btn-new-thread:hover { color: var(--accent); border-color: rgba(244,124,60,0.45); background: var(--accent-glow); }
 .btn-add-source:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Panel sumber ── */
+/* ── Sources panel ── */
 .sources-section {
   display: flex;
   flex-direction: column;
@@ -1640,7 +1640,7 @@ body.login-body {
 }
 .source-item:hover { background: var(--bg-hover); }
 
-/* Sorotan saat sumber ini dirujuk oleh chip sitasi yang sedang di-hover */
+/* Highlight when this source is referenced by a hovered citation chip */
 .source-item.is-cited {
   background: var(--accent-dim);
   border-color: rgba(244,124,60,0.45);
@@ -1765,7 +1765,7 @@ body.login-body {
   color: var(--text-muted);
 }
 
-/* ── Daftar percakapan (kini <button>) ── */
+/* ── Conversation list (now <button>) ── */
 .history-section { border-top: 1px solid var(--border-subtle); }
 .history-section-header { gap: 8px; }
 
@@ -1808,10 +1808,10 @@ button.history-item {
 }
 .welcome-cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
 
-/* Item flex utama boleh menyempit di bawah lebar kontennya (mencegah overflow di mobile). */
+/* The main flex item may shrink below its content width (prevents overflow on mobile). */
 .chat-main { min-width: 0; }
 
-/* ── Jawaban: sitasi ── */
+/* ── Answers: citations ── */
 .bot-wrapper { align-items: flex-start; }
 .bot-wrapper .bubble-group { gap: 8px; }
 
@@ -1919,7 +1919,7 @@ button.history-item {
 .chat-notice .icon { color: var(--red); margin-top: 1px; }
 .icon { display: inline-flex; flex-shrink: 0; }
 
-/* ── Modal tambah sumber ── */
+/* ── Add-sources modal ── */
 .modal-card.source-modal {
   max-width: 560px;
   padding: 0;
@@ -2053,7 +2053,7 @@ button.history-item {
 .pick-item.is-error .pick-status { color: var(--red); }
 .pick-item.is-ok .pick-status { color: var(--green); }
 
-/* Upload yang mirip dokumen Library: satu-satunya baris yang meminta keputusan. */
+/* An upload similar to a Library document: the only row that asks for a decision. */
 .pick-item.is-similar {
   border-color: rgba(244,124,60,0.32);
   background: var(--accent-glow);
@@ -2069,7 +2069,7 @@ button.history-item {
   align-items: center;
   justify-content: space-between;
   gap: 8px 12px;
-  padding-left: 26px; /* sejajar dengan nama file, bukan ikon */
+  padding-left: 26px; /* aligned with the file name, not the icon */
 }
 .similar-text {
   margin: 0;
@@ -2226,11 +2226,11 @@ button.history-item {
 
 
 /* ═════════════════════════════════════════════════════════════════
-   PENGELOLAAN (tahap 2) — kelola dokumen & pengguna
+   MANAGEMENT (stage 2) — manage documents & users
 ═════════════════════════════════════════════════════════════════ */
 
 .panel-overlay { z-index: 420; }
-#appModal { z-index: 450; }   /* dialog konfirmasi selalu di atas panel */
+#appModal { z-index: 450; }   /* the confirm dialog is always above the panel */
 
 .panel-body {
   padding: 14px 24px 22px;
@@ -2330,7 +2330,7 @@ button.history-item {
   line-height: 1.5;
 }
 
-/* Tombol "Kelola" di tab Library */
+/* The "Manage" button in the Library tab */
 .library-item { grid-template-columns: 16px minmax(0, 1fr) auto; }
 .library-item.is-disabled { opacity: 1; }
 .library-item.is-disabled .library-body,
@@ -2350,7 +2350,7 @@ button.history-item {
 }
 .btn-manage:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--bg-hover); }
 
-/* Daftar pengguna */
+/* User list */
 .user-row { grid-template-columns: minmax(0, 1fr) auto; }
 .user-row.is-inactive .user-row-name { color: var(--text-muted); }
 .user-row-state { font-size: 12px; color: var(--text-secondary); min-width: 54px; }
@@ -2395,8 +2395,8 @@ button.history-item {
   .panel-actions .modal-btn { flex: 1; }
 }
 
-/* ── Pesan gagal + kirim ulang (DESIGN_GROUP_C.md §4, §8) ── */
-/* Avatar sejajar bubble, bukan baris error di bawahnya */
+/* ── Failed messages + resend (DESIGN_GROUP_C.md §4, §8) ── */
+/* Avatar aligned with the bubble, not with the error line below it */
 .user-wrapper.is-failed { align-items: flex-start; }
 .user-wrapper.is-failed .message.user {
   opacity: 0.55;
@@ -2410,7 +2410,7 @@ button.history-item {
   align-items: center;
   justify-content: flex-end;
   gap: 6px 10px;
-  margin-top: -12px;           /* rapat ke bubble (bubble-group gap: 20px) */
+  margin-top: -12px;           /* tight to the bubble (bubble-group gap: 20px) */
   max-width: 100%;
   font-size: 12px;
   line-height: 1.45;
@@ -2424,7 +2424,7 @@ button.history-item {
 .btn-copy-id {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;            /* target sentuh yang wajar di layar kecil */
+  min-height: 28px;            /* a reasonable touch target on small screens */
   padding: 3px 10px;
   border-radius: var(--radius-sm);
   font-family: var(--font-ui);
@@ -2452,7 +2452,7 @@ button.history-item {
 
 .chat-notice .btn-copy-id { margin-left: 4px; align-self: center; min-height: 24px; padding: 1px 8px; }
 
-/* ── Jawaban degraded (DESIGN_GROUP_C.md §8) ── */
+/* ── Degraded answers (DESIGN_GROUP_C.md §8) ── */
 .degraded-banner {
   display: flex;
   align-items: flex-start;
@@ -2467,7 +2467,7 @@ button.history-item {
 }
 .degraded-banner .icon { color: var(--amber); margin-top: 1px; }
 
-/* ── Panel "Lihat proses AI" ── */
+/* ── "Show AI process" panel ── */
 .ai-trace {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
