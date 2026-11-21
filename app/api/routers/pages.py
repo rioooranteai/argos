@@ -4,6 +4,7 @@
 - ``/js/*``: application code, only for users with a valid session; otherwise → 404.
 - ``/login``: public; with a valid session it goes straight to ``/``.
 - ``/css/*`` stays public (used by the login page), mounted in ``main.py``.
+- ``/favicon.svg`` (and ``/favicon.ico`` for browsers that ask for it anyway): public.
 
 Pages use the session cookie only, since the browser opens them directly.
 """
@@ -45,6 +46,15 @@ def login_page(request: Request) -> Response:
     if _signed_in(request):
         return RedirectResponse("/", status_code=302)
     return FileResponse(WEB_DIR / "login.html", headers=_NO_STORE)
+
+
+@router.get("/favicon.svg")
+@router.get("/favicon.ico")
+def favicon() -> Response:
+    return FileResponse(
+        WEB_DIR / "favicon.svg", media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/js/{file_path:path}")

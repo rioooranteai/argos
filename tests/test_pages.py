@@ -94,3 +94,10 @@ def test_docs_are_public_in_the_real_app():
     # Pages & scripts do not appear in the API docs.
     schema_paths = set(app.openapi()["paths"])
     assert "/" not in schema_paths and "/js/{file_path}" not in schema_paths
+
+
+@pytest.mark.parametrize("path", ["/favicon.svg", "/favicon.ico"])
+def test_favicon_is_public(env, path):
+    client, _, _ = env
+    r = client.get(path)
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
