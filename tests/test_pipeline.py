@@ -25,7 +25,7 @@ from app.services.extraction.service import ExtractionService
 from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.model import NewVersion
-from app.services.vector_store.model import AddChunksResult
+from app.tools.vector_store.base import AddChunksResult
 
 
 class FakeParser:

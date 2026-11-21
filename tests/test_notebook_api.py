@@ -40,7 +40,7 @@ from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLResult
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
-from app.services.vector_store.model import SearchHit
+from app.tools.vector_store.base import SearchHit
 from tests.library_helpers import make_pdf
 
 ALICE = CurrentUser(id="u1", email="a@corp.com", name="Alice", given_name="", picture="", is_admin=False)
@@ -220,7 +220,7 @@ async def test_engine_passes_active_versions_and_returns_citations():
         llm=_LLM("Avanza Rp 230 jt [1]."),
         router_llm=_LLM('{"route": "both", "reasoning": "x"}'),
         nl2sql_svc=nl2sql,
-        vector_svc=vectors,
+        vector_store=vectors,
     )
     sources = [ActiveSource("v1", "d1", "Pricelist", 1, datetime(2026, 1, 1))]
     out = await engine.chat("harga?", sources=sources)
@@ -239,7 +239,7 @@ async def test_engine_total_timeout():
         llm=_LLM("x", delay=5),
         router_llm=_LLM('{"route": "none", "reasoning": ""}'),
         nl2sql_svc=_NL2SQL(),
-        vector_svc=_Vectors(),
+        vector_store=_Vectors(),
         total_timeout=0.1,
     )
     with pytest.raises(UpstreamTimeout):

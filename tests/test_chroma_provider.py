@@ -1,11 +1,11 @@
-"""ChromaProvider: per-version filter, typed results, per-version delete (real Chroma, fake embedder)."""
+"""ChromaVectorStore: per-version filter, typed results, per-version delete (real Chroma, fake embedder)."""
 from __future__ import annotations
 
 import pytest
 
 from app.tools.embedding.base import BaseEmbedder
-from app.services.ingestion.model import IndexChunk
-from app.services.vector_store.providers.chroma_provider import ChromaProvider
+from app.tools.vector_store.base import IndexChunk
+from app.tools.vector_store.chroma import ChromaVectorStore
 
 
 class FakeEmbedder(BaseEmbedder):
@@ -29,7 +29,7 @@ def chunk(cid: str, text: str, version: str) -> IndexChunk:
 
 @pytest.fixture
 def store(tmp_path):
-    s = ChromaProvider(FakeEmbedder(), collection_name="test_chunks", db_path=str(tmp_path / "chroma"))
+    s = ChromaVectorStore(FakeEmbedder(), collection_name="test_chunks", db_path=str(tmp_path / "chroma"))
     s.add_chunks([
         chunk("a1", "Avanza 230 jt", "v1"),
         chunk("a2", "Avanza 235 jt", "v2"),

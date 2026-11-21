@@ -6,7 +6,7 @@ import logging
 from app.core.llm_errors import LLM_ERROR, classify_llm_error
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.outcome import NodeTrace
-from app.services.vector_store.service import VectorStoreService
+from app.tools.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ DEFAULT_VECTOR_LIMIT = 5
 VECTOR_STORE_FAILED = "VECTOR_STORE_FAILED"
 
 
-async def vector_node(state: dict, vector_svc: VectorStoreService) -> dict:
+async def vector_node(state: dict, vector_store: BaseVectorStore) -> dict:
     user_input = state["user_input"]
     version_ids = state.get("active_versions")
     clock = Stopwatch()
@@ -22,7 +22,7 @@ async def vector_node(state: dict, vector_svc: VectorStoreService) -> dict:
     try:
         # search() is synchronous (OpenAI embedding HTTP + Chroma query) → run it in a thread.
         hits = await asyncio.to_thread(
-            vector_svc.search, user_input, version_ids, DEFAULT_VECTOR_LIMIT
+            vector_store.search, user_input, version_ids, DEFAULT_VECTOR_LIMIT
         )
     except Exception as e:
         logger.exception("[vector_node] Vector search failed.")

@@ -5,8 +5,9 @@ from __future__ import annotations
 import pytest
 
 from app.tools.embedding.base import BaseEmbedder
-from app.services.ingestion.model import DocumentElement, ElementType, IndexChunk
-from app.services.vector_store.providers.chroma_provider import ChromaProvider
+from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.vector_store.base import IndexChunk
+from app.tools.vector_store.chroma import ChromaVectorStore
 from tests.test_pipeline import (  # noqa: F401 — the `env` fixture is reused
     FakeVectors,
     _build,
@@ -99,7 +100,7 @@ async def test_requeue_clears_reuse_stats(env):
     assert library.requeue_version("v1", "u1").reuse_stats is None
 
 
-# ── ChromaProvider asli ─────────────────────────────────────────────────
+# ── ChromaVectorStore asli ─────────────────────────────────────────────────
 
 
 class CountingEmbedder(BaseEmbedder):
@@ -121,7 +122,7 @@ class CountingEmbedder(BaseEmbedder):
 @pytest.fixture
 def chroma(tmp_path):
     emb = CountingEmbedder()
-    return ChromaProvider(emb, collection_name="reuse", db_path=str(tmp_path / "c")), emb
+    return ChromaVectorStore(emb, collection_name="reuse", db_path=str(tmp_path / "c")), emb
 
 
 def _chunk(cid, text, version):

@@ -14,6 +14,8 @@ from app.tools.embedding.base import BaseEmbedder
 from app.tools.embedding.openai_embedder import OpenAIEmbedder
 from app.tools.llm.base import BaseLLM
 from app.tools.llm.openai_llm import OpenAILLM
+from app.tools.vector_store.base import BaseVectorStore
+from app.tools.vector_store.chroma import ChromaVectorStore
 
 # profile → (model, timeout seconds, retries, purpose in llm_calls). DESIGN_GROUP_B.md §5, C §7.3.
 _OPENAI_LLM_PROFILES = {
@@ -57,3 +59,10 @@ def build_embedder() -> BaseEmbedder:
             timeout=app_config.EMBED_TIMEOUT,
         )
     raise _unknown("embedding", provider)
+
+
+def build_vector_store(embedder: BaseEmbedder) -> BaseVectorStore:
+    provider = app_config.VECTOR_STORE_PROVIDER.lower()
+    if provider == "chroma":
+        return ChromaVectorStore(embedder)
+    raise _unknown("vector store", provider)

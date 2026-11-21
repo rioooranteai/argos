@@ -16,7 +16,7 @@ from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.model import ActiveSource
 from app.core.observability.recorder import recorder
 from app.core.observability.model import LLMCall
-from app.services.vector_store.service import VectorStoreService
+from app.tools.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class ChatEngine:
             self,
             llm: BaseLLM,
             nl2sql_svc: NL2SQLService,
-            vector_svc: VectorStoreService,
+            vector_store: BaseVectorStore,
             router_llm: BaseLLM | None = None,
             total_timeout: float = 90,
     ):
@@ -75,7 +75,7 @@ class ChatEngine:
             llm=llm,
             router_llm=router_llm,
             nl2sql_svc=nl2sql_svc,
-            vector_svc=vector_svc,
+            vector_store=vector_store,
         )
 
     async def chat(

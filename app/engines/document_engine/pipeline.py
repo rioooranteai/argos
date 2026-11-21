@@ -32,7 +32,7 @@ from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber, figures_in
 from app.services.library.model import STAGE_READY, DocumentVersion, LibraryDocument
 from app.services.library.service import queued_file_path
-from app.services.vector_store.service import VectorStoreService
+from app.tools.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class DocumentPipeline:
         self,
         parser: DocumentParser,
         describer: FigureDescriber,
-        vector_store: VectorStoreService,
+        vector_store: BaseVectorStore,
         extraction: ExtractionService,
         features: BaseFeatureRepository,
         library: BaseLibraryRepository,

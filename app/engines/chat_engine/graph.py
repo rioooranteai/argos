@@ -11,7 +11,7 @@ from app.engines.chat_engine.nodes.vector_node import vector_node
 from app.engines.chat_engine.state import ChatState, RouteDecision
 from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.service import NL2SQLService
-from app.services.vector_store.service import VectorStoreService
+from app.tools.vector_store.base import BaseVectorStore
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
 
@@ -48,7 +48,7 @@ def _route_condition(state: ChatState) -> list[str]:
 def build_graph(
         llm: BaseLLM,
         nl2sql_svc: NL2SQLService,
-        vector_svc: VectorStoreService,
+        vector_store: BaseVectorStore,
         router_llm: BaseLLM | None = None,
 ) -> Any:
     """
@@ -63,7 +63,7 @@ def build_graph(
     # A small model is enough for the router (classification); the synthesizer uses the chat model.
     builder.add_node("router_node", partial(router_node, llm=router_llm or llm))
     builder.add_node("sql_node", partial(sql_node, nl2sql_svc=nl2sql_svc))
-    builder.add_node("vector_node", partial(vector_node, vector_svc=vector_svc))
+    builder.add_node("vector_node", partial(vector_node, vector_store=vector_store))
     builder.add_node("synthesizer_node", partial(_synthesizer_wrapper, llm=llm))
 
     # --- Define the edges ---

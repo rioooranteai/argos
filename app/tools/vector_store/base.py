@@ -1,13 +1,52 @@
+"""Vector store contract: types, errors and ``BaseVectorStore``."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any
 
-from app.services.ingestion.model import IndexChunk
-from app.services.vector_store.model import AddChunksResult, SearchHit
+
+@dataclass(frozen=True)
+class IndexChunk:
+    """One piece of text for the vector store."""
+
+    chunk_id: str
+    text: str
+    metadata: dict[str, Any]
 
 
-class BaseVectorStoreProvider(ABC):
+@dataclass(frozen=True)
+class SearchHit:
+    """A vector search result, independent of the store's response format."""
+
+    id: str
+    text: str
+    distance: float | None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class AddChunksResult:
+    """Result of storing chunks: the stored IDs and how many reused their vectors."""
+
+    ids: list[str]
+    reused: int = 0
+
+
+class VectorStoreError(Exception):
+    """Base exception for every vector store error."""
+
+
+class VectorStoreInsertError(VectorStoreError):
+    """Failed to store data in the vector store."""
+
+
+class VectorStoreSearchError(VectorStoreError):
+    """Failed to search the vector store."""
+
+
+class BaseVectorStore(ABC):
     @abstractmethod
     def add_chunks(
         self, chunks: list[IndexChunk], reuse: Mapping[str, str] | None = None

@@ -14,7 +14,7 @@ from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
-from app.tools.factory import build_embedder, build_llm
+from app.tools.factory import build_embedder, build_llm, build_vector_store
 from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
@@ -44,7 +44,6 @@ from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.observability.health import HealthChecker
 from app.core.observability.recorder import recorder as llm_recorder
-from app.services.vector_store.service import VectorStoreService
 from app.services.user.admin import AdminService
 from app.services.voice.service import VoiceService
 
@@ -104,13 +103,13 @@ async def lifespan(app: FastAPI):
     limits = AILimits.from_config(app_config)
 
     # --- Services ---
-    app.state.vector_store_svc = VectorStoreService(embedder=embedder, provider="chroma")
+    app.state.vector_store = build_vector_store(embedder)
 
     app.state.library_service = LibraryService(
         repository=library_repo,
         queue_dir=infra.upload_queue_dir,
         config=app_config,
-        vector_store=app.state.vector_store_svc,
+        vector_store=app.state.vector_store,
         jobs=job_repo,
         users=app.state.user_repo,
     )
@@ -126,7 +125,7 @@ async def lifespan(app: FastAPI):
             model_name=app_config.OPENAI_VLM_MODEL,
             semaphore=limits.vision,
         ),
-        vector_store=app.state.vector_store_svc,
+        vector_store=app.state.vector_store,
         extraction=ExtractionService(
             provider=PydanticAIExtractionProvider(model=app_config.OPENAI_EXTRACTION_MODEL),
             cache=cache_repo,
@@ -176,13 +175,13 @@ async def lifespan(app: FastAPI):
         llm=build_llm("chat", temperature=0.3),
         router_llm=build_llm("router", temperature=0.0),
         nl2sql_svc=app.state.nl2sql_service,
-        vector_svc=app.state.vector_store_svc,
+        vector_store=app.state.vector_store,
         total_timeout=app_config.CHAT_TOTAL_TIMEOUT,
     )
 
     app.state.health_checker = HealthChecker(
         database=db,
-        vector_store=app.state.vector_store_svc,
+        vector_store=app.state.vector_store,
         worker=worker,
         docling=docling,
         recorder=llm_recorder,

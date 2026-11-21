@@ -64,11 +64,3 @@ class ExtractionUnit:
             blocks.append(f"[{label}] {heading}\n{section.text}")
         return "\n\n".join(blocks)
 
-
-@dataclass(frozen=True)
-class IndexChunk:
-    """One piece of text for the vector store."""
-
-    chunk_id: str
-    text: str
-    metadata: dict[str, Any]

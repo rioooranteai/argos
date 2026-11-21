@@ -9,7 +9,7 @@ from app.core.errors import UpstreamError
 from app.engines.chat_engine.engine import ChatEngine
 from app.services.nl2sql.service import NL2SQLResult
 from app.services.notebook.model import ActiveSource
-from app.services.vector_store.model import SearchHit
+from app.tools.vector_store.base import SearchHit
 
 SOURCES = [ActiveSource("v1", "d1", "Pricelist", 1, datetime(2026, 1, 1))]
 SQL_OK = NL2SQLResult(
@@ -63,7 +63,7 @@ def engine(route="both", synth=None, sql=None, vectors=None, router=None):
         llm=synth,
         router_llm=router or LLM(f'{{"route": "{route}", "reasoning": "x"}}'),
         nl2sql_svc=sql or NL2SQL(SQL_OK),
-        vector_svc=vectors or Vectors([SearchHit("c1", "Veloz", 0.2, {"version_id": "v1", "page_number": 2})]),
+        vector_store=vectors or Vectors([SearchHit("c1", "Veloz", 0.2, {"version_id": "v1", "page_number": 2})]),
     ), synth
 
 

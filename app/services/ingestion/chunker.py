@@ -15,9 +15,9 @@ from app.services.ingestion.model import (
     DocumentElement,
     ElementType,
     ExtractionUnit,
-    IndexChunk,
     Section,
 )
+from app.tools.vector_store.base import IndexChunk
 
 _WS = re.compile(r"\s+")
 

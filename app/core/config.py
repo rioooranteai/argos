@@ -95,6 +95,7 @@ class AppConfig:
     # ── Provider & model ─────────────────────────────────────────────
     LLM_PROVIDER: str = "openai"
     EMBEDDING_PROVIDER: str = "openai"
+    VECTOR_STORE_PROVIDER: str = "chroma"
     OPENAI_LLM_MODEL: str = "gpt-5.4"
     OPENAI_VLM_MODEL: str = "gpt-5-mini"
     OPENAI_VOICE_MODEL: str = "gpt-4o-mini-tts"

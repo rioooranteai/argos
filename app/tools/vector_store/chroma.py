@@ -6,10 +6,14 @@ from typing import Any
 import chromadb
 
 from app.tools.embedding.base import BaseEmbedder
-from app.services.ingestion.model import IndexChunk
-from app.services.vector_store.base.vector_store_base import BaseVectorStoreProvider
-from app.services.vector_store.exceptions import VectorStoreInsertError, VectorStoreSearchError
-from app.services.vector_store.model import AddChunksResult, SearchHit
+from app.tools.vector_store.base import (
+    AddChunksResult,
+    BaseVectorStore,
+    IndexChunk,
+    SearchHit,
+    VectorStoreInsertError,
+    VectorStoreSearchError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ def _clean_metadata(meta: dict[str, Any]) -> dict[str, Any]:
     return clean
 
 
-class ChromaProvider(BaseVectorStoreProvider):
+class ChromaVectorStore(BaseVectorStore):
     def __init__(
         self,
         embedder: BaseEmbedder,
@@ -41,7 +45,7 @@ class ChromaProvider(BaseVectorStoreProvider):
 
         self.client = chromadb.PersistentClient(path=str(resolved_path))
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
-        logger.info(f"ChromaProvider ready. Collection: '{self.collection_name}' | Path: '{resolved_path}'")
+        logger.info(f"ChromaVectorStore ready. Collection: '{self.collection_name}' | Path: '{resolved_path}'")
 
     def add_chunks(
         self, chunks: list[IndexChunk], reuse: Mapping[str, str] | None = None
