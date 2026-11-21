@@ -108,26 +108,6 @@ body {
   gap: 9px;
 }
 
-.brand-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--accent-gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.brand-text {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
 .btn-close-sidebar {
   display: none;
   background: none;
@@ -147,39 +127,6 @@ body {
   flex-shrink: 0;
 }
 
-.menu-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  padding: 0 8px 8px;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-  margin-bottom: 1px;
-}
-
-.menu-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.menu-item.active {
-  background: var(--accent-dim);
-  color: var(--accent);
-}
-
 /* .sidebar-spacer removed — .history-section now grows to fill available space
    (its flex:1 + min-height:0 already lets the inner list scroll cleanly).      */
 
@@ -197,23 +144,6 @@ body {
   width: 100%;
   font-family: var(--font-ui);
 }
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--border-default);
-  color: var(--text-secondary);
-}
-.btn-outline:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.btn-primary {
-  background: var(--accent-gradient);
-  color: #fff;
-  font-weight: 600;
-}
-.btn-primary:hover { opacity: 0.9; }
 
 /* ══════════════════════════
    SIDEBAR FOOTER — USER PILL + DROPDOWN
@@ -429,28 +359,6 @@ body {
   gap: 6px;
 }
 
-.header-search {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 6px 12px;
-  color: var(--text-muted);
-}
-
-.header-search-input {
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  width: 110px;
-}
-.header-search-input::placeholder { color: var(--text-muted); }
-
 .header-icon-btn {
   width: 32px;
   height: 32px;
@@ -468,28 +376,6 @@ body {
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-default);
-}
-
-/* Status */
-.header-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-  animation: status-pulse 2.5s ease-in-out infinite;
-}
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
 }
 
 /* Chat Box */
@@ -859,15 +745,6 @@ body {
   color: var(--text-primary);
 }
 
-.history-count {
-  font-size: 11px;
-  color: var(--text-muted);
-  background: var(--bg-raised);
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-}
-
 .history-list {
   flex: 1;
   overflow-y: auto;
@@ -889,18 +766,6 @@ body {
 
 .history-item:hover { background: var(--bg-hover); }
 
-.history-checkbox {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid var(--border-default);
-  background: transparent;
-  flex-shrink: 0;
-  margin-top: 2px;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
 .history-item-content { flex: 1; min-width: 0; }
 
 .history-item-title {
@@ -921,35 +786,6 @@ body {
   text-overflow: ellipsis;
 }
 
-.history-footer {
-  padding: 8px 10px;
-  border-top: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.btn-clear-history {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  padding: 7px;
-  border-radius: var(--radius-md);
-  background: none;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-family: var(--font-ui);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.btn-clear-history:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  border-color: var(--border-default);
-}
-
 /* ── Sidebar overlay (mobile) ── */
 .sidebar-overlay {
   display: none;
@@ -965,7 +801,6 @@ body {
    RESPONSIVE
 ══════════════════════════ */
 
-
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -974,38 +809,11 @@ body {
   }
   .sidebar.open { transform: translateX(0); }
   .btn-close-sidebar { display: flex; }
-  .header-search { display: none; }
+
 }
 /* ══════════════════════════
    NEW CHAT BUTTON
 ══════════════════════════ */
-.new-chat-section {
-  padding: 10px 12px 6px;
-  border-bottom: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.btn-new-chat {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 12px;
-  border-radius: var(--radius-md);
-  background: var(--accent-gradient);
-  border: none;
-  color: #fff;
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter var(--transition), transform var(--transition);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 4px 12px rgba(244,124,60,0.18);
-}
-
-.btn-new-chat:hover  { filter: brightness(1.06); transform: translateY(-1px); }
-.btn-new-chat:active { transform: translateY(0); filter: brightness(0.98); }
 
 /* ══════════════════════════
    THREAD LIST — ACTIVE / EMPTY
@@ -2223,7 +2031,6 @@ button.history-item {
   }
   .spinner { animation: none; }
 }
-
 
 /* ═════════════════════════════════════════════════════════════════
    MANAGEMENT (stage 2) — manage documents & users
