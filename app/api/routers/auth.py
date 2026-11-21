@@ -8,7 +8,7 @@ from app.core.config import secrets
 from app.core.errors import PermissionDenied, RateLimited
 from app.core.oauth import oauth
 from app.core.rate_limit import client_ip, limiter
-from app.core.security import verify_google_identity
+from app.core.security import GMAIL_DOMAIN, verify_google_identity
 from app.core.session import clear_session_cookie, create_session_token, set_session_cookie
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -34,9 +34,10 @@ async def google_login(request: Request):
         return blocked
     redirect_uri = request.url_for("google_callback")
     # `hd` is only a hint for Google's account picker; it is enforced in the callback.
-    return await oauth.google.authorize_redirect(
-        request, redirect_uri, hd=secrets.allowed_domain or None
-    )
+    # It is meant for Workspace domains, so it is not sent in personal Gmail mode.
+    domain = secrets.allowed_domain
+    hint = domain if domain and domain != GMAIL_DOMAIN else None
+    return await oauth.google.authorize_redirect(request, redirect_uri, hd=hint)
 
 
 @router.get("/google/callback", name="google_callback")
