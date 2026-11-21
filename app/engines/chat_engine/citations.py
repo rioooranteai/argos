@@ -1,8 +1,8 @@
-"""Sitasi bernomor yang diambil dari data, bukan dikarang LLM (DESIGN_GROUP_A.md §8.4).
+"""Numbered citations taken from the data, not made up by the LLM (DESIGN_GROUP_A.md §8.4).
 
-Setiap kombinasi (versi dokumen, halaman) yang muncul di data yang diambil
-mendapat label `[n]`. LLM hanya boleh merujuk label yang diberikan; respons
-API hanya menyertakan label yang benar-benar dipakai di jawaban.
+Each (document version, page) pair that appears in the retrieved data gets a
+`[n]` label. The LLM may only refer to the labels it is given; the API response
+only includes the labels actually used in the answer.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class CitationRegistry:
     def label_for(
         self, version_id: str | None, page_number: int | None, section_heading: str | None = None
     ) -> str:
-        """Label `[n]` untuk sebuah fakta; string kosong bila versinya bukan sumber aktif."""
+        """The `[n]` label for a fact; an empty string when its version is not an active source."""
         source = self._sources.get(version_id or "")
         if source is None:
             return ""
@@ -59,16 +59,16 @@ class CitationRegistry:
         return f"[{citation.label}]"
 
     def legend(self) -> str:
-        """Daftar label untuk prompt synthesizer."""
+        """The label list for the synthesizer prompt."""
         lines = []
         for c in self._by_key.values():
-            where = f", hal. {c.page_number}" if c.page_number else ""
-            lines.append(f"[{c.label}] {c.display_name} v{c.version_no} (diunggah {c.uploaded_at}{where})")
+            where = f", p. {c.page_number}" if c.page_number else ""
+            lines.append(f"[{c.label}] {c.display_name} v{c.version_no} (uploaded {c.uploaded_at}{where})")
         return "\n".join(lines)
 
     def coverage(self) -> str:
         names = [f"{s.display_name} v{s.version_no}" for s in self._sources.values()]
-        return f"{len(names)} sumber ({', '.join(names)})"
+        return f"{len(names)} source(s) ({', '.join(names)})"
 
     def used_in(self, answer: str) -> list[Citation]:
         by_label = {c.label: c for c in self._by_key.values()}

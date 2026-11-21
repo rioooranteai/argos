@@ -29,8 +29,8 @@ async def _synthesizer_wrapper(state: dict, llm: BaseLLM) -> dict:
 
 def _route_condition(state: ChatState) -> list[str]:
     """
-    Conditional edge: tentukan node berikutnya berdasarkan keputusan router.
-    LangGraph akan menjalankan semua node dalam list secara paralel.
+    Conditional edge: pick the next node(s) from the router's decision.
+    LangGraph runs every node in the list in parallel.
     """
     route: RouteDecision = state['route']
 
@@ -39,9 +39,9 @@ def _route_condition(state: ChatState) -> list[str]:
     elif route == "vector":
         return ["vector_node"]
     elif route == "both":
-        return ["sql_node", "vector_node"]  # dijalankan paralel
+        return ["sql_node", "vector_node"]  # run in parallel
     else:
-        # route == "none" → langsung ke synthesizer (akan jawab "tidak ada data")
+        # route == "none" → straight to the synthesizer (it will answer "no data")
         return ["synthesizer_node"]
 
 
@@ -52,21 +52,21 @@ def build_graph(
         router_llm: BaseLLM | None = None,
 ) -> Any:
     """
-    Build dan compile LangGraph StateGraph untuk ChatEngine.
+    Build and compile the LangGraph StateGraph for ChatEngine.
 
-    Dependency di-inject via functools.partial sehingga node
-    tetap callable dengan signature (state) -> dict.
+    Dependencies are injected via functools.partial so each node
+    stays callable with the signature (state) -> dict.
     """
     builder = StateGraph(ChatState)
 
-    # --- Daftarkan semua node ---
-    # Router cukup model kecil (klasifikasi), synthesizer memakai model chat.
+    # --- Register every node ---
+    # A small model is enough for the router (classification); the synthesizer uses the chat model.
     builder.add_node("router_node", partial(router_node, llm=router_llm or llm))
     builder.add_node("sql_node", partial(sql_node, nl2sql_svc=nl2sql_svc))
     builder.add_node("vector_node", partial(vector_node, vector_svc=vector_svc))
     builder.add_node("synthesizer_node", partial(_synthesizer_wrapper, llm=llm))
 
-    # --- Definisikan edges ---
+    # --- Define the edges ---
     # START → router
     builder.add_edge(START, "router_node")
 
@@ -81,7 +81,7 @@ def build_graph(
         },
     )
 
-    # sql & vector → synthesizer (setelah keduanya selesai, jika paralel)
+    # sql & vector → synthesizer (after both finish, when run in parallel)
     builder.add_edge("sql_node", "synthesizer_node")
     builder.add_edge("vector_node", "synthesizer_node")
 

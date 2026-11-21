@@ -218,7 +218,7 @@ async def test_missing_source_file_fails_permanently(env):
     worker, _, _, _ = _build(db, library, queue)
     await worker.run_once()
     [ver] = _q(db, "SELECT * FROM document_versions WHERE id = ?", v.id)
-    assert ver["stage"] == "failed" and "Upload ulang" in ver["error"]
+    assert ver["stage"] == "failed" and "Upload this document again" in ver["error"]
 
 
 async def test_empty_document_fails_permanently(env):

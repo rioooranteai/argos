@@ -1,4 +1,4 @@
-"""Konteks & klasifikasi error untuk job pemrosesan dokumen (DESIGN_GROUP_B.md §3.2)."""
+"""Context & error classification for document processing jobs (DESIGN_GROUP_B.md §3.2)."""
 from __future__ import annotations
 
 import asyncio
@@ -19,15 +19,15 @@ from app.services.library.model import DocumentVersion
 
 
 class JobCancelled(Exception):
-    """Pembatalan diminta (sumber/dokumen dihapus) atau versi sudah tidak ada."""
+    """Cancellation was requested (source/document deleted) or the version no longer exists."""
 
 
 class PermanentJobError(Exception):
-    """Error yang tidak akan sembuh dengan dicoba lagi. Pesannya aman untuk user."""
+    """An error that retrying will not fix. Its message is safe to show the user."""
 
 
 class TransientJobError(Exception):
-    """Error sementara; job boleh dicoba lagi. Pesannya aman untuk user."""
+    """A temporary error; the job may be retried. Its message is safe to show the user."""
 
 
 _TRANSIENT_TYPES: tuple[type[BaseException], ...] = (
@@ -53,7 +53,7 @@ def _causes(exc: BaseException):
 
 
 def classify(exc: BaseException) -> tuple[bool, str]:
-    """Return (boleh_dicoba_lagi, pesan_untuk_user). Detail teknis hanya untuk log."""
+    """Return (retryable, message_for_user). Technical details are only for the log."""
     chain = list(_causes(exc))
     for e in chain:
         if isinstance(e, PermanentJobError):
@@ -61,30 +61,30 @@ def classify(exc: BaseException) -> tuple[bool, str]:
         if isinstance(e, (openai.AuthenticationError, openai.PermissionDeniedError)):
             return False, "Konfigurasi layanan AI bermasalah. Hubungi admin."
         if isinstance(e, (openai.BadRequestError, openai.UnprocessableEntityError)):
-            # 400/422: request ditolak — mengulang request yang sama tidak membantu.
-            return False, "Layanan AI menolak isi dokumen ini."
+            # 400/422: the request was rejected — repeating the same request does not help.
+            return False, "The AI service rejected this document's content."
         if isinstance(e, DocumentLoadError):
-            return False, "Dokumen tidak bisa dibaca. Pastikan file tidak rusak."
+            return False, "The document cannot be read. Make sure the file is not broken."
         if isinstance(e, ArgosError) and not e.retryable:
             return False, e.message
     for e in chain:
         if isinstance(e, ParserTimeout) or isinstance(e, (TimeoutError, asyncio.TimeoutError)):
-            return True, "Pemrosesan terlalu lama dan dihentikan; akan dicoba lagi."
+            return True, "Processing took too long and was stopped; it will be retried."
         if isinstance(e, TransientJobError):
             return True, str(e)
         if isinstance(e, _TRANSIENT_TYPES):
-            return True, "Layanan AI sedang bermasalah; akan dicoba lagi."
+            return True, "The AI service is having problems; it will be retried."
         if isinstance(e, ArgosError) and e.retryable:
             return True, e.message
-    # Error tak dikenal: dicoba lagi (dibatasi DOC_MAX_ATTEMPTS), detail di log.
-    return True, "Terjadi kesalahan saat memproses dokumen."
+    # Unknown error: retried (limited by DOC_MAX_ATTEMPTS), details in the log.
+    return True, "Something went wrong while processing the document."
 
 
 class JobContext:
-    """Dipakai pipeline untuk melaporkan tahap/progres & memeriksa pembatalan.
+    """Used by the pipeline to report stage/progress & check for cancellation.
 
-    Setiap laporan sekaligus memperpanjang lease (heartbeat). Laporan progres
-    dibatasi maksimal satu tulis DB per detik.
+    Every report also extends the lease (heartbeat). Progress reports are
+    limited to at most one DB write per second.
     """
 
     def __init__(self, version: DocumentVersion, jobs: BaseJobRepository, lease_minutes: int) -> None:
@@ -98,7 +98,7 @@ class JobContext:
 
     async def stage(self, stage: str, total: int = 0) -> None:
         self._stage, self._done, self._total = stage, 0, total
-        log_context.bind_request(stage=stage)  # dict konteks milik job ini (worker: scoped)
+        log_context.bind_request(stage=stage)  # this job's context dict (worker: scoped)
         await self._write()
 
     async def progress(self, done: int) -> None:

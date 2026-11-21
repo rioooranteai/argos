@@ -18,12 +18,12 @@ class ChatState(TypedDict):
     route: RouteDecision
     router_reasoning: str
     sql_result: Any  # NL2SQLResult | None
-    # None = pencarian tidak dijalankan atau GAGAL; [] = berhasil tanpa hasil.
+    # None = the search did not run or FAILED; [] = succeeded with no results.
     vector_result: list[dict[str, Any]] | None
     final_answer: str
-    # Sumber aktif notebook (dicentang & ready) — membatasi SQL & vector
+    # The notebook's active sources (checked & ready) — they scope SQL & vector search
     active_versions: list[str]
     sources: list[Any]  # list[ActiveSource]
     citations: list[dict[str, Any]]
-    # Satu entri per node yang berjalan. Reducer `add` karena sql & vector paralel.
+    # One entry per node that ran. Reducer `add` because sql & vector run in parallel.
     node_traces: Annotated[list[NodeTrace], operator.add]

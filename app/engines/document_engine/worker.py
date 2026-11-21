@@ -1,12 +1,12 @@
-"""Worker antrean dokumen in-process (DESIGN_GROUP_B.md §3, §9).
+"""In-process document queue worker (DESIGN_GROUP_B.md §3, §9).
 
-- `DOC_WORKERS` loop asyncio mengambil job dari tabel `document_versions`.
-- Setiap job dibatasi `DOC_TOTAL_TIMEOUT`.
-- Error sementara → dicoba lagi dengan jeda 1/5/15 menit, maks. `DOC_MAX_ATTEMPTS`.
-- Saat start, job yatim dari proses sebelumnya dikembalikan ke antrean.
-- Saat shutdown, job yang terputus dilepas tanpa dihitung sebagai percobaan.
+- `DOC_WORKERS` asyncio loops take jobs from the `document_versions` table.
+- Every job is limited by `DOC_TOTAL_TIMEOUT`.
+- Temporary errors → retried after 1/5/15 minutes, at most `DOC_MAX_ATTEMPTS`.
+- On start, orphan jobs from the previous process go back to the queue.
+- On shutdown, interrupted jobs are released without counting as an attempt.
 
-App WAJIB berjalan satu proses (`uvicorn --workers 1`).
+The app MUST run as a single process (`uvicorn --workers 1`).
 """
 from __future__ import annotations
 
@@ -45,8 +45,8 @@ class DocumentWorker:
         self._cfg = config
         self._stopping = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
-        # Untuk /health/ready (DESIGN_GROUP_C.md §6).
-        self._last_tick: float | None = None  # time.monotonic() putaran loop terakhir
+        # For /health/ready (DESIGN_GROUP_C.md §6).
+        self._last_tick: float | None = None  # time.monotonic() of the last loop iteration
         self._active_jobs = 0
 
     @property
@@ -58,19 +58,19 @@ class DocumentWorker:
         return self._active_jobs
 
     def seconds_since_tick(self) -> float | None:
-        """Detik sejak slot mana pun terakhir memeriksa antrean (None = belum pernah)."""
+        """Seconds since any slot last checked the queue (None = never)."""
         return None if self._last_tick is None else time.monotonic() - self._last_tick
 
     async def start(self) -> None:
         recovered = await asyncio.to_thread(self._jobs.recover_orphans)
         if recovered:
-            logger.info("%d job yatim dari proses sebelumnya dikembalikan ke antrean.", recovered)
+            logger.info("%d orphan job(s) from the previous process returned to the queue.", recovered)
         self._stopping.clear()
         self._tasks = [
             asyncio.create_task(self._loop(i), name=f"doc-worker-{i}")
             for i in range(self._cfg.DOC_WORKERS)
         ]
-        logger.info("Worker dokumen berjalan (%d slot).", self._cfg.DOC_WORKERS)
+        logger.info("Document worker running (%d slots).", self._cfg.DOC_WORKERS)
 
     async def stop(self) -> None:
         self._stopping.set()
@@ -81,10 +81,10 @@ class DocumentWorker:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
-        logger.info("Worker dokumen berhenti.")
+        logger.info("Document worker stopped.")
 
     async def run_once(self) -> bool:
-        """Ambil & proses satu job jika ada. Return True jika ada job diproses (untuk test)."""
+        """Take & process one job if there is one. Return True if a job was processed (for tests)."""
         job = await asyncio.to_thread(self._jobs.claim_next, self._cfg.VERSION_LEASE_MINUTES)
         if job is None:
             return False
@@ -108,7 +108,7 @@ class DocumentWorker:
                     pass
 
     async def _run_job(self, job: DocumentVersion) -> None:
-        # Semua log & catatan llm_calls selama job ini membawa version_id (+ stage).
+        # Every log line & llm_calls record during this job carries version_id (+ stage).
         self._active_jobs += 1
         try:
             with log_context.scoped(version_id=job.id, stage="queued"):
@@ -118,19 +118,19 @@ class DocumentWorker:
 
     async def _run_job_in_context(self, job: DocumentVersion) -> None:
         ctx = JobContext(job, self._jobs, self._cfg.VERSION_LEASE_MINUTES)
-        logger.info("Memproses versi %s (percobaan %d).", job.id, job.attempts)
+        logger.info("Processing version %s (attempt %d).", job.id, job.attempts)
         try:
             await asyncio.wait_for(self._process(job, ctx), timeout=self._cfg.DOC_TOTAL_TIMEOUT)
         except asyncio.CancelledError:
-            # Shutdown: lepas job; sisa data dibersihkan saat job diambil lagi.
+            # Shutdown: release the job; leftover data is cleaned up when it is taken again.
             await asyncio.shield(asyncio.to_thread(self._jobs.release, job.id))
-            logger.info("Versi %s dilepas karena shutdown.", job.id)
+            logger.info("Version %s released because of shutdown.", job.id)
             raise
         except JobCancelled:
             await self._safe_cleanup(job.id)
             await asyncio.to_thread(self._jobs.mark_cancelled, job.id)
             self._remove_source(job)
-            logger.info("Versi %s dibatalkan.", job.id)
+            logger.info("Version %s cancelled.", job.id)
         except Exception as exc:
             retryable, message = classify(exc)
             await self._safe_cleanup(job.id)
@@ -139,13 +139,13 @@ class DocumentWorker:
                 delay = backoff[min(job.attempts, len(backoff)) - 1]
                 await asyncio.to_thread(self._jobs.schedule_retry, job.id, delay, message)
                 logger.warning(
-                    "Versi %s gagal (percobaan %d), dicoba lagi dalam %d menit.",
+                    "Version %s failed (attempt %d), retrying in %d minutes.",
                     job.id, job.attempts, delay, exc_info=exc,
                 )
             else:
                 await asyncio.to_thread(self._jobs.mark_failed, job.id, message)
                 self._remove_source(job)
-                logger.error("Versi %s gagal permanen: %s", job.id, message, exc_info=exc)
+                logger.error("Version %s failed permanently: %s", job.id, message, exc_info=exc)
         else:
             self._remove_source(job)
 
@@ -153,12 +153,12 @@ class DocumentWorker:
         try:
             await self._cleanup(version_id)
         except Exception:
-            # Data yatim tetap tak terlihat (versi tidak ready) dan dibersihkan
-            # lagi saat versi ini diproses ulang.
-            logger.exception("Pembersihan data versi %s gagal.", version_id)
+            # Orphan data stays invisible (the version is not ready) and is cleaned
+            # up again when this version is reprocessed.
+            logger.exception("Cleaning up the data of version %s failed.", version_id)
 
     def _remove_source(self, job: DocumentVersion) -> None:
         try:
             self._source_path(job).unlink(missing_ok=True)
         except OSError:
-            logger.warning("File antrean versi %s tidak bisa dihapus.", job.id, exc_info=True)
+            logger.warning("Could not delete the queue file of version %s.", job.id, exc_info=True)

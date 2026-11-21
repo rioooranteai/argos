@@ -53,7 +53,7 @@ def test_aggregate_rows_get_coverage_not_labels():
     reg = CitationRegistry(SOURCES)
     result = NL2SQLResult(status="ok", raw_data=[{"rata": 231.0}], row_count=1)
     text = synthesizer._format_sql_result(result, reg)
-    assert "DATA AGREGAT" in text and "2 sumber" in text
+    assert "AGGREGATED DATA" in text and "2 source(s)" in text
     assert "[1]" not in text
 
 
@@ -69,7 +69,7 @@ def test_vector_hits_labelled_from_metadata():
 async def test_synthesizer_returns_used_citations():
     class LLM:
         async def ainvoke(self, prompt, system=None):
-            assert "[1]" in prompt and "[DAFTAR SUMBER]" in prompt
+            assert "[1]" in prompt and "[SOURCE LIST]" in prompt
             return "Avanza Rp 230 jt [1]."
 
     state = {

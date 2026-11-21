@@ -95,7 +95,7 @@ async def test_partial_failure_answers_with_explicit_note():
     assert out.answer == "Avanza Rp 230 jt [1]."
     assert out.degraded is True
     assert [i.to_dict() for i in out.issues] == [{"component": "vector", "code": "LLM_TIMEOUT"}]
-    assert "GAGAL dibaca karena gangguan sistem: Pencarian dokumen" in synth.prompts[0]
+    assert "FAILED to load because of a system problem: Document search" in synth.prompts[0]
     assert out.trace["vector"] == {"status": "error", "duration_ms": out.trace["vector"]["duration_ms"],
                                    "code": "LLM_TIMEOUT"}
 
@@ -129,7 +129,7 @@ async def test_all_empty_is_normal_not_degraded():
     eng, synth = engine(sql=sql, vectors=Vectors([]))
     out = await eng.chat("harga?", sources=SOURCES)
     assert out.degraded is False
-    assert "Tidak ada data yang ditemukan." in synth.prompts[0]
+    assert "No data found." in synth.prompts[0]
     assert "GAGAL dibaca" not in synth.prompts[0]
     assert out.trace["sql"]["status"] == "empty" and out.trace["vector"]["status"] == "empty"
 

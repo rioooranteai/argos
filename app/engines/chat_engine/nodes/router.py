@@ -18,7 +18,7 @@ def _load_prompt(filename: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}") from None
+        raise FileNotFoundError(f"Prompt file not found: {path}") from None
 
 
 _ROUTER_SYSTEM = _load_prompt("router_agent.md")
@@ -35,8 +35,8 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
     )
 
     prompt = (
-        f"Riwayat percakapan terakhir:\n{history_text}\n\n"
-        f"Pertanyaan terbaru user: {user_input}"
+        f"Recent conversation history:\n{history_text}\n\n"
+        f"Latest user question: {user_input}"
     )
 
     clock = Stopwatch()
@@ -55,12 +55,12 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
         return {"route": route, "router_reasoning": reasoning, "node_traces": [trace]}
 
     except Exception:
-        logger.exception("[router] Gagal menentukan rute; memakai rute cadangan.")
+        logger.exception("[router] Failed to pick a route; using the fallback route.")
         trace = NodeTrace(node="router", status="error", duration_ms=clock.ms(), code="ROUTER_FAILED")
-        # Rute cadangan `both`: lebih baik membaca semua sumber daripada menebak satu
+        # Fallback route `both`: reading every source beats guessing one
         # (DESIGN_GROUP_C.md §3).
         return {
             "route": "both",
-            "router_reasoning": "Rute cadangan karena pemilihan sumber gagal.",
+            "router_reasoning": "Fallback route because source selection failed.",
             "node_traces": [trace],
         }

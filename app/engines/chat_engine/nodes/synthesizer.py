@@ -21,12 +21,12 @@ def _load_prompt(filename: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}") from None
+        raise FileNotFoundError(f"Prompt file not found: {path}") from None
 
 
 _SYNTHESIZER_PROMPT_TEXT = _load_prompt("synthesizer_answer.md")
 
-# Baris SQL maksimum yang dikirim ke LLM penjawab (sisanya hanya diringkas jumlahnya)
+# Max SQL rows sent to the answering LLM (the rest are only counted)
 MAX_SQL_ROWS_IN_PROMPT = 30
 _CITATION_COLUMNS = ("version_id", "page_number")
 
@@ -39,7 +39,7 @@ def _format_sql_result(sql_result: NL2SQLResult | None, registry: CitationRegist
     shown = rows[:MAX_SQL_ROWS_IN_PROMPT]
 
     if sql_result.is_row_level:
-        lines = ["[DATA TERSTRUKTUR (SQL) — sebutkan label sitasi setiap fakta]"]
+        lines = ["[STRUCTURED DATA (SQL) — cite the label of every fact]"]
         for row in shown:
             label = registry.label_for(
                 row.get("version_id"), row.get("page_number"), row.get("section_heading")
@@ -51,23 +51,23 @@ def _format_sql_result(sql_result: NL2SQLResult | None, registry: CitationRegist
             )
             lines.append(f"{body} {label}".rstrip())
     else:
-        # Agregat: tidak bisa diatribusikan per baris → ringkasan cakupan saja.
+        # Aggregates: cannot be attributed per row → only a coverage summary.
         lines = [
-            f"[DATA AGREGAT (SQL) dari {registry.coverage()} — "
-            "sebutkan cakupan sumber ini, jangan beri nomor sitasi]"
+            f"[AGGREGATED DATA (SQL) from {registry.coverage()} — "
+            "mention this source coverage, do not add citation numbers]"
         ]
         for row in shown:
             lines.append(" | ".join(f"{k}={v}" for k, v in row.items() if v not in (None, "")))
 
     if sql_result.truncated or sql_result.row_count > len(shown):
-        lines.append(f"... (ditampilkan {len(shown)} baris pertama)")
+        lines.append(f"... (showing the first {len(shown)} rows)")
     return "\n".join(lines)
 
 
 def _format_vector_result(vector_result: list | None, registry: CitationRegistry) -> str:
     if not vector_result:
         return ""
-    lines = ["[KONTEKS DOKUMEN (Vector Store) — sebutkan label sitasi setiap fakta]"]
+    lines = ["[DOCUMENT CONTEXT (Vector Store) — cite the label of every fact]"]
     for i, chunk in enumerate(vector_result, 1):
         meta = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
         text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
@@ -79,14 +79,14 @@ def _format_vector_result(vector_result: list | None, registry: CitationRegistry
 
 
 def _failure_note(failed: list[str]) -> str:
-    """Blok untuk synthesizer saat sebagian sumber gagal dibaca (jawaban degraded)."""
+    """Block for the synthesizer when some sources failed to load (degraded answer)."""
     if not failed:
         return ""
     names = ", ".join(COMPONENT_LABELS.get(n, n) for n in failed)
     return (
-        "[CATATAN SISTEM]\n"
-        f"Sumber berikut GAGAL dibaca karena gangguan sistem: {names}. "
-        "Data dari sumber itu tidak tersedia, bukan kosong."
+        "[SYSTEM NOTE]\n"
+        f"These sources FAILED to load because of a system problem: {names}. "
+        "Their data is unavailable, not empty."
     )
 
 
@@ -101,7 +101,7 @@ def _build_data_context(
     ]
     legend = registry.legend()
     if sections and legend:
-        sections.append("[DAFTAR SUMBER]\n" + legend)
+        sections.append("[SOURCE LIST]\n" + legend)
     note = _failure_note(failed or [])
     if note:
         sections.append(note)
@@ -109,7 +109,7 @@ def _build_data_context(
 
 
 def _retrieval_status(state: dict) -> tuple[list[str], list[str]]:
-    """(node pengambil data yang berjalan, yang gagal) dari trace sejauh ini."""
+    """(retrieval nodes that ran, those that failed) from the trace so far."""
     ran = [t for t in state.get("node_traces", []) if t.node in RETRIEVAL_NODES]
     return [t.node for t in ran], [t.node for t in ran if t.status == "error"]
 
@@ -126,7 +126,7 @@ def _message_to_text(m) -> str:
 
 
 def _chunk_refs(vector_result: list | None, registry: CitationRegistry) -> list[dict]:
-    """Ringkasan chunk untuk trace: label, halaman, jarak. Tanpa teks dokumen."""
+    """Chunk summary for the trace: label, page, distance. No document text."""
     refs = []
     for chunk in vector_result or []:
         meta = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
@@ -148,9 +148,9 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
 
     ran, failed = _retrieval_status(state)
     if ran and len(failed) == len(ran):
-        # Semua sumber gagal: jangan biarkan LLM menjawab "tidak ada data" (C2).
+        # Every source failed: do not let the LLM answer "no data" (C2).
         raise UpstreamError(
-            "Sumber data sedang tidak bisa dibaca. Coba lagi sebentar.",
+            "The data sources cannot be read right now. Try again shortly.",
             details={"issues": [
                 {"component": t.node, "code": t.code}
                 for t in state["node_traces"] if t.node in failed
@@ -166,17 +166,17 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
 
     prompt_body = _SYNTHESIZER_PROMPT_TEXT.format(
         question=user_input,
-        data=data_context if data_context else "Tidak ada data yang ditemukan.",
+        data=data_context if data_context else "No data found.",
     )
-    prompt = f"Riwayat percakapan:\n{history_text}\n\n{prompt_body}"
+    prompt = f"Conversation history:\n{history_text}\n\n{prompt_body}"
 
     try:
         answer = await llm.ainvoke(prompt=prompt, system=None)
     except Exception as e:
-        # Tidak ada jawaban pengganti yang disimpan sebagai jawaban (C2).
-        logger.exception("[synthesizer] Gagal membuat jawaban.")
+        # No substitute answer is saved as the answer (C2).
+        logger.exception("[synthesizer] Failed to produce an answer.")
         raise UpstreamError(
-            "Layanan AI gagal membuat jawaban. Coba lagi sebentar.",
+            "The AI service failed to produce an answer. Try again shortly.",
             details={"issues": [{"component": "synthesizer", "code": classify_llm_error(e)}]},
         ) from e
 

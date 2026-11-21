@@ -20,17 +20,17 @@ async def vector_node(state: dict, vector_svc: VectorStoreService) -> dict:
     clock = Stopwatch()
 
     try:
-        # search() sinkron (HTTP embedding OpenAI + query Chroma) → jalankan di thread.
+        # search() is synchronous (OpenAI embedding HTTP + Chroma query) → run it in a thread.
         hits = await asyncio.to_thread(
             vector_svc.search, user_input, version_ids, DEFAULT_VECTOR_LIMIT
         )
     except Exception as e:
-        logger.exception("[vector_node] Pencarian vector gagal.")
-        # Embedding = panggilan OpenAI (kode LLM_*); selain itu kegagalan Chroma.
+        logger.exception("[vector_node] Vector search failed.")
+        # Embedding = an OpenAI call (LLM_* codes); anything else is a Chroma failure.
         code = classify_llm_error(e)
         if code == LLM_ERROR:
             code = VECTOR_STORE_FAILED
-        # None (bukan []) supaya "gagal" tidak tertukar dengan "tidak ada hasil".
+        # None (not []) so "failed" is not confused with "no results".
         trace = NodeTrace(node="vector", status="error", duration_ms=clock.ms(), code=code)
         return {"vector_result": None, "node_traces": [trace]}
 

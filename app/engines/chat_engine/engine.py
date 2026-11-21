@@ -91,11 +91,11 @@ class ChatEngine:
             history: Prior messages in chronological order. The CURRENT user
                 input should already be the last item — but we accept either
                 shape and add it ourselves if missing, to keep callers simple.
-            sources: Sumber aktif notebook (dicentang & ready). SQL dan vector
-                search HANYA membaca data milik versi-versi ini.
+            sources: The notebook's active sources (checked & ready). SQL and vector
+                search ONLY read data from these versions.
 
         Raises:
-            UpstreamTimeout: seluruh proses melewati CHAT_TOTAL_TIMEOUT.
+            UpstreamTimeout: the whole run went over CHAT_TOTAL_TIMEOUT.
         """
         sources = sources or []
 
@@ -129,9 +129,9 @@ class ChatEngine:
                     self._graph.ainvoke(initial_state), timeout=self._total_timeout
                 )
             except TimeoutError:
-                logger.warning("Chat melewati batas %s detik.", self._total_timeout)
+                logger.warning("Chat went over the %s-second limit.", self._total_timeout)
                 raise UpstreamTimeout(
-                    "Jawaban terlalu lama dibuat. Coba lagi.", code="CHAT_TIMEOUT"
+                    "The answer took too long. Try again.", code="CHAT_TIMEOUT"
                 ) from None
 
         traces: list[NodeTrace] = final_state.get("node_traces", [])
@@ -147,7 +147,7 @@ class ChatEngine:
 
 
 def build_trace(state: dict, traces: list[NodeTrace], issues, llm_calls: list[LLMCall]) -> dict[str, Any]:
-    """Trace per pesan (DESIGN_GROUP_C.md §7.4): tanpa prompt dan teks dokumen."""
+    """Trace per message (DESIGN_GROUP_C.md §7.4): no prompts and no document text."""
     trace: dict[str, Any] = {
         "route": state["route"],
         "router_reasoning": state["router_reasoning"],

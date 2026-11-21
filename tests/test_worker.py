@@ -188,7 +188,7 @@ async def test_transient_error_schedules_retry_then_fails(env):
     await worker.run_once()
     row = _stage(db, vid)
     assert row["stage"] == "queued" and row["next_retry_at"] is not None
-    assert row["error"] and "dicoba lagi" in row["error"]
+    assert row["error"] and "will be retried" in row["error"]
     assert (tmp / f"{vid}.pdf").exists()  # file dipertahankan untuk percobaan ulang
 
     with db.get_connection() as conn:
@@ -210,7 +210,7 @@ async def test_permanent_error_fails_immediately(env):
     await _worker(jobs, tmp, process).run_once()
     row = _stage(db, vid)
     assert row["stage"] == "failed" and row["attempts"] == 1
-    assert row["error"] == "Dokumen tidak bisa dibaca. Pastikan file tidak rusak."
+    assert row["error"] == "The document cannot be read. Make sure the file is not broken."
 
 
 async def test_cancel_during_processing(env):

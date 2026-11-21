@@ -18,8 +18,8 @@ async def sql_node(state: dict, nl2sql_svc: NL2SQLService) -> dict:
     try:
         result = await nl2sql_svc.process_query(user_input, version_ids)
     except Exception as e:
-        # process_query sudah mengembalikan hasil bertipe; ini hanya jaring pengaman.
-        logger.exception("[sql_node] NL2SQL gagal.")
+        # process_query already returns a typed result; this is only a safety net.
+        logger.exception("[sql_node] NL2SQL failed.")
         result = NL2SQLResult(status="error", message=str(e), error_code=classify_llm_error(e))
 
     logger.info("[sql_node] status=%s rows=%d code=%s", result.status, result.row_count, result.error_code)

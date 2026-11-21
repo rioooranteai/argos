@@ -1,17 +1,17 @@
-"""Pipeline pemrosesan satu versi dokumen (DESIGN_GROUP_A.md §7, DESIGN_GROUP_B.md §3).
+"""The processing pipeline for one document version (DESIGN_GROUP_A.md §7, DESIGN_GROUP_B.md §3).
 
-    parsing → vision → indexing → extracting → publikasi (satu transaksi SQL)
+    parsing → vision → indexing → extracting → publish (one SQL transaction)
 
-Urutan tulis aman (Chroma dan SQLite tidak bisa satu transaksi):
-  1. vektor versi ini ditulis ke Chroma — belum terlihat, karena chat hanya
-     membaca versi berstatus `ready`;
-  2. bagian + features + status `ready` ditulis dalam SATU transaksi SQL.
-Gagal di mana pun → worker memanggil `cleanup()`; tidak ada data setengah jadi
-yang terlihat.
+Safe write order (Chroma and SQLite cannot share a transaction):
+  1. this version's vectors are written to Chroma — not visible yet, because chat
+     only reads versions with status `ready`;
+  2. sections + features + status `ready` are written in ONE SQL transaction.
+A failure anywhere → the worker calls `cleanup()`; no half-finished data
+is ever visible.
 
-Pemakaian ulang untuk versi baru (Tahap 3, A §6.3): gambar lewat cache Vision,
-unit ekstraksi lewat cache ekstraksi, dan vektor chunk yang teksnya identik
-disalin dari versi `ready` terbaru dokumen yang sama (tanpa embedding ulang).
+Reuse for new versions (stage 3, A §6.3): images through the Vision cache,
+extraction units through the extraction cache, and vectors of chunks with identical
+text are copied from the same document's latest `ready` version (no re-embedding).
 """
 from __future__ import annotations
 
@@ -72,12 +72,12 @@ class DocumentPipeline:
     async def process(self, version: DocumentVersion, ctx: JobContext) -> None:
         path = self.source_path(version)
         if not path.exists():
-            raise PermanentJobError("File sumber tidak ditemukan. Upload ulang dokumen ini.")
+            raise PermanentJobError("The source file was not found. Upload this document again.")
         document = await asyncio.to_thread(self._library.get_document, version.document_id)
         if document is None:
             raise JobCancelled()
 
-        # Sisa percobaan sebelumnya (mis. crash di tengah) dibersihkan dulu.
+        # Leftovers from a previous attempt (e.g. a crash midway) are cleaned up first.
         await self.cleanup(version.id)
 
         # ── 1. Parsing ─────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class DocumentPipeline:
         if not any(s.text.strip() for s in sections) and not any(
             e.element_type == ElementType.FIGURE for e in elements
         ):
-            raise PermanentJobError("Dokumen tidak berisi teks yang bisa dibaca.")
+            raise PermanentJobError("The document contains no readable text.")
         await ctx.check_cancelled()
 
         # ── 2. Vision ──────────────────────────────────────────────────
@@ -113,7 +113,7 @@ class DocumentPipeline:
             await ctx.progress(i)
             await ctx.check_cancelled()
 
-        # ── 4. Ekstraksi ───────────────────────────────────────────────
+        # ── 4. Extraction ──────────────────────────────────────────────
         units = build_units(
             sections,
             self._count_tokens,
@@ -127,7 +127,7 @@ class DocumentPipeline:
         )
         await ctx.check_cancelled()
 
-        # ── 5. Publikasi atomik ────────────────────────────────────────
+        # ── 5. Atomic publish ──────────────────────────────────────────
         reuse_stats = {
             "chunks": len(chunks),
             "chunks_reused": chunks_reused,
@@ -143,23 +143,23 @@ class DocumentPipeline:
         if not published:
             raise JobCancelled()
         logger.info(
-            "Versi %s ready: %d bagian, %d feature, %d gagal Vision | dipakai ulang: "
-            "chunk %d/%d, unit %d/%d, gambar %d/%d",
+            "Version %s ready: %d sections, %d features, %d Vision failures | reused: "
+            "chunks %d/%d, units %d/%d, images %d/%d",
             version.id, len(sections), len(rows), outcome.failed,
             chunks_reused, len(chunks), extraction_stats.cached, extraction_stats.units,
             outcome.from_cache, outcome.total,
         )
 
     def _reusable_vectors(self, document: LibraryDocument, version: DocumentVersion) -> dict[str, str]:
-        """Teks → ID chunk dari versi `ready` terbaru dokumen ini, bila vektornya kompatibel.
+        """Text → chunk ID from this document's latest `ready` version, when its vectors are compatible.
 
-        Hanya optimasi: bila gagal dibaca, versi ini tetap diproses penuh.
+        Only an optimisation: if it cannot be read, this version is processed in full.
         """
         previous_id = document.latest_version_id
         if not previous_id or previous_id == version.id:
             return {}
         previous = self._library.get_version(previous_id)
-        # Model embedding ikut tercakup PIPELINE_VERSION: vektor beda model tidak dicampur.
+        # The embedding model is covered by PIPELINE_VERSION: vectors from different models are never mixed.
         if (
             previous is None
             or previous.stage != STAGE_READY
@@ -169,13 +169,13 @@ class DocumentPipeline:
         try:
             return self._vectors.version_texts(previous_id)
         except Exception:
-            # Pemakaian ulang hanya penghematan: gagal → semua chunk di-embed biasa.
+            # Reuse is only a saving: on failure → every chunk is embedded as usual.
             logger.warning(
-                "Vektor versi %s tidak bisa dibaca untuk dipakai ulang.", previous_id, exc_info=True
+                "Could not read the vectors of version %s for reuse.", previous_id, exc_info=True
             )
             return {}
 
     async def cleanup(self, version_id: str) -> None:
-        """Hapus semua data milik versi yang belum/tidak jadi dipublikasikan."""
+        """Delete all data of a version that was not (or will not be) published."""
         await asyncio.to_thread(self._features.delete_version_content, version_id)
         await asyncio.to_thread(self._vectors.delete_version, version_id)

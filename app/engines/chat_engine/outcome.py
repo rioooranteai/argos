@@ -1,13 +1,13 @@
-"""Hasil chat bertipe dan status per node (DESIGN_GROUP_C.md §3).
+"""Typed chat results and per-node status (DESIGN_GROUP_C.md §3).
 
-Status node:
-- ``ok``    — berhasil, ada data
-- ``empty`` — berhasil, memang tidak ada data
-- ``error`` — sistem gagal (kode di ``code``)
+Node status:
+- ``ok``    — succeeded, with data
+- ``empty`` — succeeded, there really is no data
+- ``error`` — system failure (the code is in ``code``)
 
-Setiap node menambahkan satu ``NodeTrace`` ke state (reducer ``operator.add``,
-karena ``sql_node`` dan ``vector_node`` bisa berjalan paralel). Engine menyusun
-trace dan daftar issue dari situ.
+Every node adds one ``NodeTrace`` to the state (reducer ``operator.add``,
+because ``sql_node`` and ``vector_node`` can run in parallel). The engine builds
+the trace and the issue list from it.
 """
 from __future__ import annotations
 
@@ -16,14 +16,14 @@ from typing import Any, Literal
 
 NodeStatus = Literal["ok", "empty", "error"]
 
-# Node yang mengambil data dari sumber notebook (yang lain: router, synthesizer).
+# Nodes that fetch data from the notebook sources (the others: router, synthesizer).
 RETRIEVAL_NODES = ("sql", "vector")
 
-# Nama sumber untuk pesan ke user / synthesizer.
+# Source names for messages to the user / synthesizer.
 COMPONENT_LABELS = {
-    "sql": "Data terstruktur (SQL)",
-    "vector": "Pencarian dokumen",
-    "router": "Pemilihan sumber",
+    "sql": "Structured data (SQL)",
+    "vector": "Document search",
+    "router": "Source selection",
 }
 
 
@@ -38,7 +38,7 @@ class NodeIssue:
 
 @dataclass
 class NodeTrace:
-    """Ringkasan satu node untuk trace pesan. Tanpa teks dokumen / prompt."""
+    """Summary of one node for the message trace. No document text / prompts."""
 
     node: str
     status: NodeStatus
@@ -65,7 +65,7 @@ class ChatResult:
 
     @property
     def degraded(self) -> bool:
-        """Jawaban dibuat walau ada komponen yang gagal."""
+        """An answer was produced even though some component failed."""
         return bool(self.issues)
 
 

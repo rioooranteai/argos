@@ -4,7 +4,7 @@ import time
 
 
 class Stopwatch:
-    """Durasi node dalam milidetik untuk trace."""
+    """Node duration in milliseconds for the trace."""
 
     def __init__(self) -> None:
         self._start = time.perf_counter()
