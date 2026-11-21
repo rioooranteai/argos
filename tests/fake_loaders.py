@@ -1,4 +1,4 @@
-"""Loader palsu untuk test subprocess Docling (harus bisa di-import oleh proses spawn)."""
+"""Fake loaders for the Docling subprocess tests (must be importable by a spawned process)."""
 from __future__ import annotations
 
 import os

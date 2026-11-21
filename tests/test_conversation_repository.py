@@ -110,7 +110,7 @@ def test_message_ids_are_uuid_and_order_survives_same_second(repo):
     import uuid
 
     conv = repo.create_conversation(user_id="u1", title="t")
-    for i in range(12):  # jauh lebih cepat dari 1 detik → created_at sama
+    for i in range(12):  # much faster than 1 second → same created_at
         repo.add_message(conv.id, role="user" if i % 2 == 0 else "assistant", content=str(i))
     msgs = repo.list_messages(conv.id)
     assert [m.content for m in msgs] == [str(i) for i in range(12)]

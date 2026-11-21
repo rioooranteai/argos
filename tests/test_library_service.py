@@ -1,4 +1,4 @@
-"""LibraryService: idempotensi hash, batas batch, versi baru, hak ganti nama."""
+"""LibraryService: hash idempotency, batch limits, new versions, rename rights."""
 from __future__ import annotations
 
 import dataclasses
@@ -50,7 +50,7 @@ async def test_new_upload_is_queued_with_file_in_queue(env):
     doc = repo.get_document(r.document_id)
     assert doc.display_name == "Pricelist Toyota"
     assert doc.owner_id == ALICE.id
-    # tidak ada file sementara yang tertinggal
+    # no temporary files are left behind
     assert [p.name for p in queue.iterdir()] == [f"{v.id}.pdf"]
 
 
@@ -82,7 +82,7 @@ async def test_failed_version_is_requeued_on_reupload(env):
             "UPDATE document_versions SET stage='failed', attempts=3, error='x' WHERE id=?",
             (r.version_id,),
         )
-    queued_file_path(queue, r.version_id, ".pdf").unlink()  # worker sudah menghapus file
+    queued_file_path(queue, r.version_id, ".pdf").unlink()  # the worker already deleted the file
 
     [again] = await svc.upload_documents(BOB, [upload(data, "a.pdf")])
     assert again.status == "queued" and again.version_id == r.version_id
@@ -92,11 +92,11 @@ async def test_failed_version_is_requeued_on_reupload(env):
 
 
 async def test_lost_race_returns_existing(env, monkeypatch):
-    """Dua upload identik bersamaan: yang kalah mendapat versi pemenang."""
+    """Two identical concurrent uploads: the loser gets the winner's version."""
     svc, repo, _, _ = env
     data = make_pdf(1)
     [winner] = await svc.upload_documents(ALICE, [upload(data, "a.pdf")])
-    # Simulasikan: pengecekan hash belum melihat pemenang, INSERT lalu kena UNIQUE.
+    # Simulate: the hash check does not see the winner yet, then the INSERT hits UNIQUE.
     original = repo.find_version_by_hash
     calls = {"n": 0}
 
@@ -107,7 +107,7 @@ async def test_lost_race_returns_existing(env, monkeypatch):
     monkeypatch.setattr(repo, "find_version_by_hash", flaky)
     [loser] = await svc.upload_documents(BOB, [upload(data, "a.pdf")])
     assert loser.status == "existing" and loser.version_id == winner.version_id
-    # dokumen kedua tidak tercipta (transaksi di-rollback)
+    # the second document is not created (the transaction is rolled back)
     assert len(repo.list_documents(None, None, 50, 0)) == 1
 
 
@@ -171,7 +171,7 @@ async def test_new_version_increments_number(env):
     v2 = await svc.upload_new_version(BOB, r.document_id, upload(make_pdf(1, marker=1), "p-feb.pdf"))
     assert v2.status == "queued"
     assert repo.get_version(v2.version_id).version_no == 2
-    # file identik dengan v2 → dipakai ulang
+    # a file identical to v2 → reused
     again = await svc.upload_new_version(BOB, r.document_id, upload(make_pdf(1, marker=1), "x.pdf"))
     assert again.status == "existing" and again.version_id == v2.version_id
 
@@ -205,5 +205,5 @@ async def test_list_and_search(env):
     assert hit.owner_name == "Alice"
     [by_bob] = svc.list_documents(None, BOB.id, 50, 0)
     assert by_bob.document.display_name == "Brosur Honda"
-    # wildcard LIKE di-escape
+    # LIKE wildcards are escaped
     assert svc.list_documents("%", None, 50, 0) == []

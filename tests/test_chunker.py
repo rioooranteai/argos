@@ -1,4 +1,4 @@
-"""Bagian, section_hash, unit ekstraksi, dan chunk ID."""
+"""Sections, section_hash, extraction units, and chunk IDs."""
 from __future__ import annotations
 
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
@@ -32,7 +32,7 @@ def test_groups_consecutive_elements_by_heading():
 
 
 def test_section_hash_ignores_page_shift():
-    """Halaman bergeser (mis. halaman disisipkan di depan) → hash bagian tetap."""
+    """Pages shift (e.g. a page inserted at the front) → the section hash stays the same."""
     v1 = build_sections([el("Avanza 230 jt", ["Harga"], page=4)])
     v2 = build_sections([el("Avanza 230 jt", ["Harga"], page=5)])
     assert v1[0].section_hash == v2[0].section_hash

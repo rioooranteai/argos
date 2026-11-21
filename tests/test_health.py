@@ -1,4 +1,4 @@
-"""/health/live dan /health/ready (DESIGN_GROUP_C.md §6)."""
+"""/health/live and /health/ready (DESIGN_GROUP_C.md §6)."""
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -127,8 +127,8 @@ def test_docling_down_is_degraded_not_failed(make):
 @pytest.mark.parametrize("worker, expected", [
     (Worker(running=False), "fail"),
     (Worker(since=60.0), "fail"),          # loop macet
-    (Worker(since=None), "fail"),          # belum pernah berputar
-    (Worker(since=600.0, active=2), "ok"),  # semua slot sibuk memproses job
+    (Worker(since=None), "fail"),          # has never looped
+    (Worker(since=600.0, active=2), "ok"),  # every slot is busy with a job
 ])
 def test_worker_check(make, worker, expected):
     body = make(worker=worker)[0].get("/health/ready").json()

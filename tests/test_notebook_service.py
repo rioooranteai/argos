@@ -1,4 +1,4 @@
-"""NotebookService: batas sumber, pin versi, checkbox, sumber aktif, pembatalan."""
+"""NotebookService: source limit, version pins, checkboxes, active sources, cancellation."""
 from __future__ import annotations
 
 import asyncio
@@ -47,7 +47,7 @@ def env(tmp_path):
 
 
 def publish(db, version_id: str):
-    """Tandai versi ready seperti yang dilakukan pipeline."""
+    """Mark a version ready the way the pipeline does."""
     with db.get_connection() as conn:
         doc = conn.execute("SELECT document_id FROM document_versions WHERE id=?", (version_id,)).fetchone()[0]
     SQLiteFeatureRepository(db).publish_version(doc, version_id, [], [])
@@ -67,7 +67,7 @@ async def test_upload_attaches_sources_and_respects_limit(env):
     assert len(sources) == 2 and all(s.enabled for s in sources)
     assert sources[0].stage == "queued"
 
-    # sisa slot = 1 → upload 2 file ditolak di depan
+    # 1 slot left → uploading 2 files is rejected up front
     with pytest.raises(ValidationError):
         await svc.upload(ALICE, nb.id, [upload(make_pdf(1, marker=7), "a.pdf"), upload(make_pdf(1, marker=8), "b.pdf")])
 
@@ -122,7 +122,7 @@ async def test_active_sources_only_enabled_and_ready(env):
     c = await doc(library, ALICE, 3, "c.pdf")
     svc.add_from_library(ALICE, nb.id, [a.document_id, b.document_id, c.document_id])
     publish(db, a.version_id)
-    publish(db, b.version_id)  # c masih queued
+    publish(db, b.version_id)  # c is still queued
     svc.update_source(ALICE, nb.id, b.document_id, enabled=False, use_latest_version=False)
 
     assert [s.version_id for s in svc.active_sources(ALICE, nb.id)] == [a.version_id]
@@ -137,11 +137,11 @@ async def test_pinned_version_and_update(env):
 
     v2 = await library.upload_new_version(BOB, v1.document_id, upload(make_pdf(1, marker=9), "p2.pdf"))
     [s] = svc.sources(ALICE, nb.id)
-    assert s.version_id == v1.version_id and not s.update_available  # v2 belum ready
+    assert s.version_id == v1.version_id and not s.update_available  # v2 is not ready yet
 
     publish(db, v2.version_id)
     [s] = svc.sources(ALICE, nb.id)
-    assert s.version_id == v1.version_id and s.update_available  # tetap di-pin, ada badge
+    assert s.version_id == v1.version_id and s.update_available  # still pinned, with a badge
 
     [s] = svc.update_source(ALICE, nb.id, v1.document_id, enabled=None, use_latest_version=True)
     assert s.version_id == v2.version_id and not s.update_available
@@ -165,14 +165,14 @@ async def test_remove_does_not_cancel_when_used_elsewhere_or_not_uploader(env):
     d = results[0].document_id
     svc.add_from_library(BOB, nb_b.id, [d])
 
-    svc.remove_source(ALICE, nb_a.id, d)  # masih dipakai notebook Bob → tidak dibatalkan
+    svc.remove_source(ALICE, nb_a.id, d)  # still used by Bob's notebook → not cancelled
     with db.get_connection() as conn:
         assert conn.execute("SELECT stage FROM document_versions").fetchone()[0] == "queued"
     svc.add_from_library(ALICE, nb_a.id, [d])
-    svc.remove_source(BOB, nb_b.id, d)    # Bob bukan pengunggah → tidak dibatalkan
+    svc.remove_source(BOB, nb_b.id, d)    # Bob is not the uploader → not cancelled
     with db.get_connection() as conn:
         assert conn.execute("SELECT stage FROM document_versions").fetchone()[0] == "queued"
-    svc.remove_source(ALICE, nb_a.id, d)  # pengunggah, tidak dipakai siapa pun → dibatalkan
+    svc.remove_source(ALICE, nb_a.id, d)  # the uploader, used by nobody → cancelled
     with db.get_connection() as conn:
         assert conn.execute("SELECT stage FROM document_versions").fetchone()[0] == "cancelled"
 

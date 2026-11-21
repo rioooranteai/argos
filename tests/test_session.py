@@ -1,4 +1,4 @@
-"""Sesi lewat cookie HttpOnly (DESIGN_GROUP_D.md D1, D7)."""
+"""Session via an HttpOnly cookie (DESIGN_GROUP_D.md D1, D7)."""
 from __future__ import annotations
 
 import pytest
@@ -70,7 +70,7 @@ def test_callback_sets_httponly_cookie_without_token_in_url(env):
     assert "Secure" not in header  # http lokal
     assert "token" not in r.headers["location"]
 
-    me = c.get("/me")  # TestClient mengirim cookie seperti browser
+    me = c.get("/me")  # TestClient sends cookies like a browser
     assert me.status_code == 200
     user = repo.get(me.json()["id"])
     assert user.email == "staff@corp.com" and me.json()["given_name"] == "Staff"
@@ -102,7 +102,7 @@ def test_inactive_user_cannot_log_in_or_use_old_cookie(env):
 
 
 def test_bearer_header_is_rejected(env):
-    # Hanya cookie yang diterima; token sah di header Bearer tetap 401.
+    # Only the cookie is accepted; a valid token in a Bearer header is still 401.
     client, repo, _, _ = env
     user = repo.upsert_on_login("google-1", "a@corp.com", "A", None)
     r = client().get("/me", headers={"Authorization": f"Bearer {create_session_token(user.id)}"})

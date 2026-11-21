@@ -9,7 +9,7 @@ from app.core.config import AppConfig, Infra, Secrets
 
 
 def _secrets(**env) -> Secrets:
-    # _env_file=None: jangan baca .env asli developer saat test.
+    # _env_file=None: do not read the developer's real .env during tests.
     return Secrets(_env_file=None, **env)
 
 

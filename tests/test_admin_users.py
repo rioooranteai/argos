@@ -1,4 +1,4 @@
-"""Tahap 2: admin menonaktifkan user, kepemilikan dokumen dialihkan."""
+"""Stage 2: the admin deactivates a user, document ownership is transferred."""
 from __future__ import annotations
 
 import pytest
@@ -67,9 +67,9 @@ async def test_deactivate_transfers_ownership_and_blocks_access(env):
     out = c.patch("/api/v1/admin/users/u1", json={"is_active": False}, headers=auth("admin")).json()
     assert out["is_active"] is False and out["documents_transferred"] == 1
     assert repo.get_document(r.document_id).owner_id == "admin"
-    assert repo.get_version(r.version_id).uploaded_by == "u1"  # riwayat pengunggah tetap
+    assert repo.get_version(r.version_id).uploaded_by == "u1"  # the uploader history is kept
 
-    # Token Alice yang masih berlaku langsung ditolak
+    # Alice's still-valid token is rejected right away
     r2 = c.get("/api/v1/admin/users", headers=auth("u1"))
     assert r2.status_code == 403 and r2.json()["error"]["code"] == "USER_INACTIVE"
 

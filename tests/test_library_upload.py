@@ -1,4 +1,4 @@
-"""Penerimaan file upload: batas ukuran, hash, nama UUID, hitung halaman."""
+"""Receiving uploads: size limit, hash, UUID name, page count."""
 from __future__ import annotations
 
 import hashlib

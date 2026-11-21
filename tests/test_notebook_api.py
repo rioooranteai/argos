@@ -1,4 +1,4 @@
-"""HTTP: /api/v1/notebooks — sumber, chat terbatas sumber aktif, sitasi, isolasi antar user."""
+"""HTTP: /api/v1/notebooks — sources, chat limited to active sources, citations, isolation between users."""
 from __future__ import annotations
 
 import asyncio
@@ -152,7 +152,7 @@ def test_notebooks_and_conversations_are_private(env):
     assert c.get(f"/api/v1/notebooks/{nb['id']}/conversations/{conv_id}").status_code == 404
     assert c.get("/api/v1/notebooks").json() == []
 
-    # Percakapan tidak bisa dipakai lewat notebook lain milik pemiliknya sendiri
+    # A conversation cannot be used through another notebook, even one its owner owns
     state["user"] = ALICE
     other = c.post("/api/v1/notebooks", json={"title": "Lain"}).json()
     r = c.get(f"/api/v1/notebooks/{other['id']}/conversations/{conv_id}")
@@ -170,7 +170,7 @@ def test_add_from_library_and_remove(env):
     assert c.delete(f"/api/v1/notebooks/{other['id']}").status_code == 204
 
 
-# ── ChatEngine: sumber aktif diteruskan ke SQL & vector, timeout total ──────
+# ── ChatEngine: active sources passed to SQL & vector, total timeout ────────
 
 
 class _LLM:
@@ -231,7 +231,7 @@ async def test_engine_passes_active_versions_and_returns_citations():
     assert out.trace["sql"]["status"] == "ok" and out.trace["sql"]["row_count"] == 1
     assert out.trace["vector"]["status"] == "ok"
     assert out.trace["chunks"] == [{"label": "[2]", "page": 2, "distance": 0.1}]
-    assert out.trace["llm"]["calls"] == 0  # LLM palsu tidak melewati recorder
+    assert out.trace["llm"]["calls"] == 0  # the fake LLM does not go through the recorder
 
 
 async def test_engine_total_timeout():

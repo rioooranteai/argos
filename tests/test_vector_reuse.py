@@ -1,5 +1,5 @@
-"""Tahap 3: vektor chunk yang tidak berubah dipakai ulang dari versi sebelumnya,
-dan statistik pemakaian ulang tersimpan per versi."""
+"""Stage 3: vectors of unchanged chunks are reused from the previous version,
+and reuse statistics are stored per version."""
 from __future__ import annotations
 
 import pytest
@@ -7,7 +7,7 @@ import pytest
 from app.infrastructure.interface.embedder import BaseEmbedder
 from app.services.ingestion.model import DocumentElement, ElementType, IndexChunk
 from app.services.vector_store.providers.chroma_provider import ChromaProvider
-from tests.test_pipeline import (  # noqa: F401 — fixture `env` dipakai ulang
+from tests.test_pipeline import (  # noqa: F401 — the `env` fixture is reused
     FakeVectors,
     _build,
     _q,
@@ -23,7 +23,7 @@ def _el(text: str, heading: str, page: int = 1) -> DocumentElement:
 
 V1 = [_el("Avanza Rp 230 jt", "Harga"), _el("Garansi 3 tahun", "Garansi"),
       _el("Bengkel di 30 kota", "Layanan")]
-# v2: satu bagian berubah (harga), dua bagian sama persis.
+# v2: one section changed (price), two sections identical.
 V2 = [_el("Avanza Rp 245 jt", "Harga"), _el("Garansi 3 tahun", "Garansi"),
       _el("Bengkel di 30 kota", "Layanan")]
 
@@ -43,10 +43,10 @@ async def test_unchanged_chunks_reuse_vectors(env):
 
     await _process(db, library, queue, 2, V2, vectors)
 
-    # Hanya chunk yang berubah dikirim ke embedder.
+    # Only the changed chunk is sent to the embedder.
     assert vectors.embedded == ["[Document: Pricelist]\nAvanza Rp 245 jt"]
     assert vectors.count_version("v2") == 3
-    assert vectors.count_version("v1") == 3  # versi lama utuh (masih bisa di-pin)
+    assert vectors.count_version("v1") == 3  # the old version is intact (can still be pinned)
     [v2] = _q(db, "SELECT stage FROM document_versions WHERE id = 'v2'")
     assert v2["stage"] == "ready"
     stats = library.get_version("v2").reuse_stats
@@ -62,7 +62,7 @@ async def test_first_version_has_zero_reuse(env):
 
 
 def _chapter(text: str, chapter: str, heading: str) -> DocumentElement:
-    # Induk heading berbeda → bagian tidak digabung menjadi satu unit ekstraksi.
+    # Different parent headings → the sections are not merged into one extraction unit.
     return DocumentElement(element_type=ElementType.TEXT, content=text, page_number=1,
                            section_heading=heading, metadata={"headings": [chapter, heading]})
 
@@ -77,14 +77,14 @@ async def test_extraction_cache_counted_for_unchanged_units(env):
     )
     stats = library.get_version("v2").reuse_stats
     assert (stats["units"], stats["units_cached"]) == (3, 2)
-    assert extractor.calls == 1  # hanya unit baru yang dikirim ke LLM
+    assert extractor.calls == 1  # only the new unit is sent to the LLM
 
 
 async def test_different_pipeline_version_is_not_reused(env):
     db, library, queue = env
     vectors = FakeVectors()
     await _process(db, library, queue, 1, V1, vectors)
-    with db.get_connection() as conn:  # mis. model embedding diganti → PIPELINE_VERSION naik
+    with db.get_connection() as conn:  # e.g. the embedding model changed → PIPELINE_VERSION bumped
         conn.execute("UPDATE document_versions SET pipeline_version = 'p0' WHERE id = 'v1'")
     vectors.embedded.clear()
 

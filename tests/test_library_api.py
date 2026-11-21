@@ -38,7 +38,7 @@ def client(tmp_path):
 
 
 def test_requires_login(client):
-    # get_current_user tidak di-override → tanpa token = 401 dengan format error standar
+    # get_current_user is not overridden → no token = 401 in the standard error format
     r = TestClient(client).get("/api/v1/library/documents")
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "UNAUTHENTICATED"

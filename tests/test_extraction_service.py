@@ -1,4 +1,4 @@
-"""ExtractionService: per unit, section_ref → bagian, cache, timeout, concurrency."""
+"""ExtractionService: per unit, section_ref → section, cache, timeout, concurrency."""
 from __future__ import annotations
 
 import asyncio
@@ -136,7 +136,7 @@ async def test_error_propagates_and_completed_units_cached(cache):
 
     provider2 = FakeProvider(ok)
     await _svc(provider2, cache).extract_units(units)
-    assert provider2.calls == [target]  # unit pertama dari cache
+    assert provider2.calls == [target]  # the first unit comes from the cache
 
 
 async def test_concurrency_limited(cache):

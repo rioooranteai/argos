@@ -160,7 +160,7 @@ def test_python_migration_rejects_foreign_key_violations(tmp_path):
     assert conn.execute("SELECT parent_id FROM child").fetchone() == ("p",)
 
 
-# ── v6: semua ID menjadi UUID ───────────────────────────────────────────────
+# ── v6: every ID becomes a UUID ─────────────────────────────────────────────
 
 def test_v6_converts_ids_and_keeps_data(tmp_path):
     import uuid
@@ -201,18 +201,18 @@ def test_v6_converts_ids_and_keeps_data(tmp_path):
         assert conn.execute("SELECT user_id FROM pending_uploads").fetchone()[0] == b
 
         msgs = conn.execute("SELECT id, seq, role FROM messages ORDER BY seq").fetchall()
-        assert [m["role"] for m in msgs] == ["user", "assistant"]  # urutan dipertahankan
+        assert [m["role"] for m in msgs] == ["user", "assistant"]  # the order is kept
         assert all(str(uuid.UUID(m["id"])) == m["id"] for m in msgs)
 
         calls = conn.execute("SELECT id, message_id FROM llm_calls ORDER BY seq").fetchall()
         assert calls[0]["message_id"] == msgs[0]["id"]
-        assert calls[1]["message_id"] is None            # pesan 99 tidak ada
+        assert calls[1]["message_id"] is None            # message 99 does not exist
         feature = conn.execute("SELECT id, product_name FROM features").fetchone()
         assert feature["product_name"] == "Avanza" and len(feature["id"]) == 36
 
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
         indexes = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
         assert {"idx_messages_conversation", "idx_llm_calls_message", "idx_features_version"} <= indexes
-        # Cascade tetap jalan setelah tabel dibuat ulang.
+        # Cascades still work after the tables are rebuilt.
         conn.execute("DELETE FROM conversations WHERE id = 'c1'")
         assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0

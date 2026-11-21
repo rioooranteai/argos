@@ -1,4 +1,4 @@
-"""Sitasi: label dari data, hanya label yang dipakai yang dikembalikan, agregat tanpa label."""
+"""Citations: labels come from the data, only used labels are returned, aggregates have no labels."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -17,10 +17,10 @@ SOURCES = [
 def test_labels_per_version_and_page():
     reg = CitationRegistry(SOURCES)
     assert reg.label_for("v1", 4) == "[1]"
-    assert reg.label_for("v1", 4) == "[1]"   # sama → label sama
-    assert reg.label_for("v1", 5) == "[2]"   # halaman lain → label baru
+    assert reg.label_for("v1", 4) == "[1]"   # same → same label
+    assert reg.label_for("v1", 5) == "[2]"   # another page → a new label
     assert reg.label_for("v2", 2) == "[3]"
-    assert reg.label_for("v9", 1) == ""      # bukan sumber aktif → tanpa label
+    assert reg.label_for("v9", 1) == ""      # not an active source → no label
 
 
 def test_used_in_returns_only_referenced_labels():

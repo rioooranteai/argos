@@ -25,11 +25,11 @@ def test_sliding_window_and_retry_after():
     rl = RateLimiter({"chat": 3}, window_seconds=60, clock=clock)
     for _ in range(3):
         assert rl.hit("chat", "u1") is None
-    assert rl.hit("chat", "u1") == 60          # penuh: tunggu sampai request pertama keluar jendela
+    assert rl.hit("chat", "u1") == 60          # full: wait until the first request leaves the window
     clock.now += 45
     assert rl.hit("chat", "u1") == 15
     clock.now += 15
-    assert rl.hit("chat", "u1") is None        # request pertama sudah keluar jendela
+    assert rl.hit("chat", "u1") is None        # the first request has left the window
 
 
 def test_users_and_groups_are_independent():
@@ -57,7 +57,7 @@ def test_idle_keys_are_cleaned_up(monkeypatch):
     for i in range(4):
         rl.hit("default", f"u{i}")
     clock.now += 120
-    rl.hit("default", "baru")                 # hit ke-5 memicu pembersihan
+    rl.hit("default", "baru")                 # the 5th hit triggers cleanup
     assert rl.tracked_keys() == 1
 
 
@@ -90,7 +90,7 @@ def test_http_429_with_retry_after_header():
 
 
 def test_routes_carry_the_right_groups():
-    """Endpoint mahal memakai grup yang tepat (bukan hanya batas default)."""
+    """Expensive endpoints use the right group (not just the default limit)."""
     from fastapi.routing import APIRoute
 
     from app.main import app
@@ -138,4 +138,4 @@ def test_login_is_limited_per_ip(monkeypatch):
         assert client.get("/api/v1/auth/google/login").headers["location"].startswith("https://accounts")
     r = client.get("/api/v1/auth/google/login")
     assert r.status_code in (302, 307) and r.headers["location"] == "/login?error=RATE_LIMITED"
-    assert limiter.hit("login", "ip-lain") is None   # IP lain tidak terpengaruh
+    assert limiter.hit("login", "ip-lain") is None   # other IPs are not affected

@@ -12,7 +12,7 @@ from app.services.nl2sql.security import validate_generated_sql
 
 
 def test_no_keyword_filter_on_user_questions():
-    """Filter kata kunci NL dihapus (DESIGN_GROUP_C.md §5)."""
+    """The NL keyword filter was removed (DESIGN_GROUP_C.md §5)."""
     assert not hasattr(security, "sanitize_nl_input")
     assert not hasattr(security, "FORBIDDEN_NL_PATTERNS")
 

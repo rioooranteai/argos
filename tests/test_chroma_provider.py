@@ -1,4 +1,4 @@
-"""ChromaProvider: filter per versi, hasil bertipe, hapus per versi (Chroma asli, embedder palsu)."""
+"""ChromaProvider: per-version filter, typed results, per-version delete (real Chroma, fake embedder)."""
 from __future__ import annotations
 
 import pytest
@@ -43,7 +43,7 @@ def test_filter_by_versions(store):
     hits = store.search("avanza", ["v2"], limit=5)
     assert [h.id for h in hits] == ["a2"]
     assert hits[0].metadata["version_id"] == "v2"
-    assert "none" not in hits[0].metadata  # nilai None tidak disimpan
+    assert "none" not in hits[0].metadata  # None values are not stored
 
 
 def test_multiple_versions(store):
@@ -62,4 +62,4 @@ def test_delete_version(store):
 
 
 def test_heartbeat(store):
-    store.heartbeat()  # tidak melempar exception
+    store.heartbeat()  # does not raise

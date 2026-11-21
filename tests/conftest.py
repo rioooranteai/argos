@@ -15,7 +15,7 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
-    """Penghitung rate limit (D9) ada di memori proses: kosongkan di setiap test."""
+    """Rate limit counters (D9) live in process memory: clear them for every test."""
     from app.core.rate_limit import limiter
 
     limiter.reset()

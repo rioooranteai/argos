@@ -1,4 +1,4 @@
-"""Helpers bersama untuk test Library."""
+"""Shared helpers for the Library tests."""
 from __future__ import annotations
 
 import functools
@@ -10,10 +10,10 @@ from fastapi import UploadFile
 
 @functools.cache
 def make_pdf(pages: int = 1, marker: int = 0) -> bytes:
-    """PDF valid dengan jumlah halaman tertentu. `marker` membuat isi (hash) berbeda.
+    """A valid PDF with a given page count. `marker` makes the content (hash) differ.
 
-    Di-cache: PDFium menulis CreationDate per detik, sehingga dua panggilan yang
-    melewati batas detik akan menghasilkan hash berbeda (test jadi flaky).
+    Cached: PDFium writes CreationDate per second, so two calls that cross a
+    second boundary would produce different hashes (making tests flaky).
     """
     pdf = pdfium.PdfDocument.new()
     for _ in range(pages):

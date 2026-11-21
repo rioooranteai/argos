@@ -1,4 +1,4 @@
-"""Halaman web hanya untuk user yang sudah login (DESIGN_GROUP_D.md D3, D5, D6)."""
+"""Web pages only for signed-in users (DESIGN_GROUP_D.md D3, D5, D6)."""
 from __future__ import annotations
 
 import pytest
@@ -91,6 +91,6 @@ def test_docs_are_public_in_the_real_app():
 
     paths = {getattr(r, "path", "") for r in app.routes}
     assert {"/docs", "/redoc", "/openapi.json"} <= paths
-    # Halaman & skrip tidak muncul di dokumentasi API.
+    # Pages & scripts do not appear in the API docs.
     schema_paths = set(app.openapi()["paths"])
     assert "/" not in schema_paths and "/js/{file_path}" not in schema_paths

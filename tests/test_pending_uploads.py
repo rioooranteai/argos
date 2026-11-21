@@ -1,4 +1,4 @@
-"""Upload yang mirip dokumen Library: saran, keputusan user, kedaluwarsa (Tahap 3, A §6.3)."""
+"""Uploads similar to a Library document: suggestion, user choice, expiry (stage 3, A §6.3)."""
 from __future__ import annotations
 
 import dataclasses
@@ -82,7 +82,7 @@ async def test_similar_upload_is_held_pending(env):
     assert r.similar_document_id == original.document_id
     assert r.similar_document_name == "Pricelist Toyota"
     assert r.similarity >= 0.9
-    assert r.document_id is None and r.version_id is None  # belum didaftarkan
+    assert r.document_id is None and r.version_id is None  # not registered yet
     assert pending_file_path(queue, r.pending_id, ".md").exists()
     assert len(repo.list_documents(None, None, 10, 0)) == 1
 
@@ -126,11 +126,11 @@ async def test_new_versions_keep_fingerprint_for_later_comparison(env):
     original = await _original(library)
     [p] = await library.upload_documents(ALICE, [md(pricelist(1, 7), "v2.md")])
     await library.resolve_pending(ALICE, p.pending_id, "separate")
-    # Kedua dokumen kini pembanding; upload ketiga cocok dengan salah satunya.
+    # Both documents are now compared against; the third upload matches one of them.
     assert len(repo.list_fingerprints()) == 2
     [r] = await library.upload_documents(ALICE, [md(pricelist(1, 9), "v3.md")])
     assert r.status == "similar" and r.similar_document_id is not None
-    assert original.document_id  # dokumen asli tetap ada
+    assert original.document_id  # the original document still exists
 
 
 async def test_resolve_only_by_uploader_and_only_once(env):
@@ -154,7 +154,7 @@ async def test_candidate_deleted_before_decision(env):
     with pytest.raises(ConflictError) as exc:
         await library.resolve_pending(ALICE, p.pending_id, "new_version")
     assert exc.value.code == "SIMILAR_DOCUMENT_GONE"
-    # Pending tetap ada sehingga user masih bisa memilih "dokumen terpisah".
+    # The pending upload stays so the user can still choose "separate document".
     r = await library.resolve_pending(ALICE, p.pending_id, "separate")
     assert r.status == "queued"
 
@@ -195,13 +195,13 @@ async def test_notebook_resolve_new_version_keeps_existing_pin(env):
     nb = notebooks.create(ALICE, "Riset")
     [orig], _ = await notebooks.upload(ALICE, nb.id, [md(pricelist(1), "toyota.md")])
     [p], sources = await notebooks.upload(ALICE, nb.id, [md(pricelist(1, 7), "toyota2.md")])
-    assert p.status == "similar" and len(sources) == 1  # pending tidak dipasang
+    assert p.status == "similar" and len(sources) == 1  # the pending upload is not added
 
     result, sources = await notebooks.resolve_pending(ALICE, nb.id, p.pending_id, "new_version")
 
     assert result.document_id == orig.document_id
     [src] = sources
-    assert src.version_id == orig.version_id  # pin lama dipertahankan
+    assert src.version_id == orig.version_id  # the old pin is kept
 
 
 async def test_notebook_resolve_separate_attaches_new_document(env):
@@ -217,7 +217,7 @@ async def test_notebook_resolve_separate_attaches_new_document(env):
 
 async def test_notebook_resolve_new_version_attaches_when_not_in_notebook(env):
     library, notebooks, _, _, _ = env
-    original = await _original(library)  # ada di Library, belum di notebook
+    original = await _original(library)  # in the Library, not in the notebook yet
     nb = notebooks.create(ALICE, "Riset")
     [p], _ = await notebooks.upload(ALICE, nb.id, [md(pricelist(1, 7), "toyota2.md")])
 

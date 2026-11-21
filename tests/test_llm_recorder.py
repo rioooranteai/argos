@@ -1,4 +1,4 @@
-"""Pencatatan panggilan AI ke llm_calls (DESIGN_GROUP_C.md §7.3)."""
+"""Recording AI calls in llm_calls (DESIGN_GROUP_C.md §7.3)."""
 from __future__ import annotations
 
 import asyncio
@@ -178,7 +178,7 @@ def test_list_for_message(repo):
     assert [c.input_tokens for c in calls] == [4]
 
 
-# ── OpenAILLM membawa purpose & token ────────────────────────────────
+# ── OpenAILLM carries purpose & tokens ───────────────────────────────
 
 class _FakeResponse:
     content = "halo"

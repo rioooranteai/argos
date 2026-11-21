@@ -1,4 +1,4 @@
-"""STT: audio dibaca bertahap dan ditolak bila melebihi batas."""
+"""STT: audio is read in chunks and rejected when over the limit."""
 from __future__ import annotations
 
 import dataclasses
@@ -71,7 +71,7 @@ def test_unsupported_and_empty_audio_use_error_contract(monkeypatch):
 def test_provider_failure_is_503_without_details(monkeypatch):
     from app.services.voice.exceptions import STTError, UnsupportedLanguageError
 
-    r = _post(_client(monkeypatch, 1, FakeVoice(STTError("OpenAI STT gagal: sk-secret"))))
+    r = _post(_client(monkeypatch, 1, FakeVoice(STTError("OpenAI STT failed: sk-secret"))))
     assert r.status_code == 503 and r.json()["error"]["code"] == "VOICE_UNAVAILABLE"
     assert "sk-secret" not in r.text
 

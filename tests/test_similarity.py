@@ -1,4 +1,4 @@
-"""Sidik teks & skor kemiripan (Tahap 3, A §6.3)."""
+"""Text fingerprints & similarity scores (stage 3, A §6.3)."""
 from __future__ import annotations
 
 import random
@@ -76,7 +76,7 @@ def test_extract_text_markdown_and_unreadable(tmp_path):
     assert "isi dokumen" in extract_text(md, ".md")
 
     blank_pdf = tmp_path / "b.pdf"
-    blank_pdf.write_bytes(make_pdf(1))  # PDF tanpa text layer (mis. hasil scan)
+    blank_pdf.write_bytes(make_pdf(1))  # a PDF without a text layer (e.g. a scan)
     assert extract_text(blank_pdf, ".pdf").strip() == ""
 
     broken = tmp_path / "c.pdf"

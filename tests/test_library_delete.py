@@ -1,4 +1,4 @@
-"""Tahap 2: hapus/arsip dokumen, hapus versi, pembersihan arsip otomatis."""
+"""Stage 2: delete/archive documents, delete versions, automatic archive cleanup."""
 from __future__ import annotations
 
 import pytest
@@ -73,7 +73,7 @@ def count(db, table):
         return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
 
-# ── Hapus dokumen ───────────────────────────────────────────────────────
+# ── Delete documents ────────────────────────────────────────────────────
 
 
 async def test_unused_document_is_purged(env):
@@ -106,13 +106,13 @@ async def test_document_used_by_others_is_archived(env):
 
     assert library.delete_document(ALICE, r.document_id) == "archived"
     assert repo.get_document(r.document_id).status == "archived"
-    assert library.list_documents(None, None, 50, 0) == []          # hilang dari Library
-    [src] = notebooks.sources(BOB, nb_bob.id)                        # notebook Bob tetap jalan
+    assert library.list_documents(None, None, 50, 0) == []          # gone from the Library
+    [src] = notebooks.sources(BOB, nb_bob.id)                        # Bob's notebook still works
     assert src.document_status == "archived"
     assert [s.version_id for s in notebooks.active_sources(BOB, nb_bob.id)] == [r.version_id]
-    assert vectors.deleted == []                                     # data belum dihapus
+    assert vectors.deleted == []                                     # the data is not deleted yet
 
-    # Bob melepas sumber terakhir → dokumen arsip dihapus permanen
+    # Bob removes the last source → the archived document is permanently deleted
     notebooks.remove_source(BOB, nb_bob.id, r.document_id)
     assert repo.get_document(r.document_id) is None
     assert vectors.deleted == [r.version_id]
@@ -145,7 +145,7 @@ async def test_only_owner_can_delete(env):
     with pytest.raises(PermissionDenied):
         library.delete_document(BOB, r.document_id)
     with pytest.raises(PermissionDenied):
-        library.delete_document(ADMIN, r.document_id)  # pemilik masih aktif
+        library.delete_document(ADMIN, r.document_id)  # the owner is still active
 
 
 async def test_admin_can_delete_when_owner_inactive(env):
@@ -159,10 +159,10 @@ async def test_admin_can_delete_when_owner_inactive(env):
 async def test_deleting_processing_document_cancels_job(env):
     library, _, repo, _, db, _ = env
     r = await new_doc(library, ALICE)
-    SQLiteJobRepository(db).claim_next(10)  # sedang diproses worker
+    SQLiteJobRepository(db).claim_next(10)  # being processed by the worker
     library.delete_document(ALICE, r.document_id)
     assert repo.get_version(r.version_id) is None
-    # Worker yang sedang berjalan melihat versi hilang → dianggap dibatalkan
+    # The running worker sees the version gone → treated as cancelled
     assert SQLiteJobRepository(db).is_cancel_requested(r.version_id) is True
 
 
@@ -180,7 +180,7 @@ async def test_archived_document_cannot_be_deleted_again_or_added(env):
         notebooks.add_from_library(ALICE, other.id, [r.document_id])
 
 
-# ── Hapus versi ─────────────────────────────────────────────────────────
+# ── Delete versions ─────────────────────────────────────────────────────
 
 
 async def test_delete_version_rules(env):
@@ -198,13 +198,13 @@ async def test_delete_version_rules(env):
     assert repo.get_document(v1.document_id).latest_version_id == v3.version_id
 
     nb = notebooks.create(BOB, "NB")
-    notebooks.add_from_library(BOB, nb.id, [v1.document_id])  # pin ke v3
+    notebooks.add_from_library(BOB, nb.id, [v1.document_id])  # pinned to v3
     with pytest.raises(ConflictError) as e:
         library.delete_version(ALICE, v1.document_id, v3.version_id)
     assert e.value.code == "VERSION_IN_USE" and e.value.details == {"notebooks": 1}
 
     library.delete_version(ALICE, v1.document_id, v2.version_id)
-    assert [v.version_no for v in repo.list_versions(v1.document_id)] == [3, 1]  # tidak diurutkan ulang
+    assert [v.version_no for v in repo.list_versions(v1.document_id)] == [3, 1]  # not renumbered
     assert vectors.deleted == [v2.version_id]
     with db.get_connection() as conn:
         assert conn.execute("SELECT COUNT(*) FROM features WHERE version_id=?", (v2.version_id,)).fetchone()[0] == 0
@@ -235,6 +235,6 @@ async def test_delete_version_permissions_and_not_found(env):
     v1 = await new_doc(library, ALICE, marker=1)
     v2 = await library.upload_new_version(BOB, v1.document_id, upload(make_pdf(1, marker=2), "b.pdf"))
     with pytest.raises(PermissionDenied):
-        library.delete_version(BOB, v1.document_id, v2.version_id)  # Bob pengunggah versi, bukan pemilik dokumen
+        library.delete_version(BOB, v1.document_id, v2.version_id)  # Bob uploaded the version but does not own the document
     with pytest.raises(NotFoundError):
         library.delete_version(ALICE, v1.document_id, "tidak-ada")

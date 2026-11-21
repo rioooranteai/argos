@@ -1,4 +1,4 @@
-"""Subprocess parser: hasil normal, error dokumen, timeout → kill & start ulang, crash."""
+"""Parser subprocess: normal results, document errors, timeout → kill & restart, crash."""
 from __future__ import annotations
 
 import pytest
@@ -23,7 +23,7 @@ async def test_parse_ok_and_process_reused():
         a = await proc.parse("a.pdf", timeout=30)
         b = await proc.parse("b.pdf", timeout=30)
         assert a[0].content.startswith("isi a.pdf")
-        assert _pid(a) == _pid(b)  # model dimuat sekali, proses dipakai ulang
+        assert _pid(a) == _pid(b)  # models loaded once, the process is reused
     finally:
         await proc.stop()
     assert not proc.is_alive

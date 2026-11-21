@@ -1,4 +1,4 @@
-"""Log JSON + konteks request/job (DESIGN_GROUP_C.md §7.2)."""
+"""JSON logs + request/job context (DESIGN_GROUP_C.md §7.2)."""
 from __future__ import annotations
 
 import asyncio
@@ -86,7 +86,7 @@ def test_asyncio_tasks_do_not_leak_context_into_each_other():
 
 
 def test_sync_dependency_binding_visible_in_async_endpoint():
-    """Dependency sinkron berjalan di thread; field-nya tetap terlihat di endpoint."""
+    """A synchronous dependency runs in a thread; its fields are still visible in the endpoint."""
     app = FastAPI()
     app.add_middleware(RequestIDMiddleware)
 
@@ -102,7 +102,7 @@ def test_sync_dependency_binding_visible_in_async_endpoint():
     client = TestClient(app)
     first = client.get("/nb/n-9", headers={REQUEST_ID_HEADER: "req-1"})
     assert first.json() == {"user_id": "u-1", "notebook_id": "n-9"}
-    # Request berikutnya mulai dengan konteks kosong.
+    # The next request starts with an empty context.
     assert log_context.current() == {}
 
 

@@ -25,7 +25,7 @@ def _app() -> FastAPI:
 
     @app.get("/not-found")
     def not_found():
-        raise NotFoundError("Dokumen tidak ditemukan.")
+        raise NotFoundError("Document not found.")
 
     @app.get("/conflict")
     def conflict():
@@ -62,7 +62,7 @@ def test_argos_error_shape():
     assert r.status_code == 404
     err = r.json()["error"]
     assert err["code"] == "NOT_FOUND"
-    assert err["message"] == "Dokumen tidak ditemukan."
+    assert err["message"] == "Document not found."
     assert err["retryable"] is False
     assert err["request_id"] == r.headers[REQUEST_ID_HEADER]
 

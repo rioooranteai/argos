@@ -1,4 +1,4 @@
-"""API tidak bisa dibuka lewat URL di browser (DESIGN_GROUP_D.md D2)."""
+"""The API cannot be opened by URL in a browser (DESIGN_GROUP_D.md D2)."""
 from __future__ import annotations
 
 import pytest
@@ -11,7 +11,7 @@ from app.core.request_context import RequestIDMiddleware
 
 COOKIE = "argos_session"
 
-# Header yang dikirim browser untuk tiap cara membuka URL.
+# Headers a browser sends for each way of opening a URL.
 ADDRESS_BAR = {"sec-fetch-mode": "navigate", "sec-fetch-dest": "document", "sec-fetch-site": "none"}
 LINK_FROM_APP = {"sec-fetch-mode": "navigate", "sec-fetch-dest": "document", "sec-fetch-site": "same-origin"}
 IFRAME = {"sec-fetch-mode": "navigate", "sec-fetch-dest": "iframe", "sec-fetch-site": "same-origin"}
@@ -61,7 +61,7 @@ def test_browser_navigation_and_other_sites_get_empty_404(client, headers, path)
     r = client.get(path, headers=headers)
     assert r.status_code == 404 and r.content == b""
     assert "rahasia" not in r.text
-    assert r.headers.get("x-request-id")  # tetap bisa dilacak di log
+    assert r.headers.get("x-request-id")  # still traceable in the log
 
 
 def test_same_site_subdomain_is_blocked_too(client):
@@ -74,7 +74,7 @@ def test_fetch_from_the_app_passes(client):
 
 
 def test_no_fetch_metadata_passes_to_auth(client):
-    """curl/skrip: tidak diblokir di sini; login tetap wajib di endpoint."""
+    """curl/scripts: not blocked here; the endpoint still requires a sign-in."""
     assert client.get("/api/v1/notebooks").status_code == 200
 
 
@@ -91,13 +91,13 @@ def test_cookie_post_without_fetch_metadata_needs_matching_origin(client):
     client.cookies.set(COOKIE, "x")
     r = client.post("/api/v1/notebooks", headers={"origin": "https://evil.example"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "ORIGIN_NOT_ALLOWED"
-    assert client.post("/api/v1/notebooks").status_code == 403  # tanpa Origin
+    assert client.post("/api/v1/notebooks").status_code == 403  # no Origin
     assert client.post("/api/v1/notebooks", headers={"origin": "https://argos.corp.com"}).status_code == 200
     assert client.post("/api/v1/notebooks", headers={"origin": "http://testserver"}).status_code == 200
 
 
 def test_post_without_cookie_is_not_origin_checked(client):
-    # Tanpa cookie tidak ada risiko CSRF; login dicek di lapisan berikutnya.
+    # Without a cookie there is no CSRF risk; sign-in is checked by the next layer.
     r = client.post("/api/v1/notebooks")
     assert r.status_code == 200
 

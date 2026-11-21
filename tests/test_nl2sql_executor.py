@@ -1,7 +1,7 @@
-"""Isolasi NL2SQL: SQL buatan LLM hanya bisa membaca baris sumber yang dicentang.
+"""NL2SQL isolation: LLM-generated SQL can only read the rows of the checked sources.
 
-Menggantikan test executor lama (mode=ro). Termasuk kasus yang ditemukan saat
-spike langkah 7.0: `COUNT(*)` pada tabel lain lolos dari authorizer TEMP VIEW.
+Replaces the old executor tests (mode=ro). Includes the case found during the
+step 7.0 spike: `COUNT(*)` on another table got past the TEMP VIEW authorizer.
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def test_main_prefix_still_scoped(db_path):
 @pytest.mark.parametrize(
     "sql",
     [
-        "SELECT COUNT(*) FROM users",             # lolos pada pendekatan TEMP VIEW
+        "SELECT COUNT(*) FROM users",             # got through with the TEMP VIEW approach
         "SELECT email FROM users",
         "SELECT * FROM document_versions",
         "SELECT name FROM sqlite_master",
@@ -76,7 +76,7 @@ def test_other_tables_unreachable(db_path, sql):
 def test_writes_rejected(db_path):
     with pytest.raises(ValueError):
         run("DELETE FROM features", db_path)
-    # data asli tidak tersentuh
+    # the original data is untouched
     rows, _ = run("SELECT COUNT(*) AS n FROM features", db_path, versions=("v1", "v2", "v3"))
     assert rows[0]["n"] == 3
 

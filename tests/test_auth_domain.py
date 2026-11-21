@@ -25,7 +25,7 @@ class TestVerifyGoogleIdentity:
         verify_google_identity({"email_verified": True, "hd": "CORP.com"}, POLICY)
 
     def test_personal_gmail_rejected(self):
-        # Akun Gmail pribadi tidak punya klaim `hd`.
+        # Personal Gmail accounts have no `hd` claim.
         with pytest.raises(PermissionDenied) as e:
             verify_google_identity({"email_verified": True, "email": "x@gmail.com"}, POLICY)
         assert e.value.code == "DOMAIN_NOT_ALLOWED"
@@ -156,7 +156,7 @@ def test_login_is_keyed_by_google_sub_and_ids_are_uuid(client):
     _, repo, _ = client
     first = repo.upsert_on_login("google-123", "Staff@corp.com", "Staff", None)
     again = repo.upsert_on_login("google-123", "staff@corp.com", "Staff Baru", "pic")
-    assert str(uuid.UUID(first.id)) == first.id          # UUID, bukan ID Google
+    assert str(uuid.UUID(first.id)) == first.id          # a UUID, not the Google ID
     assert again.id == first.id and again.name == "Staff Baru"
     other = repo.upsert_on_login("google-456", "lain@corp.com", "Lain", None)
     assert other.id != first.id

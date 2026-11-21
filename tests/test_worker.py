@@ -1,4 +1,4 @@
-"""Antrean & worker: klaim eksklusif, lease, retry, gagal permanen, batal, shutdown."""
+"""Queue & worker: exclusive claims, leases, retries, permanent failures, cancellation, shutdown."""
 from __future__ import annotations
 
 import asyncio
@@ -66,7 +66,7 @@ def test_claim_is_exclusive(env):
     _add_version(library)
     first = jobs.claim_next(10)
     assert first is not None and first.stage == "parsing" and first.attempts == 1
-    assert jobs.claim_next(10) is None  # sudah diklaim, lease masih berlaku
+    assert jobs.claim_next(10) is None  # already claimed, the lease is still valid
 
 
 def test_expired_lease_is_reclaimed(env):
@@ -167,7 +167,7 @@ async def test_success_removes_source_file(env):
     async def process(version, ctx):
         await ctx.stage("extracting", total=2)
         await ctx.progress(2)
-        with db.get_connection() as conn:  # yang biasanya dilakukan publish_version
+        with db.get_connection() as conn:  # what publish_version normally does
             conn.execute("UPDATE document_versions SET stage='ready' WHERE id=?", (version.id,))
 
     assert await _worker(jobs, tmp, process).run_once()
@@ -189,7 +189,7 @@ async def test_transient_error_schedules_retry_then_fails(env):
     row = _stage(db, vid)
     assert row["stage"] == "queued" and row["next_retry_at"] is not None
     assert row["error"] and "will be retried" in row["error"]
-    assert (tmp / f"{vid}.pdf").exists()  # file dipertahankan untuk percobaan ulang
+    assert (tmp / f"{vid}.pdf").exists()  # the file is kept for the retry
 
     with db.get_connection() as conn:
         conn.execute("UPDATE document_versions SET next_retry_at = datetime('now', '-1 seconds')")
@@ -197,7 +197,7 @@ async def test_transient_error_schedules_retry_then_fails(env):
     row = _stage(db, vid)
     assert row["stage"] == "failed" and row["attempts"] == 2
     assert not (tmp / f"{vid}.pdf").exists()
-    assert cleaned == [vid, vid]  # data setengah jadi dibersihkan setiap kali gagal
+    assert cleaned == [vid, vid]  # half-finished data is cleaned up after every failure
 
 
 async def test_permanent_error_fails_immediately(env):
@@ -219,7 +219,7 @@ async def test_cancel_during_processing(env):
     cleaned: list[str] = []
 
     async def process(version, ctx):
-        jobs.request_cancel(version.id)  # mis. user menghapus sumber saat diproses
+        jobs.request_cancel(version.id)  # e.g. the user removes the source while it is processed
         await ctx.check_cancelled()
 
     await _worker(jobs, tmp, process, cleaned).run_once()
@@ -235,7 +235,7 @@ async def test_total_timeout(env):
         await asyncio.sleep(5)
 
     await _worker(jobs, tmp, process, DOC_TOTAL_TIMEOUT=0.05).run_once()
-    assert _stage(db, vid)["stage"] == "queued"  # timeout = error sementara
+    assert _stage(db, vid)["stage"] == "queued"  # timeout = a temporary error
 
 
 async def test_shutdown_releases_job_without_counting_attempt(env):

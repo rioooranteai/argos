@@ -1,5 +1,5 @@
-"""Pipeline end-to-end (tanpa OpenAI/Docling asli): publikasi atomik, gagal di tengah,
-pembatalan, cache saat diulang, versi terbaru."""
+"""End-to-end pipeline (no real OpenAI/Docling): atomic publish, failure midway,
+cancellation, cache on retry, latest version."""
 from __future__ import annotations
 
 import asyncio
@@ -64,7 +64,7 @@ class FakeVectors:
     def __init__(self):
         self.chunks: dict[str, dict] = {}
         self.texts: dict[str, str] = {}
-        self.embedded: list[str] = []  # teks yang "dikirim ke API embedding"
+        self.embedded: list[str] = []  # texts "sent to the embedding API"
 
     def add_chunks(self, chunks, reuse=None):
         reuse = reuse or {}
@@ -160,7 +160,7 @@ async def test_success_publishes_everything_atomically(env):
     assert (feat["product_name"], feat["price"], feat["page_number"]) == ("Avanza", 230.0, 4)
     [section] = _q(db, "SELECT * FROM sections WHERE version_id = ?", v.id)
     assert feat["section_hash"] == section["section_hash"]
-    assert vectors.count_version(v.id) == 2  # teks + deskripsi gambar
+    assert vectors.count_version(v.id) == 2  # text + image description
     assert not (queue / f"{v.id}.pdf").exists()
 
 
@@ -171,10 +171,10 @@ async def test_failure_midway_leaves_no_visible_data(env):
     await worker.run_once()
 
     [ver] = _q(db, "SELECT * FROM document_versions WHERE id = ?", v.id)
-    assert ver["stage"] == "queued"  # dicoba lagi nanti
+    assert ver["stage"] == "queued"  # retried later
     assert _q(db, "SELECT * FROM features WHERE version_id = ?", v.id) == []
     assert _q(db, "SELECT * FROM sections WHERE version_id = ?", v.id) == []
-    assert vectors.count_version(v.id) == 0  # vektor yang sempat ditulis dibersihkan
+    assert vectors.count_version(v.id) == 0  # vectors already written are cleaned up
     assert library.get_document("d1").latest_version_id is None
 
 
@@ -191,7 +191,7 @@ async def test_retry_uses_cache(env):
     extractor = FakeExtractor()
     worker2, _, _, _ = _build(db, library, queue, extractor=extractor, vision=vision)
     await worker2.run_once()
-    assert vision.calls == 1  # deskripsi gambar diambil dari cache
+    assert vision.calls == 1  # the image description comes from the cache
     assert _q(db, "SELECT stage FROM document_versions WHERE id = ?", v.id)[0]["stage"] == "ready"
 
 
@@ -234,7 +234,7 @@ async def test_latest_version_is_highest_ready(env):
     _version(library, queue, 1)
     v2 = _version(library, queue, 2)
     worker, _, _, _ = _build(db, library, queue)
-    # v1 dan v2 diproses; urutan selesai tidak memengaruhi versi terbaru.
+    # v1 and v2 are processed; the finish order does not affect the latest version.
     await worker.run_once()
     await worker.run_once()
     assert library.get_document("d1").latest_version_id == v2.id

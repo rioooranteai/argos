@@ -1,4 +1,4 @@
-"""Chat saat sebagian / seluruh komponen gagal (DESIGN_GROUP_C.md §3)."""
+"""Chat when some / all components fail (DESIGN_GROUP_C.md §3)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -130,7 +130,7 @@ async def test_all_empty_is_normal_not_degraded():
     out = await eng.chat("harga?", sources=SOURCES)
     assert out.degraded is False
     assert "No data found." in synth.prompts[0]
-    assert "GAGAL dibaca" not in synth.prompts[0]
+    assert "FAILED to load" not in synth.prompts[0]
     assert out.trace["sql"]["status"] == "empty" and out.trace["vector"]["status"] == "empty"
 
 

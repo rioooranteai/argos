@@ -1,4 +1,4 @@
-"""NL2SQLService: orkestrasi LLM → validator → eksekusi terisolasi, hasil bertipe."""
+"""NL2SQLService: LLM → validator → isolated execution, typed results."""
 from __future__ import annotations
 
 from typing import Type
@@ -37,7 +37,7 @@ async def test_happy_path_row_level(db_path):  # noqa: F811
     assert result.status == "ok"
     assert [r["product_name"] for r in result.raw_data] == ["Brio", "Avanza"]
     assert result.is_row_level is True
-    assert "version_id" in llm.calls[0]["prompt"]  # skema yang diberikan memuat kolom sitasi
+    assert "version_id" in llm.calls[0]["prompt"]  # the schema given includes the citation columns
 
 
 async def test_aggregate_is_not_row_level(db_path):  # noqa: F811
@@ -59,7 +59,7 @@ async def test_no_active_versions_skips_llm(db_path):  # noqa: F811
 
 
 async def test_invalid_question_is_empty_not_error(db_path):  # noqa: F811
-    """LLM menyatakan pertanyaan tidak cocok untuk SQL → bukan kegagalan sistem."""
+    """The LLM says the question does not fit SQL → not a system failure."""
     result = await svc(FakeLLM(["INVALID_QUESTION"]), db_path).process_query("halo", ["v1"])
     assert result.status == "empty" and result.error_code is None
 
@@ -105,4 +105,4 @@ async def test_truncation(db_path, monkeypatch):  # noqa: F811
     llm = FakeLLM(["SELECT product_name FROM features"])
     result = await svc(llm, db_path).process_query("x?", ["v1", "v2"])
     assert result.row_count == 1 and result.truncated is True
-    assert MAX_RAW_ROWS == 100  # konstanta modul asli tidak berubah di luar test ini
+    assert MAX_RAW_ROWS == 100  # the real module constant is unchanged outside this test

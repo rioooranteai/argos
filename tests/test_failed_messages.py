@@ -1,4 +1,4 @@
-"""Pesan gagal & kirim ulang (DESIGN_GROUP_C.md §4)."""
+"""Failed messages & resend (DESIGN_GROUP_C.md §4)."""
 from __future__ import annotations
 
 import pytest
@@ -10,7 +10,7 @@ from tests.test_notebook_api import BOB, _publish, _setup_notebook, env  # noqa:
 
 
 class ScriptedEngine:
-    """Engine palsu: setiap panggilan mengambil satu langkah dari `script`."""
+    """Fake engine: every call takes one step from `script`."""
 
     def __init__(self, script):
         self.script = list(script)
@@ -78,7 +78,7 @@ def test_timeout_and_unexpected_errors_are_marked_too(chat):
     conv_id = r1.json()["error"]["details"]["conversation_id"]
     r2 = _send(client, nb_id, "b", conv_id)
     assert r2.status_code == 500
-    assert "bug" not in r2.text  # detail teknis hanya di log
+    assert "bug" not in r2.text  # technical details only go to the log
     assert r2.json()["error"]["details"]["conversation_id"] == conv_id
 
     codes = [m["error_code"] for m in _messages(client, nb_id, conv_id)]
@@ -124,7 +124,7 @@ def test_retry_reuses_the_failed_row(chat):
     assert [(m["id"] == msg_id, m["role"], m["status"]) for m in msgs] == [
         (True, "user", "ok"), (False, "assistant", "ok"),
     ]
-    # Pertanyaan yang dikirim ulang ada di riwayat engine, tepat satu kali.
+    # The resent question is in the engine history exactly once.
     assert engine.calls[1]["history"] == [("user", "harga?")]
 
 
@@ -144,16 +144,16 @@ def test_retry_rules(chat):
     conv_id, failed_id = err["conversation_id"], err["message_id"]
     ok = _send(client, nb_id, "berhasil", conv_id).json()
 
-    # Bukan pesan terakhir
+    # Not the last message
     r = _retry(client, nb_id, conv_id, failed_id)
     assert r.status_code == 409 and r.json()["error"]["code"] == "MESSAGE_NOT_LATEST"
-    # Pesan yang tidak gagal
+    # A message that did not fail
     r = _retry(client, nb_id, conv_id, ok["metadata"]["user_message_id"])
     assert r.status_code == 409 and r.json()["error"]["code"] == "MESSAGE_NOT_FAILED"
-    # Pesan assistant / tidak ada
+    # An assistant message / missing
     r = _retry(client, nb_id, conv_id, ok["metadata"]["assistant_message_id"])
     assert r.status_code == 404 and r.json()["error"]["code"] == "MESSAGE_NOT_FOUND"
     assert _retry(client, nb_id, conv_id, "00000000-0000-4000-8000-000000000000").status_code == 404
-    # Milik user lain
+    # Owned by another user
     state["user"] = BOB
     assert _retry(client, nb_id, conv_id, failed_id).status_code == 404
