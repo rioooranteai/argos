@@ -25,13 +25,11 @@ temp_uploads/
 
 # Git, IDE, cache, test
 .git/
-.github/
 .idea/
 .vscode/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/

@@ -329,9 +329,6 @@ pytest tests/ -v
 ruff check app tests
 ```
 
-Every push and pull request to `main` or `develop` runs GitHub Actions: **ruff** and **mypy**
-(warnings only for now), **pytest**, and a **Docker** build.
-
 ### Dependencies
 
 - `requirements.in` — the **direct** dependencies (edit this one).
