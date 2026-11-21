@@ -1,7 +1,6 @@
 """HTTP: /api/v1/notebooks — sources, chat limited to active sources, citations, isolation between users."""
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 
 import pytest
@@ -21,10 +20,9 @@ from app.core.errors import UpstreamTimeout, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.chat_engine.orchestrator import ChatOrchestrator
-from app.engines.chat_engine.outcome import ChatResult
 from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
-from app.services.nl2sql.service import NL2SQLResult
+from app.services.nl2sql.service import NL2SQLResult, NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 from app.tools.storage.sqlite.conversation import (
@@ -42,25 +40,40 @@ from app.tools.storage.sqlite.notebook import (
 )
 from app.tools.storage.sqlite.user import SQLiteUserRepository
 from app.tools.vector_store.base import SearchHit
+from tests.fakes import FakeLLM, FakeVectorStore
 from tests.library_helpers import make_pdf
 
 ALICE = CurrentUser(id="u1", email="a@corp.com", name="Alice", given_name="", picture="", is_admin=False)
 BOB = CurrentUser(id="u2", email="b@corp.com", name="Bob", given_name="", picture="", is_admin=False)
 
 
-class FakeChatEngine:
-    def __init__(self):
-        self.calls = []
+@dataclasses.dataclass
+class ChatTools:
+    """The fake tools behind the real ChatEngine used by the API tests.
 
-    async def chat(self, user_input, history=None, sources=None):
-        self.calls.append({"q": user_input, "sources": sources, "history": history})
-        return ChatResult(
-            answer="Avanza Rp 230 jt [1].",
-            route="sql",
-            router_reasoning="harga",
-            citations=[{"label": 1, "version_id": sources[0].version_id, "display_name": sources[0].display_name}],
-            trace={"route": "sql"},
-        )
+    The engine is an orchestrator, so it is never faked: tests steer it through its tools
+    (router/synthesizer/NL2SQL LLMs and the vector store). ``conversations`` is the real
+    ConversationService, for tests that need a storage failure.
+    """
+
+    router: FakeLLM
+    synth: FakeLLM
+    sql: FakeLLM
+    vectors: FakeVectorStore
+    conversations: ConversationService
+
+    def fail_retrieval(self) -> None:
+        """Every source the router picked fails → the chat answers 503 UPSTREAM_UNAVAILABLE."""
+        self.vectors.error = TimeoutError()
+        self.sql.error = TimeoutError()
+
+    def heal(self) -> None:
+        self.vectors.error = None
+        self.sql.error = None
+        self.synth.delay = 0.0
+
+
+CHAT_TIMEOUT_SECONDS = 1.0
 
 
 @pytest.fixture
@@ -75,22 +88,32 @@ def env(tmp_path):
     library = LibraryService(library_repo, tmp_path / "queue", cfg)
     nb_svc = NotebookService(SQLiteNotebookRepository(db), library_repo, library, SQLiteJobRepository(db), cfg)
     conv_svc = ConversationService(SQLiteConversationRepository(db), title_llm=None)
-    engine = FakeChatEngine()
+    tools = ChatTools(
+        router=FakeLLM('{"route": "vector", "reasoning": "harga"}'),
+        synth=FakeLLM("Avanza Rp 230 jt [1]."),
+        sql=FakeLLM("SELECT product_name, price, version_id, page_number FROM features"),
+        vectors=FakeVectorStore(per_version_text="Avanza Rp 230 jt"),
+        conversations=conv_svc,
+    )
+    engine = ChatEngine(
+        llm=tools.synth,
+        router_llm=tools.router,
+        nl2sql_svc=NL2SQLService(llm_provider=tools.sql, db_path=db.db_path),
+        vector_store=tools.vectors,
+        total_timeout=CHAT_TIMEOUT_SECONDS,
+    )
+    orchestrator = ChatOrchestrator(nb_svc, conv_svc, engine)
 
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router)
     app.dependency_overrides[get_notebook_service] = lambda: nb_svc
     app.dependency_overrides[get_conversation_service] = lambda: conv_svc
-    # The orchestrator uses the real services and a fake engine; tests swap the engine
-    # through app.state.chat_engine (see tests/test_failed_messages.py).
-    app.state.chat_engine = engine
-    app.dependency_overrides[get_chat_orchestrator] = lambda: ChatOrchestrator(
-        nb_svc, conv_svc, app.state.chat_engine
-    )
+    # Real orchestrator, real ChatEngine, real services — only the tools are fakes.
+    app.dependency_overrides[get_chat_orchestrator] = lambda: orchestrator
     state = {"user": ALICE}
     app.dependency_overrides[get_current_user] = lambda: state["user"]
-    return TestClient(app), db, engine, state
+    return TestClient(app), db, tools, state
 
 
 def _publish(db, version_id):
@@ -110,7 +133,7 @@ def _setup_notebook(c):
 
 
 def test_chat_blocked_until_source_ready_then_scoped(env):
-    c, db, engine, _ = env
+    c, db, tools, _ = env
     nb, up = _setup_notebook(c)
     assert up["sources"][0]["stage"] == "queued" and nb["max_sources"] == 10
 
@@ -123,7 +146,7 @@ def test_chat_blocked_until_source_ready_then_scoped(env):
     assert r.status_code == 200
     body = r.json()
     assert body["citations"][0]["label"] == 1
-    assert [s.version_id for s in engine.calls[0]["sources"]] == [vid]
+    assert tools.vectors.searches[0][1] == [vid]  # the search only covers the active source
     assert body["metadata"]["sources_used"] == 1
     assert body["metadata"]["degraded"] is False and body["metadata"]["issues"] == []
 
@@ -136,7 +159,7 @@ def test_chat_blocked_until_source_ready_then_scoped(env):
 
 
 def test_unchecked_sources_excluded(env):
-    c, db, engine, _ = env
+    c, db, tools, _ = env
     nb, up = _setup_notebook(c)
     _publish(db, up["results"][0]["version_id"])
     doc_id = up["results"][0]["document_id"]
@@ -144,7 +167,7 @@ def test_unchecked_sources_excluded(env):
     assert sources[0]["enabled"] is False
     r = c.post(f"/api/v1/notebooks/{nb['id']}/messages", json={"question": "x"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "NO_ACTIVE_SOURCES"
-    assert engine.calls == []
+    assert tools.router.calls == []  # the engine never ran
 
 
 def test_notebooks_and_conversations_are_private(env):
@@ -179,21 +202,6 @@ def test_add_from_library_and_remove(env):
 # ── ChatEngine: active sources passed to SQL & vector, total timeout ────────
 
 
-class _LLM:
-    def __init__(self, text, delay=0.0):
-        self.text, self.delay = text, delay
-
-    async def ainvoke(self, prompt, system=None):
-        await asyncio.sleep(self.delay)
-        return self.text
-
-    def invoke(self, prompt, system=None):
-        return self.text
-
-    def with_structured_output(self, schema):
-        return self
-
-
 class _NL2SQL:
     def __init__(self):
         self.version_ids = None
@@ -207,30 +215,22 @@ class _NL2SQL:
         )
 
 
-class _Vectors:
-    def __init__(self):
-        self.version_ids = None
-
-    def search(self, query, version_ids, limit=5):
-        self.version_ids = version_ids
-        return [SearchHit("c1", "Veloz 7 kursi", 0.1, {"version_id": "v1", "page_number": 2})]
-
-
 async def test_engine_passes_active_versions_and_returns_citations():
     from datetime import datetime
 
     from app.services.notebook.model import ActiveSource
 
-    nl2sql, vectors = _NL2SQL(), _Vectors()
+    nl2sql = _NL2SQL()
+    vectors = FakeVectorStore([SearchHit("c1", "Veloz 7 kursi", 0.1, {"version_id": "v1", "page_number": 2})])
     engine = ChatEngine(
-        llm=_LLM("Avanza Rp 230 jt [1]."),
-        router_llm=_LLM('{"route": "both", "reasoning": "x"}'),
+        llm=FakeLLM("Avanza Rp 230 jt [1]."),
+        router_llm=FakeLLM('{"route": "both", "reasoning": "x"}'),
         nl2sql_svc=nl2sql,
         vector_store=vectors,
     )
     sources = [ActiveSource("v1", "d1", "Pricelist", 1, datetime(2026, 1, 1))]
     out = await engine.chat("harga?", sources=sources)
-    assert nl2sql.version_ids == ["v1"] and vectors.version_ids == ["v1"]
+    assert nl2sql.version_ids == ["v1"] and vectors.searches[0][1] == ["v1"]
     assert [c["label"] for c in out.citations] == [1]
     assert out.degraded is False
     assert out.trace["route"] == "both"
@@ -242,10 +242,10 @@ async def test_engine_passes_active_versions_and_returns_citations():
 
 async def test_engine_total_timeout():
     engine = ChatEngine(
-        llm=_LLM("x", delay=5),
-        router_llm=_LLM('{"route": "none", "reasoning": ""}'),
+        llm=FakeLLM("x", delay=5),
+        router_llm=FakeLLM('{"route": "none", "reasoning": ""}'),
         nl2sql_svc=_NL2SQL(),
-        vector_store=_Vectors(),
+        vector_store=FakeVectorStore(),
         total_timeout=0.1,
     )
     with pytest.raises(UpstreamTimeout):

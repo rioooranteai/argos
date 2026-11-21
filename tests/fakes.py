@@ -6,9 +6,15 @@ class`` — no test keeps passing against an outdated fake.
 
 Inject them exactly like the real tools: through the constructor of the service, engine
 or pipeline under test.
+
+Engines (``ChatEngine``, ``ChatOrchestrator``, ``DocumentPipeline``) are orchestrators and are
+never faked: tests run the real engine and steer it through these tools — e.g. a
+``FakeVectorStore(error=TimeoutError())`` for a failing source, ``FakeLLM(delay=…)`` for a
+slow answer.
 """
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 
 from pydantic import BaseModel
@@ -26,13 +32,20 @@ class FakeLLM(BaseLLM):
     """Answers with fixed text, or with queued responses one per call.
 
     ``FakeLLM("text")`` always returns "text"; ``FakeLLM(["a", "b"])`` returns "a", then "b".
-    ``error`` is raised on every call instead.
+    ``error`` is raised on every call instead; ``delay`` (seconds) slows ``ainvoke`` down.
+    Both can be changed between calls.
     """
 
-    def __init__(self, responses: str | Sequence[str] = "ok", error: BaseException | None = None):
+    def __init__(
+        self,
+        responses: str | Sequence[str] = "ok",
+        error: BaseException | None = None,
+        delay: float = 0.0,
+    ):
         self._fixed = responses if isinstance(responses, str) else None
         self._queue = [] if isinstance(responses, str) else list(responses)
         self.error = error
+        self.delay = delay
         self.calls: list[dict[str, str | None]] = []
 
     @property
@@ -66,6 +79,8 @@ class FakeLLM(BaseLLM):
         return self._answer(prompt, system)
 
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
+        if self.delay:
+            await asyncio.sleep(self.delay)
         return self._answer(prompt, system)
 
     def with_structured_output(self, schema: type[BaseModel]) -> BaseLLM:
@@ -94,11 +109,21 @@ class FakeEmbedder(BaseEmbedder):
 
 
 class FakeVectorStore(BaseVectorStore):
-    """In-memory store. ``search`` returns ``hits`` (or raises ``error``)."""
+    """In-memory store. ``search`` returns ``hits`` (or raises ``error``).
 
-    def __init__(self, hits: Sequence[SearchHit] = (), error: BaseException | None = None):
+    With ``per_version_text``, ``search`` returns one hit per requested version (page 1),
+    so citations point at whatever sources are active in the test.
+    """
+
+    def __init__(
+        self,
+        hits: Sequence[SearchHit] = (),
+        error: BaseException | None = None,
+        per_version_text: str | None = None,
+    ):
         self.hits = list(hits)
         self.error = error
+        self.per_version_text = per_version_text
         self.chunks: dict[str, dict] = {}    # chunk_id → metadata
         self.texts: dict[str, str] = {}      # chunk_id → text
         self.embedded: list[str] = []        # texts that would have gone to the embedding API
@@ -128,6 +153,11 @@ class FakeVectorStore(BaseVectorStore):
         self.searches.append((query, version_ids))
         if self.error is not None:
             raise self.error
+        if self.per_version_text is not None:
+            return [
+                SearchHit(f"chunk-{v}", self.per_version_text, 0.1, {"version_id": v, "page_number": 1})
+                for v in (version_ids or [])
+            ][:limit]
         return self.hits[:limit]
 
     def delete_version(self, version_id: str) -> None:

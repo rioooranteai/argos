@@ -1,43 +1,27 @@
-"""Failed messages & resend (DESIGN_GROUP_C.md §4)."""
+"""Failed messages & resend (DESIGN_GROUP_C.md §4).
+
+The ChatEngine is real; failures come from its fake tools, the way they happen in
+production: every source failing → 503, a slow answer → 504, a storage failure → 500.
+"""
 from __future__ import annotations
 
 import pytest
 
-from app.core.errors import UpstreamError, UpstreamTimeout
-from app.engines.chat_engine.outcome import ChatResult, NodeIssue
-from tests.test_notebook_api import BOB, _publish, _setup_notebook, env  # noqa: F401 (fixture)
-
-
-class ScriptedEngine:
-    """Fake engine: every call takes one step from `script`."""
-
-    def __init__(self, script):
-        self.script = list(script)
-        self.calls = []
-
-    async def chat(self, user_input, history=None, sources=None):
-        self.calls.append({"q": user_input, "history": [(m.role, m.content) for m in history or []]})
-        step = self.script.pop(0)
-        if isinstance(step, BaseException):
-            raise step
-        return step
-
-
-def _ok(answer="Jawaban [1].", issues=()):
-    return ChatResult(
-        answer=answer, route="both", router_reasoning="x", citations=[],
-        issues=list(issues), trace={"route": "both", "issues": [i.to_dict() for i in issues]},
-    )
+from tests.test_notebook_api import (  # noqa: F401 (fixture)
+    BOB,
+    CHAT_TIMEOUT_SECONDS,
+    _publish,
+    _setup_notebook,
+    env,
+)
 
 
 @pytest.fixture
 def chat(env):  # noqa: F811
-    client, db, _, state = env
+    client, db, tools, state = env
     nb, up = _setup_notebook(client)
     _publish(db, up["results"][0]["version_id"])
-    engine = ScriptedEngine([])
-    client.app.state.chat_engine = engine
-    return client, db, engine, nb["id"], state
+    return client, db, tools, nb["id"], state
 
 
 def _send(client, nb_id, question, conversation_id=None):
@@ -51,16 +35,24 @@ def _messages(client, nb_id, conv_id):
     return client.get(f"/api/v1/notebooks/{nb_id}/conversations/{conv_id}").json()["messages"]
 
 
+def _history_lines(prompt: str) -> list[str]:
+    """The conversation lines the synthesizer received (one per message)."""
+    history = prompt.split("Conversation history:\n", 1)[1].split("\n\n", 1)[0]
+    return [line for line in history.splitlines() if line]
+
+
 def test_failure_marks_user_message_and_returns_ids(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [UpstreamError(details={"issues": [{"component": "sql", "code": "SQL_TIMEOUT"}]})]
+    client, _, tools, nb_id, _ = chat
+    tools.router.response = '{"route": "both", "reasoning": "x"}'
+    tools.fail_retrieval()
 
     r = _send(client, nb_id, "harga avanza?")
     assert r.status_code == 503
     err = r.json()["error"]
     assert err["code"] == "UPSTREAM_UNAVAILABLE" and err["retryable"] is True
     conv_id, msg_id = err["details"]["conversation_id"], err["details"]["message_id"]
-    assert err["details"]["issues"] == [{"component": "sql", "code": "SQL_TIMEOUT"}]
+    assert sorted(i["component"] for i in err["details"]["issues"]) == ["sql", "vector"]
+    assert {i["code"] for i in err["details"]["issues"]} == {"LLM_TIMEOUT"}
 
     msgs = _messages(client, nb_id, conv_id)
     assert [(m["id"], m["role"], m["status"], m["error_code"]) for m in msgs] == [
@@ -68,13 +60,19 @@ def test_failure_marks_user_message_and_returns_ids(chat):
     ]
 
 
-def test_timeout_and_unexpected_errors_are_marked_too(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [UpstreamTimeout(code="CHAT_TIMEOUT"), RuntimeError("bug")]
-
+def test_timeout_and_unexpected_errors_are_marked_too(chat, monkeypatch):
+    client, _, tools, nb_id, _ = chat
+    tools.synth.delay = CHAT_TIMEOUT_SECONDS + 0.5
     r1 = _send(client, nb_id, "a")
     assert r1.status_code == 504
     conv_id = r1.json()["error"]["details"]["conversation_id"]
+
+    tools.heal()
+
+    def broken_storage(*args, **kwargs):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(tools.conversations, "append_assistant_message", broken_storage)
     r2 = _send(client, nb_id, "b", conv_id)
     assert r2.status_code == 500
     assert "bug" not in r2.text  # technical details only go to the log
@@ -85,17 +83,19 @@ def test_timeout_and_unexpected_errors_are_marked_too(chat):
 
 
 def test_failed_messages_are_not_sent_to_the_llm(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [UpstreamError(), _ok()]
+    client, _, tools, nb_id, _ = chat
+    tools.fail_retrieval()
     conv_id = _send(client, nb_id, "pertanyaan gagal").json()["error"]["details"]["conversation_id"]
 
+    tools.heal()
     assert _send(client, nb_id, "pertanyaan baru", conv_id).status_code == 200
-    assert engine.calls[1]["history"] == [("user", "pertanyaan baru")]
+    assert _history_lines(tools.synth.last_prompt) == ["HUMAN: pertanyaan baru"]
 
 
 def test_success_stores_trace_and_degraded_flag(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [_ok(issues=[NodeIssue("vector", "LLM_TIMEOUT")])]
+    client, _, tools, nb_id, _ = chat
+    tools.router.response = '{"route": "both", "reasoning": "x"}'
+    tools.vectors.error = TimeoutError()  # SQL still works → a degraded answer, not a failure
     body = _send(client, nb_id, "harga?").json()
     meta = body["metadata"]
     assert meta["degraded"] is True and meta["issues"] == [{"component": "vector", "code": "LLM_TIMEOUT"}]
@@ -111,11 +111,13 @@ def _retry(client, nb_id, conv_id, msg_id):
 
 
 def test_retry_reuses_the_failed_row(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [UpstreamError(), _ok("Akhirnya [1].")]
+    client, _, tools, nb_id, _ = chat
+    tools.fail_retrieval()
     err = _send(client, nb_id, "harga?").json()["error"]["details"]
     conv_id, msg_id = err["conversation_id"], err["message_id"]
 
+    tools.heal()
+    tools.synth.response = "Akhirnya [1]."
     r = _retry(client, nb_id, conv_id, msg_id)
     assert r.status_code == 200
     assert r.json()["answer"] == "Akhirnya [1]." and r.json()["metadata"]["user_message_id"] == msg_id
@@ -124,23 +126,27 @@ def test_retry_reuses_the_failed_row(chat):
         (True, "user", "ok"), (False, "assistant", "ok"),
     ]
     # The resent question is in the engine history exactly once.
-    assert engine.calls[1]["history"] == [("user", "harga?")]
+    assert _history_lines(tools.synth.last_prompt) == ["HUMAN: harga?"]
 
 
 def test_retry_that_fails_again_stays_failed(chat):
-    client, _, engine, nb_id, _ = chat
-    engine.script = [UpstreamError(), UpstreamTimeout(code="CHAT_TIMEOUT")]
+    client, _, tools, nb_id, _ = chat
+    tools.fail_retrieval()
     err = _send(client, nb_id, "x").json()["error"]["details"]
+
+    tools.heal()
+    tools.synth.delay = CHAT_TIMEOUT_SECONDS + 0.5
     r = _retry(client, nb_id, err["conversation_id"], err["message_id"])
     assert r.status_code == 504
     assert _messages(client, nb_id, err["conversation_id"])[0]["error_code"] == "CHAT_TIMEOUT"
 
 
 def test_retry_rules(chat):
-    client, _, engine, nb_id, state = chat
-    engine.script = [UpstreamError(), _ok()]
+    client, _, tools, nb_id, state = chat
+    tools.fail_retrieval()
     err = _send(client, nb_id, "gagal").json()["error"]["details"]
     conv_id, failed_id = err["conversation_id"], err["message_id"]
+    tools.heal()
     ok = _send(client, nb_id, "berhasil", conv_id).json()
 
     # Not the last message

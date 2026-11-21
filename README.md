@@ -361,7 +361,10 @@ Rules (enforced by `tests/test_architecture.py`):
 `FakeVectorStore`, `FakeParser`, `FakeVision`, `FakeExtractor`, `FakeEmbedder`, `FakeSTT`,
 `FakeTTS`). Each inherits its `Base…` class, so it breaks as soon as a contract changes.
 Pass them to the constructor of the service under test, e.g.
-`VoiceService(stt=FakeSTT(), tts=FakeTTS())`.
+`VoiceService(stt=FakeSTT(), tts=FakeTTS())`. Engines and orchestrators are never faked:
+tests run the real `ChatEngine` / `ChatOrchestrator` / `DocumentPipeline` and steer them
+through their tools (a `FakeVectorStore(error=...)` for a failing source, a
+`FakeLLM(delay=...)` for a slow answer).
 
 ### Dependencies
 
