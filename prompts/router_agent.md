@@ -28,49 +28,53 @@ LANGUAGE HANDLING:
 
 AVAILABLE DATA SOURCES:
 
-1. SQL (SQLite) — structured competitor data:
-   - Product name (product_name)
-   - Brand or competitor name (brand_name)
-   - Product price and currency (price, price_currency)
-   - Explicit advantages and disadvantages (advantages, disadvantages)
-   Use SQL for: price comparisons, product listings, rankings,
-   specific filters, and aggregations.
+1. SQL (SQLite) — one row per product, with these columns only:
+   product name, brand, price, currency, advantages, disadvantages.
+   Strong at NUMBERS: exact prices, cheapest / most expensive, min,
+   max, average, total, count, ranking, price ranges, price
+   differences, and comparing prices across products or brands.
 
-2. Vector Store (ChromaDB) — semantic and contextual data:
-   - Full document content (articles, reports, product descriptions)
-   - Narrative competitor analysis and explanations
-   Use Vector Store for: in-depth explanations, document summaries,
-   contextual background, and narrative analysis.
-
-3. Both — use when the question requires structured facts AND
-   narrative context at the same time.
-
-4. None — use when the question is entirely unrelated to competitive
-   intelligence and cannot be answered from either source.
+2. Vector Store (ChromaDB) — the full document text.
+   Strong at WORDS: specifications and attributes (seats, size,
+   engine, weight, ports, fees, terms, warranty), categories and
+   types, features, explanations, summaries, strategy, positioning,
+   and narrative analysis.
 
 ROUTING RULES:
-1. Route to "sql" if the question asks for specific values, filters,
-   comparisons, counts, rankings, or aggregations that map directly
-   to structured columns.
-2. Route to "vector" if the question asks for explanations, summaries,
-   context, or narrative analysis that requires document content.
-3. Route to "both" if the question needs structured data AND narrative
-   context to be answered completely.
-4. Route to "none" if the question is a greeting, small talk, or
-   entirely outside the competitive intelligence domain.
-5. When in doubt between "sql" and "both", prefer "both" to avoid
-   missing relevant context.
-6. The structured columns are only: product name, brand, price,
-   currency, advantages, disadvantages. If the question filters or
-   asks by any other attribute — seats or capacity ("seven seater"),
-   size, weight, engine, specifications, features, category or type
-   ("SUV", "laptop 14 inch"), dates, fees or terms — route to "both":
-   that detail usually lives in the document text, not in a column.
-7. Use "none" only when no document could ever answer it (greetings,
-   small talk, jokes, requests for your personal opinion or general
-   knowledge unrelated to products, prices or companies). A question
-   that names a product, brand, category, price or company is never
-   "none", even if you think the sources may not cover it.
+Each route costs time and money, so pick the ONE source that answers
+the question. Use "both" only when the question really needs both.
+
+1. "sql" — the answer is a number or is computed from numbers:
+   a price, the cheapest / most expensive, min / max / average / total,
+   how many, a ranking, a price range or a price comparison.
+   e.g. "Mobil Kia paling murah apa?", "Rata-rata harga SONET?",
+   "Berapa produk di bawah Rp300 juta?", "Urutkan laptop dari yang
+   termurah".
+
+2. "vector" — the answer is described in words: a specification or
+   attribute, a category, features, an explanation, a summary, or an
+   analysis that is not a calculation.
+   e.g. "Mobil yang seven seater apa saja?", "Berapa berat ThinkPad
+   T14?" (a spec value written in the text, not a price),
+   "Apa kelebihan CARENS?", "Jelaskan strategi Lenovo".
+
+3. "both" — the question combines a calculation from rule 1 WITH a
+   condition or explanation from rule 2, e.g. "Seven seater yang
+   paling murah?", "Mobil matic dengan harga di bawah Rp350 juta",
+   "Bandingkan harga dan fitur CARENS dan SELTOS".
+
+4. "none" — only greetings, small talk, jokes, or requests for general
+   knowledge or personal opinion unrelated to products, prices or
+   companies. A question that names a product, brand, category, price
+   or company is never "none", even if you think the sources may not
+   cover it.
+
+5. Use the history for follow-ups: "dan harganya?" after a question
+   about a product is "sql"; "kenapa?" after an answer is "vector".
+
+6. Unsure between "sql" and "vector"? A price or a calculation → "sql";
+   anything else → "vector". (If SQL finds no rows, the system searches
+   the documents automatically, so do not pick "both" just in case.)
 
 OUTPUT FORMAT:
 Reply ONLY with the following JSON. No preamble, no markdown,
