@@ -30,51 +30,48 @@ AVAILABLE DATA SOURCES:
 
 1. SQL (SQLite) — one row per product, with these columns only:
    product name, brand, price, currency, advantages, disadvantages.
-   Strong at NUMBERS: exact prices, cheapest / most expensive, min,
-   max, average, total, count, ranking, price ranges, price
-   differences, and comparing prices across products or brands.
+   It is the right source when the answer is a number from the price
+   column or is calculated from it.
 
-2. Vector Store (ChromaDB) — the full document text.
-   Strong at WORDS: specifications and attributes (seats, size,
-   engine, weight, ports, fees, terms, warranty), categories and
-   types, features, explanations, summaries, strategy, positioning,
-   and narrative analysis.
+2. Vector Store (ChromaDB) — the full text of the documents.
+   It is the right source when the answer is written in the text:
+   every attribute that has no column of its own, descriptions,
+   explanations and narrative content.
 
 ROUTING RULES:
-Each route costs time and money, so pick the ONE source that answers
-the question. Use "both" only when the question really needs both.
+Each route costs time and money, so pick the ONE source that can answer
+the question. Decide by what the answer is made of, not by the words the
+user happens to use.
 
-1. "sql" — the answer is a number or is computed from numbers:
-   a price, the cheapest / most expensive, min / max / average / total,
-   how many, a ranking, a price range or a price comparison.
-   e.g. "Mobil Kia paling murah apa?", "Rata-rata harga SONET?",
-   "Berapa produk di bawah Rp300 juta?", "Urutkan laptop dari yang
-   termurah".
+1. "sql" — the answer is a price, or is computed over prices or
+   products: a minimum, maximum, average, total, count, ranking,
+   range, threshold filter or price comparison.
 
-2. "vector" — the answer is described in words: a specification or
-   attribute, a category, features, an explanation, a summary, or an
-   analysis that is not a calculation.
-   e.g. "Mobil yang seven seater apa saja?", "Berapa berat ThinkPad
-   T14?" (a spec value written in the text, not a price),
-   "Apa kelebihan CARENS?", "Jelaskan strategi Lenovo".
+2. "vector" — the answer is information written in the documents that
+   is not a price: any specification, attribute or term (it has no
+   column, even when its value is a number), a category or type, a
+   feature, an explanation, a summary, or an analysis that is not a
+   calculation.
 
-3. "both" — the question combines a calculation from rule 1 WITH a
-   condition or explanation from rule 2, e.g. "Seven seater yang
-   paling murah?", "Mobil matic dengan harga di bawah Rp350 juta",
-   "Bandingkan harga dan fitur CARENS dan SELTOS".
+3. "both" — the answer needs a calculation from rule 1 AND a condition
+   or explanation that only the text holds (rule 2). Do not use it for
+   a question that one source can answer alone.
 
-4. "none" — only greetings, small talk, jokes, or requests for general
-   knowledge or personal opinion unrelated to products, prices or
-   companies. A question that names a product, brand, category, price
-   or company is never "none", even if you think the sources may not
-   cover it.
+4. "none" — the question cannot be about the documents at all:
+   greetings, thanks, small talk, or a request for general knowledge or
+   a personal opinion unrelated to products, prices, companies or
+   markets. A question about a product, brand, category, price,
+   company, market, financial figure or report is never "none" — not
+   even when it refers to a time period, sounds like general knowledge,
+   or you think the sources may not cover it; the documents decide.
 
-5. Use the history for follow-ups: "dan harganya?" after a question
-   about a product is "sql"; "kenapa?" after an answer is "vector".
+5. A follow-up question takes its subject from <<HISTORY>>; route it by
+   what the follow-up itself asks for.
 
-6. Unsure between "sql" and "vector"? A price or a calculation → "sql";
-   anything else → "vector". (If SQL finds no rows, the system searches
-   the documents automatically, so do not pick "both" just in case.)
+6. If you are unsure between "sql" and "vector": a price or a
+   calculation goes to "sql", anything else to "vector". When SQL
+   finds no rows the system searches the documents automatically, so
+   never pick "both" just in case.
 
 OUTPUT FORMAT:
 Reply ONLY with the following JSON. No preamble, no markdown,

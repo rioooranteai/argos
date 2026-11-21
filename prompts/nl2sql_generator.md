@@ -63,19 +63,15 @@ TEXT FILTERING RULES:
 12. Use exact matching only when the user clearly specifies an exact
     entity name.
 12b. When the user filters by a descriptive attribute or category
-    rather than a name (e.g. "seven seater", "AC", "LTE", "SUV",
-    "automatic", "warranty 3 years"), the attribute is usually written
-    inside product_name, section_heading, advantages or disadvantages,
-    in the document's own wording — not in the user's wording. So:
-    - search ALL of those text columns, combined with OR;
-    - match the core token, not the whole phrase, and include the
-      common written variants, digits for number words, and both
-      English and Indonesian forms, e.g. "seven seater" →
-      LIKE '%7 seat%' OR LIKE '%7-seat%' OR LIKE '%7 seater%'
-      OR LIKE '%7 penumpang%' OR LIKE '%7 kursi%' OR LIKE '%tujuh%';
-      "automatic" → '%automatic%' OR '%A/T%' OR '%AT %' OR '%iVT%'
-      OR '%CVT%' OR '%otomatis%';
-    - use LOWER(column) LIKE '%token%' so the case does not matter.
+    instead of a name, the documents usually express it in their own
+    wording, which can differ from the user's. So:
+    - search every text column (product_name, section_heading,
+      advantages, disadvantages), combined with OR;
+    - match the core token rather than the full phrase, and add its
+      common written forms: number words as digits, abbreviations,
+      singular/plural, hyphenated or spaced forms, and the equivalent
+      term in English and Indonesian;
+    - compare case-insensitively with LOWER(column) LIKE '%token%'.
     Never search only for the user's literal phrase in a single column.
 
 QUERY COMPLEXITY RULES:
