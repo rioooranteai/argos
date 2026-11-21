@@ -22,18 +22,11 @@ from app.services.library.service import LibraryService, queued_file_path
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
 from tests.library_helpers import make_pdf, upload
+from tests.fakes import FakeVectorStore
 
 ALICE = CurrentUser(id="u1", email="a@corp.com", name="Alice", given_name="", picture="", is_admin=False)
 BOB = CurrentUser(id="u2", email="b@corp.com", name="Bob", given_name="", picture="", is_admin=False)
 ADMIN = CurrentUser(id="u3", email="boss@corp.com", name="Boss", given_name="", picture="", is_admin=True)
-
-
-class FakeVectors:
-    def __init__(self):
-        self.deleted: list[str] = []
-
-    def delete_version(self, version_id):
-        self.deleted.append(version_id)
 
 
 @pytest.fixture
@@ -45,7 +38,7 @@ def env(tmp_path):
     for u in (ALICE, BOB, ADMIN):
         users.upsert_on_login(u.id, u.email, u.name, None, new_user_id=u.id)
     repo = SQLiteLibraryRepository(db)
-    vectors = FakeVectors()
+    vectors = FakeVectorStore()
     jobs = SQLiteJobRepository(db)
     queue = tmp_path / "queue"
     library = LibraryService(repo, queue, AppConfig(), vector_store=vectors, jobs=jobs, users=users)

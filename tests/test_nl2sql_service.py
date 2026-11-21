@@ -1,30 +1,12 @@
 """NL2SQLService: LLM → validator → isolated execution, typed results."""
 from __future__ import annotations
 
-from typing import Type
 
 import pytest
-from pydantic import BaseModel
 
-from app.tools.llm.base import BaseLLM
 from app.services.nl2sql.service import MAX_RAW_ROWS, NL2SQLService
 from tests.test_nl2sql_executor import db_path  # noqa: F401  (fixture)
-
-
-class FakeLLM(BaseLLM):
-    def __init__(self, responses: list[str]):
-        self._responses = list(responses)
-        self.calls: list[dict] = []
-
-    def invoke(self, prompt: str, system: str | None = None) -> str:
-        raise NotImplementedError
-
-    async def ainvoke(self, prompt: str, system: str | None = None) -> str:
-        self.calls.append({"prompt": prompt, "system": system})
-        return self._responses.pop(0)
-
-    def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
-        return self
+from tests.fakes import FakeLLM
 
 
 def svc(llm, db_path):  # noqa: F811

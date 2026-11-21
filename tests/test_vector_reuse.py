@@ -9,12 +9,12 @@ from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.vector_store.base import IndexChunk
 from app.tools.vector_store.chroma import ChromaVectorStore
 from tests.test_pipeline import (  # noqa: F401 — the `env` fixture is reused
-    FakeVectors,
     _build,
     _q,
     _version,
     env,
 )
+from tests.fakes import FakeVectorStore
 
 
 def _el(text: str, heading: str, page: int = 1) -> DocumentElement:
@@ -38,7 +38,7 @@ async def _process(db, library, queue, n, elements, vectors):
 
 async def test_unchanged_chunks_reuse_vectors(env):
     db, library, queue = env
-    vectors = FakeVectors()
+    vectors = FakeVectorStore()
     await _process(db, library, queue, 1, V1, vectors)
     vectors.embedded.clear()
 
@@ -56,7 +56,7 @@ async def test_unchanged_chunks_reuse_vectors(env):
 
 async def test_first_version_has_zero_reuse(env):
     db, library, queue = env
-    await _process(db, library, queue, 1, V1, FakeVectors())
+    await _process(db, library, queue, 1, V1, FakeVectorStore())
     stats = library.get_version("v1").reuse_stats
     assert stats["chunks"] == 3 and stats["chunks_reused"] == 0
     assert stats["units_cached"] == 0 and stats["units"] >= 1
@@ -70,7 +70,7 @@ def _chapter(text: str, chapter: str, heading: str) -> DocumentElement:
 
 async def test_extraction_cache_counted_for_unchanged_units(env):
     db, library, queue = env
-    vectors = FakeVectors()
+    vectors = FakeVectorStore()
     base = [_chapter("Avanza Rp 230 jt", "Mobil", "Harga"), _chapter("Garansi 3 tahun", "Servis", "Garansi")]
     await _process(db, library, queue, 1, base, vectors)
     extractor = await _process(
@@ -78,12 +78,12 @@ async def test_extraction_cache_counted_for_unchanged_units(env):
     )
     stats = library.get_version("v2").reuse_stats
     assert (stats["units"], stats["units_cached"]) == (3, 2)
-    assert extractor.calls == 1  # only the new unit is sent to the LLM
+    assert len(extractor.calls) == 1  # only the new unit is sent to the LLM
 
 
 async def test_different_pipeline_version_is_not_reused(env):
     db, library, queue = env
-    vectors = FakeVectors()
+    vectors = FakeVectorStore()
     await _process(db, library, queue, 1, V1, vectors)
     with db.get_connection() as conn:  # e.g. the embedding model changed → PIPELINE_VERSION bumped
         conn.execute("UPDATE document_versions SET pipeline_version = 'p0' WHERE id = 'v1'")
@@ -96,7 +96,7 @@ async def test_different_pipeline_version_is_not_reused(env):
 
 async def test_requeue_clears_reuse_stats(env):
     db, library, queue = env
-    await _process(db, library, queue, 1, V1, FakeVectors())
+    await _process(db, library, queue, 1, V1, FakeVectorStore())
     assert library.requeue_version("v1", "u1").reuse_stats is None
 
 

@@ -22,29 +22,10 @@ from app.services.conversation.service import (
     _normalize_title,
     _placeholder_title_from_message,
 )
+from tests.fakes import FakeLLM
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
-
-
-class _FakeLLM(BaseLLM):
-    def __init__(self, response: str = "Judul Otomatis"):
-        self.response = response
-        self.last_prompt: str | None = None
-        self.last_system: str | None = None
-        self.calls = 0
-
-    def invoke(self, prompt: str, system: str | None = None) -> str:
-        self.last_prompt = prompt
-        self.last_system = system
-        self.calls += 1
-        return self.response
-
-    async def ainvoke(self, prompt: str, system: str | None = None) -> str:
-        return self.invoke(prompt, system)
-
-    def with_structured_output(self, schema: Type) -> "BaseLLM":  # noqa: D401
-        return self
 
 
 class _RaisingLLM(BaseLLM):
@@ -72,7 +53,7 @@ def repo(tmp_path):
 
 @pytest.fixture
 def fake_llm():
-    return _FakeLLM()
+    return FakeLLM("Judul Otomatis")
 
 
 @pytest.fixture
@@ -170,7 +151,7 @@ class TestAutoTitle:
         )
         refetched = repo.get_conversation(conv.id, "u1")
         assert refetched.title == "Harga produk kompetitor"
-        assert fake_llm.calls == 1
+        assert len(fake_llm.calls) == 1
 
     def test_generate_title_swallows_llm_errors(self, repo):
         svc = ConversationService(repository=repo, title_llm=_RaisingLLM())

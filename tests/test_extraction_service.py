@@ -12,23 +12,7 @@ from app.tools.extraction.base import ExtractedFeature
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import build_sections, build_units
 from app.tools.document_parser.base import DocumentElement, ElementType
-
-
-class FakeProvider:
-    def __init__(self, fn):
-        self.fn = fn
-        self.calls: list[str] = []
-        self.active = 0
-        self.max_active = 0
-
-    async def extract(self, text: str):
-        self.calls.append(text)
-        self.active += 1
-        self.max_active = max(self.max_active, self.active)
-        try:
-            return await self.fn(text)
-        finally:
-            self.active -= 1
+from tests.fakes import FakeExtractor
 
 
 def _units(n: int = 1):
@@ -61,7 +45,7 @@ async def test_section_ref_maps_to_section(cache):
     async def extract(_):
         return [ExtractedFeature(brand_name="Toyota", product_name=" Avanza ", price=230.0, section_ref="S1")]
 
-    [row] = await _svc(FakeProvider(extract), cache).extract_units(units)
+    [row] = await _svc(FakeExtractor(fn=extract), cache).extract_units(units)
     assert row.section_hash == sections[0].section_hash
     assert row.section_heading == "H0"
     assert row.page_number == 1
@@ -78,7 +62,7 @@ async def test_invalid_ref_falls_back_and_empty_product_dropped(cache):
             ExtractedFeature(product_name="  ", section_ref="S1"),
         ]
 
-    rows = await _svc(FakeProvider(extract), cache).extract_units(units)
+    rows = await _svc(FakeExtractor(fn=extract), cache).extract_units(units)
     assert [r.product_name for r in rows] == ["X", "Y"]
     assert all(r.section_hash == sections[0].section_hash for r in rows)
 
@@ -89,7 +73,7 @@ async def test_no_truncation_every_unit_extracted(cache):
     async def extract(_):
         return []
 
-    provider = FakeProvider(extract)
+    provider = FakeExtractor(fn=extract)
     await _svc(provider, cache).extract_units(units)
     assert len(provider.calls) == len(units) == 5
 
@@ -100,7 +84,7 @@ async def test_cache_skips_llm_on_second_run(cache):
     async def extract(_):
         return [ExtractedFeature(product_name="Z", section_ref="S1")]
 
-    provider = FakeProvider(extract)
+    provider = FakeExtractor(fn=extract)
     first = await _svc(provider, cache).extract_units(units)
     second = await _svc(provider, cache).extract_units(units)
     assert len(provider.calls) == 2
@@ -115,7 +99,7 @@ async def test_timeout_raises(cache):
         return []
 
     with pytest.raises(TimeoutError):
-        await _svc(FakeProvider(slow), cache, timeout=0.05).extract_units(units)
+        await _svc(FakeExtractor(fn=slow), cache, timeout=0.05).extract_units(units)
 
 
 async def test_error_propagates_and_completed_units_cached(cache):
@@ -127,14 +111,14 @@ async def test_error_propagates_and_completed_units_cached(cache):
             raise RuntimeError("LLM down")
         return []
 
-    provider = FakeProvider(flaky)
+    provider = FakeExtractor(fn=flaky)
     with pytest.raises(RuntimeError):
         await _svc(provider, cache, limit=1).extract_units(units)
 
     async def ok(_):
         return []
 
-    provider2 = FakeProvider(ok)
+    provider2 = FakeExtractor(fn=ok)
     await _svc(provider2, cache).extract_units(units)
     assert provider2.calls == [target]  # the first unit comes from the cache
 
@@ -146,6 +130,6 @@ async def test_concurrency_limited(cache):
         await asyncio.sleep(0.02)
         return []
 
-    provider = FakeProvider(extract)
+    provider = FakeExtractor(fn=extract)
     await _svc(provider, cache, limit=2).extract_units(units)
     assert provider.max_active <= 2

@@ -3,24 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from app.tools.embedding.base import BaseEmbedder
 from app.tools.vector_store.base import IndexChunk
 from app.tools.vector_store.chroma import ChromaVectorStore
-
-
-class FakeEmbedder(BaseEmbedder):
-    def _vec(self, text: str) -> list[float]:
-        return [float("avanza" in text.lower()), float("honda" in text.lower()), 1.0]
-
-    def embed_documents(self, texts):
-        return [self._vec(t) for t in texts]
-
-    def embed_query(self, text):
-        return self._vec(text)
-
-    @property
-    def dimension(self):
-        return 3
+from tests.fakes import FakeEmbedder
 
 
 def chunk(cid: str, text: str, version: str) -> IndexChunk:
