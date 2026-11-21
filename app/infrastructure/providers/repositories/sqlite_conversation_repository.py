@@ -129,7 +129,7 @@ class SQLiteConversationRepository(BaseConversationRepository):
             )
         msg_id = str(uuid.uuid4())
         with self._db.get_connection() as conn:
-            # seq = urutan insert (internal). Dihitung di statement yang sama → atomik.
+            # seq = insert order (internal). Computed in the same statement → atomic.
             conn.execute(
                 """
                 INSERT INTO messages

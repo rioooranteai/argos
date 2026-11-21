@@ -6,7 +6,7 @@ from app.services.notebook.model import ActiveSource, Notebook, NotebookSource
 
 
 class SourceLimitReached(Exception):
-    """Notebook sudah mencapai batas jumlah sumber."""
+    """The notebook has reached its source limit."""
 
 
 class BaseNotebookRepository(ABC):
@@ -15,11 +15,11 @@ class BaseNotebookRepository(ABC):
 
     @abstractmethod
     def get(self, notebook_id: str, owner_id: str) -> Notebook | None:
-        """None bila tidak ada atau bukan milik `owner_id`."""
+        """None when missing or not owned by `owner_id`."""
 
     @abstractmethod
     def list_for_owner(self, owner_id: str) -> list[tuple[Notebook, int]]:
-        """Notebook milik user beserta jumlah sumbernya, terbaru dulu."""
+        """The user's notebooks with their source counts, newest first."""
 
     @abstractmethod
     def rename(self, notebook_id: str, title: str) -> None: ...
@@ -32,17 +32,17 @@ class BaseNotebookRepository(ABC):
 
     @abstractmethod
     def mark_opened(self, notebook_id: str) -> None:
-        """Catat waktu notebook dibuka (pengganti localStorage di browser)."""
+        """Record when the notebook was opened (replaces localStorage in the browser)."""
 
     @abstractmethod
     def list_sources(self, notebook_id: str) -> list[NotebookSource]: ...
 
     @abstractmethod
     def add_source(self, notebook_id: str, document_id: str, version_id: str, max_sources: int) -> bool:
-        """Tambah sumber secara atomik (batas dicek dalam transaksi yang sama).
+        """Atomically add a source (the limit is checked in the same transaction).
 
-        Return False bila dokumen sudah ada di notebook.
-        Raises SourceLimitReached bila notebook penuh.
+        Returns False when the document is already in the notebook.
+        Raises SourceLimitReached when the notebook is full.
         """
 
     @abstractmethod
@@ -56,8 +56,8 @@ class BaseNotebookRepository(ABC):
 
     @abstractmethod
     def count_version_pins(self, version_id: str) -> int:
-        """Jumlah notebook (mana pun) yang mem-pin versi ini."""
+        """Number of notebooks (any) that pin this version."""
 
     @abstractmethod
     def active_sources(self, notebook_id: str) -> list[ActiveSource]:
-        """Sumber yang dicentang dan versinya `ready`, urut waktu ditambahkan."""
+        """Checked sources whose version is `ready`, in the order they were added."""

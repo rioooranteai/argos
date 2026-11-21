@@ -87,12 +87,12 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
     def mark_opened(self, notebook_id: str) -> None:
         with self._db.get_connection() as conn:
             conn.execute(
-                # Presisi milidetik: membuka dua notebook dalam detik yang sama tetap berurutan.
+                # Millisecond precision: opening two notebooks in the same second still keeps the order.
                 "UPDATE notebooks SET last_opened_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = ?",
                 (notebook_id,),
             )
 
-    # ── Sumber ─────────────────────────────────────────────────────────
+    # ── Sources ────────────────────────────────────────────────────────
 
     def list_sources(self, notebook_id: str) -> list[NotebookSource]:
         with self._db.get_connection() as conn:
@@ -101,7 +101,7 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
 
     def add_source(self, notebook_id: str, document_id: str, version_id: str, max_sources: int) -> bool:
         with self._db.get_connection() as conn:
-            # Kunci tulis dulu: dua penambahan bersamaan tidak bisa sama-sama lolos batas.
+            # Take the write lock first: two concurrent adds cannot both get past the limit.
             conn.execute("BEGIN IMMEDIATE")
             exists = conn.execute(
                 "SELECT 1 FROM notebook_sources WHERE notebook_id = ? AND document_id = ?",

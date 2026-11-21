@@ -2,7 +2,7 @@ from app.core.config import app_config, secrets
 from app.infrastructure.interface.llm import BaseLLM
 from app.infrastructure.providers.llms.openai_llm import OpenAILLM
 
-# model_type → (model, timeout detik, retry, purpose di llm_calls). DESIGN_GROUP_B.md §5, C §7.3.
+# model_type → (model, timeout seconds, retries, purpose in llm_calls). DESIGN_GROUP_B.md §5, C §7.3.
 _OPENAI_PROFILES = {
     "llm": (app_config.OPENAI_LLM_MODEL, app_config.LLM_TIMEOUT_CHAT, 1, "synthesizer"),
     "chat": (app_config.OPENAI_CHAT_MODEL, app_config.LLM_TIMEOUT_CHAT, 1, "synthesizer"),

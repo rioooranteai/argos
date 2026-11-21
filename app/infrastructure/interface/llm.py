@@ -8,24 +8,24 @@ from pydantic import BaseModel
 
 class BaseLLM(ABC):
     """
-    Kontrak untuk semua LLM provider.
-    Dipakai oleh: extraction agent, RAG chain, NL-to-SQL agent, router.
+    The contract for every LLM provider.
+    Used by: the extraction agent, RAG chain, NL-to-SQL agent, router.
     """
 
     @abstractmethod
     def invoke(self, prompt: str, system: str | None = None) -> str:
         """
-        Kirim prompt ke LLM, kembalikan response sebagai string.
-        Untuk penggunaan umum: RAG answer, router classification.
+        Send a prompt to the LLM and return the response as a string.
+        For general use: RAG answers, router classification.
         """
 
     @abstractmethod
     async def ainvoke(self, prompt: str, system: str | None = None) -> str:
-        """Async version dari invoke untuk endpoint FastAPI."""
+        """Async version of invoke for FastAPI endpoints."""
 
     @abstractmethod
     def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
         """
-        Return instance LLM yang output-nya dipaksa sesuai Pydantic schema.
-        Digunakan oleh extraction agent untuk output terstruktur.
+        Return an LLM instance whose output is forced to match a Pydantic schema.
+        Used by the extraction agent for structured output.
         """

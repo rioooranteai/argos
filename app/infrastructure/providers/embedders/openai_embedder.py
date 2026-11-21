@@ -13,7 +13,7 @@ _DIMENSIONS: dict[str, int] = {
 
 
 class OpenAIEmbedder(BaseEmbedder):
-    """Embedding via LangChain OpenAIEmbeddings, dengan timeout & batas batch eksplisit."""
+    """Embeddings via LangChain OpenAIEmbeddings, with an explicit timeout & batch limit."""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class OpenAIEmbedder(BaseEmbedder):
         self._embedder = OpenAIEmbeddings(
             api_key=api_key,
             model=model,
-            # `chunk_size` di LangChain = jumlah teks per request (batch), bukan token.
+            # `chunk_size` in LangChain = texts per request (batch), not tokens.
             chunk_size=batch_size,
             request_timeout=timeout,
             max_retries=max_retries,
@@ -36,7 +36,7 @@ class OpenAIEmbedder(BaseEmbedder):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        # LangChain tidak mengembalikan pemakaian token embedding → kolom token NULL.
+        # LangChain does not return embedding token usage → the token columns are NULL.
         with recorder.track("embedding", self.model_name):
             return self._embedder.embed_documents(texts)
 

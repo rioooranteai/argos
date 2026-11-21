@@ -1,4 +1,4 @@
-"""Port antrean pemrosesan: baris `document_versions` berfungsi sebagai job."""
+"""Processing queue port: `document_versions` rows act as jobs."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -9,19 +9,19 @@ from app.services.library.model import DocumentVersion
 class BaseJobRepository(ABC):
     @abstractmethod
     def claim_next(self, lease_minutes: int) -> DocumentVersion | None:
-        """Ambil satu job secara atomik: `queued` yang sudah waktunya, atau job
-        berjalan yang lease-nya habis. Menaikkan `attempts` dan memasang lease."""
+        """Atomically take one job: a `queued` one that is due, or a running job
+        whose lease expired. Increments `attempts` and sets a lease."""
 
     @abstractmethod
     def recover_orphans(self) -> int:
-        """Saat start (app 1 proses): job yang masih 'berjalan' pasti yatim dari
-        proses sebelumnya → kembalikan ke `queued`. Return jumlahnya."""
+        """On start (single-process app): jobs still 'running' must be orphans of the
+        previous process → put them back to `queued`. Returns how many."""
 
     @abstractmethod
     def heartbeat(
         self, version_id: str, stage: str, done: int, total: int, lease_minutes: int
     ) -> None:
-        """Perbarui tahap & progres sekaligus memperpanjang lease."""
+        """Update the stage & progress and extend the lease."""
 
     @abstractmethod
     def is_cancel_requested(self, version_id: str) -> bool: ...
@@ -34,11 +34,11 @@ class BaseJobRepository(ABC):
 
     @abstractmethod
     def schedule_retry(self, version_id: str, delay_minutes: int, error: str) -> None:
-        """Kembalikan ke antrean untuk dicoba lagi setelah jeda."""
+        """Put back in the queue to retry after a delay."""
 
     @abstractmethod
     def release(self, version_id: str) -> None:
-        """Lepas job yang terputus karena shutdown, tanpa menghitung percobaan."""
+        """Release a job interrupted by shutdown, without counting the attempt."""
 
     @abstractmethod
     def mark_failed(self, version_id: str, error: str) -> None: ...

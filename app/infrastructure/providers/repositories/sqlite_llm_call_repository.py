@@ -1,4 +1,4 @@
-"""SQLite adapter untuk catatan panggilan AI (tabel ``llm_calls``)."""
+"""SQLite adapter for AI call records (the ``llm_calls`` table)."""
 from __future__ import annotations
 
 import uuid
@@ -9,8 +9,8 @@ from app.core.database import Database
 from app.infrastructure.interface.llm_call_repository import BaseLLMCallRepository
 from app.services.observability.model import LLMCall
 
-# Format yang sama dengan CURRENT_TIMESTAMP SQLite (UTC), agar bisa dibandingkan
-# langsung dengan datetime('now', ...).
+# Same format as SQLite's CURRENT_TIMESTAMP (UTC), so it can be compared
+# directly with datetime('now', ...).
 _TS_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -28,7 +28,7 @@ class SQLiteLLMCallRepository(BaseLLMCallRepository):
         if not calls:
             return
         with self._db.get_connection() as conn:
-            # Kunci tulis dulu, agar MAX(seq) dan INSERT berada di transaksi yang sama.
+            # Take the write lock first, so MAX(seq) and the INSERT are in the same transaction.
             conn.execute("BEGIN IMMEDIATE")
             next_seq = conn.execute("SELECT COALESCE(MAX(seq), 0) + 1 FROM llm_calls").fetchone()[0]
             conn.executemany(

@@ -32,7 +32,7 @@ _INSERT_VERSION = """
 _LIST_SQL = """
     SELECT d.*, u.name AS owner_name,
            (SELECT COUNT(*) FROM document_versions v WHERE v.document_id = d.id) AS version_count,
-           -- versi yang ditampilkan: versi ready terbaru, atau versi terbaru bila belum ada yang ready
+           -- the version shown: the latest ready version, or the latest version when none is ready yet
            COALESCE(d.latest_version_id,
                     (SELECT v.id FROM document_versions v WHERE v.document_id = d.id
                      ORDER BY v.version_no DESC LIMIT 1)) AS shown_version_id
@@ -61,7 +61,7 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
     def __init__(self, database: Database) -> None:
         self._db = database
 
-    # ── Versi ──────────────────────────────────────────────────────────
+    # ── Versions ───────────────────────────────────────────────────────
 
     def find_version_by_hash(self, content_hash: str) -> DocumentVersion | None:
         with self._db.get_connection() as conn:
@@ -85,15 +85,15 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
                 ).fetchone()
         except sqlite3.IntegrityError as err:
             if _is_hash_conflict(err):
-                return None  # transaksi di-rollback: dokumen juga tidak dibuat
+                return None  # the transaction is rolled back: the document is not created either
             raise
         return self._to_version(row)
 
     def create_next_version(self, document_id: str, version: NewVersion) -> DocumentVersion | None:
         try:
             with self._db.get_connection() as conn:
-                # BEGIN IMMEDIATE: kunci tulis sebelum membaca MAX agar dua upload
-                # versi baru bersamaan tidak mendapat version_no yang sama.
+                # BEGIN IMMEDIATE: take the write lock before reading MAX so two concurrent
+                # new-version uploads cannot get the same version_no.
                 conn.execute("BEGIN IMMEDIATE")
                 next_no = conn.execute(
                     """
@@ -152,7 +152,7 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
             ).fetchall()
         return [self._to_version(r) for r in rows]
 
-    # ── Dokumen ────────────────────────────────────────────────────────
+    # ── Documents ──────────────────────────────────────────────────────
 
     def get_document(self, document_id: str) -> LibraryDocument | None:
         with self._db.get_connection() as conn:
@@ -194,7 +194,7 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
                 (display_name, document_id),
             )
 
-    # ── Hapus / arsip ──────────────────────────────────────────────────
+    # ── Delete / archive ───────────────────────────────────────────────
 
     def detach_from_owner_notebooks(self, document_id: str, owner_id: str) -> int:
         with self._db.get_connection() as conn:
@@ -230,8 +230,8 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
 
     def delete_document(self, document_id: str) -> None:
         with self._db.get_connection() as conn:
-            # FK notebook_sources tanpa CASCADE: dokumen yang masih dipakai notebook
-            # tidak akan terhapus (IntegrityError) — pengaman bila aturan service terlewat.
+            # The notebook_sources FK has no CASCADE: a document still used by a notebook
+            # cannot be deleted (IntegrityError) — a safety net if a service rule is missed.
             conn.execute("DELETE FROM document_versions WHERE document_id = ?", (document_id,))
             conn.execute("DELETE FROM library_documents WHERE id = ?", (document_id,))
 

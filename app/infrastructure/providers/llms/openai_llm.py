@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAILLM(BaseLLM):
-    """Implementasi konkrit untuk provider OpenAI."""
+    """Concrete implementation for the OpenAI provider."""
 
     def __init__(
         self,
@@ -28,9 +28,9 @@ class OpenAILLM(BaseLLM):
             purpose, model, temperature, timeout, max_retries,
         )
         self._model = model
-        self._purpose = purpose  # kolom `purpose` di llm_calls
-        # Timeout & retry eksplisit (bawaan SDK: 600 dtk). Retry SDK hanya untuk
-        # error yang bisa pulih: koneksi, timeout, 408/409/429/5xx.
+        self._purpose = purpose  # the `purpose` column in llm_calls
+        # Explicit timeout & retries (SDK default: 600 s). SDK retries only cover
+        # recoverable errors: connection, timeout, 408/409/429/5xx.
         self._client = ChatOpenAI(
             api_key=api_key,
             model=model,
@@ -64,7 +64,7 @@ class OpenAILLM(BaseLLM):
         self._log_response(response.content)
         return response.content
 
-    # Prompt bisa berisi isi dokumen rahasia: hanya ditulis bila LOG_PROMPTS = True
+    # Prompts can contain confidential document content: only logged when LOG_PROMPTS = True
     # (DESIGN_GROUP_C.md §7.5).
     def _log_prompt(self, messages: list) -> None:
         if app_config.LOG_PROMPTS:
@@ -75,4 +75,4 @@ class OpenAILLM(BaseLLM):
             logger.debug("[%s] respons: %s", self._purpose, content)
 
     def with_structured_output(self, schema: Type[BaseModel]) -> "BaseLLM":
-        raise NotImplementedError("with_structured_output belum diimplementasi")
+        raise NotImplementedError("with_structured_output is not implemented yet")

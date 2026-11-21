@@ -64,8 +64,8 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
                 """,
                 (json.dumps(reuse_stats) if reuse_stats else None, version_id),
             )
-            # Versi ready dengan nomor tertinggi — versi lama yang selesai belakangan
-            # tidak menimpa versi yang lebih baru.
+            # The ready version with the highest number — an older version that finishes later
+            # does not override a newer one.
             conn.execute(
                 """
                 UPDATE library_documents SET

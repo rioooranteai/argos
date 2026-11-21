@@ -15,16 +15,16 @@ class BaseUserRepository(ABC):
         picture: str | None,
         new_user_id: str | None = None,
     ) -> User:
-        """Cari user lewat ID akun Google; buat baru (ID UUID) atau perbarui profil +
-        last_login_at. Tidak mengubah is_active. `new_user_id` hanya untuk test/seed."""
+        """Find the user by Google account ID; create a new one (UUID ID) or update the profile +
+        last_login_at. Does not change is_active. `new_user_id` is only for tests/seeding."""
 
     @abstractmethod
     def get(self, user_id: str) -> User | None:
-        """Ambil user berdasarkan id (UUID)."""
+        """Get a user by id (UUID)."""
 
     @abstractmethod
     def list_all(self) -> list[User]:
-        """Semua user, urut nama/email."""
+        """All users, ordered by name/email."""
 
     @abstractmethod
     def set_active(self, user_id: str, active: bool) -> bool: ...

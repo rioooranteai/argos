@@ -7,8 +7,8 @@ from app.infrastructure.providers.repositories.sqlite_library_repository import 
 )
 from app.services.library.model import DocumentVersion
 
-# Semua waktu memakai format CURRENT_TIMESTAMP SQLite (UTC, 'YYYY-MM-DD HH:MM:SS'),
-# sehingga perbandingan string = perbandingan waktu.
+# Every timestamp uses SQLite's CURRENT_TIMESTAMP format (UTC, 'YYYY-MM-DD HH:MM:SS'),
+# so comparing strings = comparing times.
 _RUNNING = "('parsing', 'vision', 'indexing', 'extracting')"
 
 
@@ -72,7 +72,7 @@ class SQLiteJobRepository(BaseJobRepository):
             row = conn.execute(
                 "SELECT cancel_requested FROM document_versions WHERE id = ?", (version_id,)
             ).fetchone()
-        # Versi yang sudah terhapus juga dianggap dibatalkan.
+        # A version that was already deleted also counts as cancelled.
         return row is None or bool(row[0])
 
     def request_cancel(self, version_id: str) -> None:
@@ -82,7 +82,7 @@ class SQLiteJobRepository(BaseJobRepository):
                 "WHERE id = ? AND stage NOT IN ('ready', 'failed', 'cancelled')",
                 (version_id,),
             )
-            # Job yang belum mulai bisa langsung dibatalkan.
+            # A job that has not started can be cancelled right away.
             conn.execute(
                 "UPDATE document_versions SET stage = 'cancelled', finished_at = CURRENT_TIMESTAMP "
                 "WHERE id = ? AND stage = 'queued'",

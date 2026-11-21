@@ -7,19 +7,19 @@ class BaseEmbedder(ABC):
     @abstractmethod
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
-        Embed list teks sekaligus (batch).
-        Digunakan saat ingestion untuk embed banyak chunk sekaligus.
-        Urutan output harus sama dengan urutan input.
+        Embed a list of texts at once (batch).
+        Used during ingestion to embed many chunks at once.
+        The output order must match the input order.
         """
 
     @abstractmethod
     def embed_query(self, text: str) -> list[float]:
         """
-        Embed satu teks query.
-        Digunakan saat retrieval untuk embed pertanyaan user.
+        Embed one query text.
+        Used during retrieval to embed the user's question.
         """
 
     @property
     @abstractmethod
     def dimension(self) -> int:
-        """Dimensi vector yang dihasilkan (misal: 1536 untuk OpenAI)."""
+        """Dimension of the produced vectors (e.g. 1536 for OpenAI)."""

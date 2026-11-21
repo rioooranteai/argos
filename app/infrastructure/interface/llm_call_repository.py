@@ -12,7 +12,7 @@ class BaseLLMCallRepository(ABC):
 
     @abstractmethod
     def purge_older_than(self, days: int) -> int:
-        """Hapus catatan lebih tua dari ``days`` hari. Return jumlah baris terhapus."""
+        """Delete records older than ``days`` days. Returns the number of deleted rows."""
 
     @abstractmethod
     def list_for_message(self, message_id: str) -> list[LLMCall]: ...
