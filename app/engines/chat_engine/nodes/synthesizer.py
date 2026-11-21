@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from app.core.errors import UpstreamError
 from app.core.llm_errors import classify_llm_error
@@ -10,23 +9,13 @@ from app.engines.chat_engine.citations import CitationRegistry
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import COMPONENT_LABELS, RETRIEVAL_NODES, NodeTrace
+from app.engines.chat_engine.prompt_blocks import build_prompt, load_prompt
 from app.services.nl2sql.service import NL2SQLResult
 from app.tools.llm.base import BaseLLM
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_DIR = Path(__file__).resolve().parents[4] / "prompts"
-
-
-def _load_prompt(filename: str) -> str:
-    path = _PROMPT_DIR / filename
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file not found: {path}") from None
-
-
-_SYNTHESIZER_PROMPT_TEXT = _load_prompt("synthesizer_answer.md")
+_SYNTHESIZER_INSTRUCTIONS = load_prompt("synthesizer_answer.md")
 
 # Max SQL rows sent to the answering LLM (the rest are only counted)
 MAX_SQL_ROWS_IN_PROMPT = 30
@@ -116,17 +105,6 @@ def _retrieval_status(state: dict) -> tuple[list[str], list[str]]:
     return [t.node for t in ran], [t.node for t in ran if t.status == "error"]
 
 
-def _message_to_text(m) -> str:
-    role = getattr(m, "type", "user")
-    content = getattr(m, "content", "")
-    if isinstance(content, list):
-        content = " ".join(
-            part.get("text", str(part)) if isinstance(part, dict) else str(part)
-            for part in content
-        )
-    return f"{str(role).upper()}: {content}"
-
-
 def _chunk_refs(vector_result: list | None, registry: CitationRegistry) -> list[dict]:
     """Chunk summary for the trace: label, page, distance. No document text."""
     refs = []
@@ -168,14 +146,13 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
         state.get("sql_result"), state.get("vector_result"), registry, failed
     )
 
-    recent_history = messages[-6:] if len(messages) > 6 else messages
-    history_text = "\n".join(_message_to_text(m) for m in recent_history)
-
-    prompt_body = _SYNTHESIZER_PROMPT_TEXT.format(
+    # One message, fixed block order: HISTORY → DATA → INSTRUCTIONS → QUESTION → CURRENT_DATE.
+    prompt = build_prompt(
+        history=messages,
+        data=data_context or "No data found.",
+        instructions=_SYNTHESIZER_INSTRUCTIONS,
         question=user_input,
-        data=data_context if data_context else "No data found.",
     )
-    prompt = f"Conversation history:\n{history_text}\n\n{prompt_body}"
 
     try:
         answer = await llm.ainvoke(prompt=prompt, system=None)

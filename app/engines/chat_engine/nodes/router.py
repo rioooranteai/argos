@@ -2,29 +2,18 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 
 from app.core.observability.telemetry import spans
 from app.core.observability.telemetry.context import bind_trace
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace
+from app.engines.chat_engine.prompt_blocks import build_prompt, load_prompt
 from app.tools.llm.base import BaseLLM
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_DIR = Path(__file__).resolve().parents[4] / "prompts"
-
-
-def _load_prompt(filename: str) -> str:
-    path = _PROMPT_DIR / filename
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file not found: {path}") from None
-
-
-_ROUTER_SYSTEM = _load_prompt("router_agent.md")
+_ROUTER_INSTRUCTIONS = load_prompt("router_agent.md")
 
 
 def _record_decision(result: dict) -> None:
@@ -42,23 +31,16 @@ def _record_decision(result: dict) -> None:
     after=_record_decision,
 )
 async def router_node(state: dict, llm: BaseLLM) -> dict:
-    user_input = state["user_input"]
-    messages = state.get("messages", [])
-
-    recent_history = messages[-6:] if len(messages) > 6 else messages
-    history_text = "\n".join(
-        f"{getattr(m, 'type', 'user').upper()}: {getattr(m, 'content', '')}"
-        for m in recent_history
-    )
-
-    prompt = (
-        f"Recent conversation history:\n{history_text}\n\n"
-        f"Latest user question: {user_input}"
+    # One message, fixed block order: HISTORY → INSTRUCTIONS → QUESTION → CURRENT_DATE.
+    prompt = build_prompt(
+        history=state.get("messages", []),
+        instructions=_ROUTER_INSTRUCTIONS,
+        question=state["user_input"],
     )
 
     clock = Stopwatch()
     try:
-        raw = await llm.ainvoke(prompt=prompt, system=_ROUTER_SYSTEM)
+        raw = await llm.ainvoke(prompt=prompt, system=None)
         clean = raw.strip().replace("```json", "").replace("```", "").strip()
         parsed = json.loads(clean)
 

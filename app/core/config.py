@@ -197,6 +197,11 @@ class AppConfig:
     # ── Voice ────────────────────────────────────────────────────────
     STT_MAX_MB: int = 25
 
+    # ── Chat prompts ─────────────────────────────────────────────────
+    # Time zone for the <<CURRENT_DATE>> block the router & synthesizer receive.
+    APP_TIMEZONE: str = "Asia/Jakarta"
+    APP_TIMEZONE_LABEL: str = "WIB"
+
     # ── Logging & observability (DESIGN_GROUP_C.md §7) ───────────────
     LOG_FORMAT: str = "auto"          # "auto" (text in a terminal, json otherwise) | "json" | "text"
     LOG_PROMPTS: bool = False         # True: LLM prompts & responses are logged at DEBUG
