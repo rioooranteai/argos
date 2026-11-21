@@ -97,28 +97,26 @@
         <!-- Sources -->
         <section class="sources-section" aria-labelledby="sourcesHeading">
             <div class="section-header">
-                <h2 class="section-title" id="sourcesHeading">Sources</h2>
+                <h2 class="section-title" id="sourcesHeading" title="Only checked sources are used to answer.">Sources</h2>
                 <span class="section-count" id="sourceCount">0/10</span>
-                <button type="button" class="btn-add-source" id="addSourceBtn">
-                    <svg fill="none" height="13" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="13">
+                <button type="button" class="btn-section-add" id="addSourceBtn" title="Add sources" aria-label="Add sources">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="15" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    Add
                 </button>
             </div>
             <ul class="source-list" id="sourceList" aria-describedby="sourceHint"></ul>
-            <p class="source-hint" id="sourceHint">Only checked sources are used to answer.</p>
+            <p class="visually-hidden" id="sourceHint">Only checked sources are used to answer.</p>
         </section>
 
         <!-- Conversations -->
         <section class="history-section" aria-labelledby="historyHeading">
-            <div class="history-section-header">
-                <h2 class="history-title" id="historyHeading">Conversations</h2>
-                <button type="button" class="btn-new-thread" id="newChatBtn" title="Start a new conversation">
-                    <svg fill="none" height="13" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="13">
+            <div class="section-header">
+                <h2 class="section-title" id="historyHeading">Conversations</h2>
+                <button type="button" class="btn-section-add" id="newChatBtn" title="New chat" aria-label="New chat">
+                    <svg fill="none" height="15" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" width="15" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    New chat
                 </button>
             </div>
             <div class="history-list" id="historyList"></div>

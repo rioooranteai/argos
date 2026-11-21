@@ -476,7 +476,6 @@ function renderSourceItem(s) {
 
     const meta = [];
     if (ready) {
-        meta.push(h("span", { text: `Version ${s.version_no}, ${formatDate(s.uploaded_at)}` }));
         if (s.archived) meta.push(h("span", { class: "source-warn", text: "Archived by the uploader" }));
         if (s.warnings.length) meta.push(h("span", { class: "source-warn", text: s.warnings[0] }));
     } else if (processing) {
@@ -497,7 +496,8 @@ function renderSourceItem(s) {
             onchange: (e) => toggleSource(s, e.target.checked),
         }),
         h("label", { for: id, class: "source-body" },
-            h("span", { class: "source-name", text: s.display_name, title: s.display_name }),
+            h("span", { class: "source-name", text: s.display_name,
+                title: `${s.display_name}\nVersion ${s.version_no}, uploaded ${formatDate(s.uploaded_at)}` }),
             h("span", { class: "source-meta", id: `${id}-meta` }, ...meta)),
         h("button", {
             type: "button", class: "source-remove", title: "Remove from notebook",
