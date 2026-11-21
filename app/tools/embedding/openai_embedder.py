@@ -37,11 +37,13 @@ class OpenAIEmbedder(BaseEmbedder):
         if not texts:
             return []
         # LangChain does not return embedding token usage → the token columns are NULL.
-        with recorder.track("embedding", self.model_name):
+        with recorder.track("embedding", self.model_name) as call:
+            call.content(input=texts)
             return self._embedder.embed_documents(texts)
 
     def embed_query(self, text: str) -> list[float]:
-        with recorder.track("embedding", self.model_name):
+        with recorder.track("embedding", self.model_name) as call:
+            call.content(input=text)
             return self._embedder.embed_query(text)
 
     @property

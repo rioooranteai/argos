@@ -20,6 +20,8 @@ Rules:
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import queue
 import threading
@@ -35,6 +37,7 @@ from app.core.llm_errors import classify_llm_error
 from app.core.observability.model import LLMCall
 from app.core.observability.ports import BaseLLMCallRepository
 from app.core.request_context import get_request_id
+from app.core.telemetry import pricing, spans
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +45,29 @@ _BATCH_MAX = 200
 _STOP = object()
 
 _sink: ContextVar[list[LLMCall] | None] = ContextVar("llm_call_sink", default=None)
+
+
+def _report_usage(span: spans.Span, purpose: str, model: str, handle: "_CallHandle") -> None:
+    """Token usage and cost on the generation span (Langfuse usage_details / cost_details)."""
+    usage: dict[str, int] = {}
+    if handle.input_tokens is not None:
+        usage["input"] = handle.input_tokens
+        span.set_attribute("gen_ai.usage.input_tokens", handle.input_tokens)
+    if handle.output_tokens is not None:
+        usage["output"] = handle.output_tokens
+        span.set_attribute("gen_ai.usage.output_tokens", handle.output_tokens)
+    if usage:
+        usage["total"] = sum(usage.values())
+        span.set_attribute("langfuse.observation.usage_details", json.dumps(usage))
+    if purpose == "stt":
+        cost = pricing.audio_cost(model, handle.audio_seconds)
+    elif purpose == "tts":
+        cost = pricing.character_cost(model, handle.characters)
+    else:
+        cost = pricing.token_cost(model, handle.input_tokens, handle.output_tokens)
+    if cost is not None:
+        span.set_attribute("langfuse.observation.cost_details", json.dumps(cost))
+        span.set_attribute("gen_ai.usage.cost", cost["total"])
 
 
 @dataclass
@@ -52,15 +78,30 @@ class LastCall:
 
 
 class _CallHandle:
-    """Returned by ``track``; the provider fills in token usage when available."""
+    """Returned by ``track``. The provider reports what it knows about the call:
+    token usage, the content sent/received (for the trace), audio length or characters."""
 
-    def __init__(self) -> None:
+    def __init__(self, span: spans.Span) -> None:
+        self._span = span
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
+        self.audio_seconds: float | None = None
+        self.characters: int | None = None
 
     def usage(self, input_tokens: int | None = None, output_tokens: int | None = None) -> None:
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
+
+    def content(self, input: object = None, output: object = None) -> None:
+        """What went in and came out (prompt, answer…). Shown in the trace when content
+        capture is on; never stored in llm_calls."""
+        spans.set_input(self._span, input)
+        spans.set_output(self._span, output)
+
+    def units(self, audio_seconds: float | None = None, characters: int | None = None) -> None:
+        """Non-token usage, for speech pricing."""
+        self.audio_seconds = audio_seconds
+        self.characters = characters
 
 
 class LLMCallRecorder:
@@ -104,16 +145,28 @@ class LLMCallRecorder:
 
     @contextmanager
     def track(self, purpose: str, model: str) -> Iterator[_CallHandle]:
-        handle = _CallHandle()
-        start = time.perf_counter()
-        try:
-            yield handle
-        except BaseException as exc:
-            # CancelledError (shutdown/chat timeout) is also recorded as a failure.
-            self._emit(purpose, model, start, handle, "error", classify_llm_error(exc))
-            raise
-        else:
-            self._emit(purpose, model, start, handle, "ok", None)
+        """Record one AI call in llm_calls and as a trace span (DESIGN_GROUP_F.md §3)."""
+        kind = spans.EMBEDDING if purpose == "embedding" else spans.GENERATION
+        with spans.span(
+            purpose, kind,
+            **{"langfuse.observation.model.name": model, "gen_ai.request.model": model,
+               "gen_ai.operation.name": "embeddings" if purpose == "embedding" else "chat"},
+        ) as span:
+            handle = _CallHandle(span)
+            start = time.perf_counter()
+            try:
+                yield handle
+            except BaseException as exc:
+                # CancelledError (shutdown/chat timeout) is also recorded as a failure.
+                code = classify_llm_error(exc)
+                self._emit(purpose, model, start, handle, "error", code)
+                if not isinstance(exc, asyncio.CancelledError):
+                    spans.set_error(span, code, exc=exc)
+                raise
+            else:
+                self._emit(purpose, model, start, handle, "ok", None)
+            finally:
+                _report_usage(span, purpose, model, handle)
 
     def record(self, call: LLMCall) -> None:
         self._last[call.purpose] = LastCall(call.ts, call.status, call.error_code)

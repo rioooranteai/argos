@@ -26,6 +26,16 @@ MIME_TO_EXT = {
     "audio/x-m4a": "m4a",
 }
 
+def _report(call, request: STTRequest, audio_bytes: bytes, response) -> None:
+    """Audio length (for pricing) and the transcript for the trace; never the audio itself."""
+    call.units(audio_seconds=getattr(response, "duration", None))
+    call.content(
+        input={"language": request.language or "auto", "format": request.audio_format,
+               "audio_bytes": len(audio_bytes)},
+        output={"text": response.text, "language": getattr(response, "language", None)},
+    )
+
+
 class OpenAISTT(BaseSTT):
     """
     STT provider using the OpenAI Whisper API (cloud).
@@ -77,7 +87,7 @@ class OpenAISTT(BaseSTT):
             }
 
             if request.with_timestamps:
-                with recorder.track("stt", self._model):
+                with recorder.track("stt", self._model) as call:
                     response = await self._client.audio.transcriptions.create(
                         model=self._model,
                         file=audio_file,
@@ -85,6 +95,7 @@ class OpenAISTT(BaseSTT):
                         timestamp_granularities=["segment"],
                         **optional,
                     )
+                    _report(call, request, audio_bytes, response)
                 segments = [
                     STTSegment(
                         start=round(s.start, 2),
@@ -100,13 +111,14 @@ class OpenAISTT(BaseSTT):
                     provider=self.provider_name,
                 )
             else:
-                with recorder.track("stt", "whisper-1"):
+                with recorder.track("stt", "whisper-1") as call:
                     response = await self._client.audio.transcriptions.create(
                         model="whisper-1",
                         file=(filename, audio_bytes),
                         response_format="verbose_json",  # includes the detected language
                         **optional,
                     )
+                    _report(call, request, audio_bytes, response)
                 return STTResult(
                     text=response.text,
                     language=getattr(response, "language", None),

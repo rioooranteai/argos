@@ -39,7 +39,8 @@ class OpenAITTS(BaseTTS):
                 f"[OpenAI TTS] Synthesizing {len(request.text)} chars "
                 f"| voice={request.voice.value} | format={request.format.value}"
             )
-            with recorder.track("tts", self._model):
+            with recorder.track("tts", self._model) as call:
+                call.units(characters=len(request.text))
                 response = await self._client.audio.speech.create(
                     model=self._model,
                     voice=request.voice.value,
@@ -48,6 +49,8 @@ class OpenAITTS(BaseTTS):
                     speed=request.speed,
                     instructions="Speak in a cheerful and positive tone."
                 )
+                call.content(input=request.text,
+                             output={"format": request.format.value, "audio_bytes": len(response.content)})
             return TTSResult(
                 audio_bytes=response.content,
                 format=request.format.value,

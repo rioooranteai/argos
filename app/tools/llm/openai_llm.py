@@ -52,6 +52,7 @@ class OpenAILLM(BaseLLM):
         with recorder.track(self._purpose, self._model) as call:
             response = self._client.invoke(messages)
             call.usage(*usage_from_langchain(response))
+            call.content(input=messages, output=response.content)
         self._log_response(response.content)
         return response.content
 
@@ -61,6 +62,7 @@ class OpenAILLM(BaseLLM):
         with recorder.track(self._purpose, self._model) as call:
             response = await self._client.ainvoke(messages)
             call.usage(*usage_from_langchain(response))
+            call.content(input=messages, output=response.content)
         self._log_response(response.content)
         return response.content
 

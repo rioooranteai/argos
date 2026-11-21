@@ -74,6 +74,12 @@ class OpenAIVision(BaseVisionModel):
             with recorder.track("vision", app_config.OPENAI_VLM_MODEL) as call:
                 response = await self.vision_model.ainvoke([message])
                 call.usage(*usage_from_langchain(response))
+                # The image itself is never sent to the trace, only its size and the prompt.
+                call.content(
+                    input={"prompt": system_instruction, "page": element.page_number,
+                           "image_bytes": len(element.image_bytes)},
+                    output=response.content,
+                )
 
             return response.content.strip()
 

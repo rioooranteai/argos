@@ -50,6 +50,7 @@ class PydanticAIExtractor(BaseExtractor):
                 result = await self._agent.run(text)
                 usage = result.usage()
                 call.usage(usage.input_tokens, usage.output_tokens)
+                call.content(input=text, output=[f.model_dump() for f in result.output])
             return result.output
         except Exception as e:
             raise ExtractionAgentError(f"The extraction agent failed: {e}") from e
