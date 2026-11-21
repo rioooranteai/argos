@@ -10,7 +10,7 @@ import logging
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 
 from app.core import log_context
-from app.core.dependencies import (
+from app.api.dependencies import (
     get_chat_engine,
     get_conversation_service,
     get_current_user,

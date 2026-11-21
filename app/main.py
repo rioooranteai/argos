@@ -8,7 +8,7 @@ from app.core.config import app_config
 from app.core.errors import register_exception_handlers
 from app.core.logging_setup import configure_logging
 from app.core.middleware import register_middleware
-from app.core.startup import lifespan
+from app.bootstrap import lifespan
 
 configure_logging(app_config.LOG_FORMAT)
 logger = logging.getLogger(__name__)

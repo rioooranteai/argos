@@ -10,12 +10,27 @@ from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
+from app.services.observability.health import HealthChecker
 from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User
+from app.services.user.ports import BaseUserRepository
 from app.services.voice.service import VoiceService
 
 # The session comes only from the HttpOnly cookie (DESIGN_GROUP_D.md D1). Argos is only
 # used from the browser, so the ``Authorization: Bearer`` header is deliberately not accepted.
+
+
+# Every object a route needs is reached through one of these functions, so tests can
+# swap any of them with ``app.dependency_overrides``. They read what bootstrap.py
+# placed on ``app.state`` at startup; routers never read ``app.state`` themselves.
+
+
+def get_user_repo(request: Request) -> BaseUserRepository:
+    return request.app.state.user_repo
+
+
+def get_health_checker(request: Request) -> HealthChecker:
+    return request.app.state.health_checker
 
 
 def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | None:
@@ -25,13 +40,15 @@ def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | 
     payload = decode_session_token(token)
     if payload is None:
         return None
-    user = request.app.state.user_repo.get(payload.get("sub", ""))
+    user = get_user_repo(request).get(payload.get("sub", ""))
     if user is None or not user.is_active:
         return None
     return user, payload
 
 
-def get_current_user(request: Request) -> CurrentUser:
+def get_current_user(
+    request: Request, user_repo: BaseUserRepository = Depends(get_user_repo)
+) -> CurrentUser:
     """Session from the HttpOnly cookie; the user must exist & be active. Bearer headers are ignored."""
     token = session_token_from(request)
     if not token:
@@ -41,7 +58,7 @@ def get_current_user(request: Request) -> CurrentUser:
     if payload is None:
         raise AuthenticationError("Your session is invalid or has expired.", code="INVALID_TOKEN")
 
-    user = request.app.state.user_repo.get(payload.get("sub", ""))
+    user = user_repo.get(payload.get("sub", ""))
     if user is None:
         raise AuthenticationError("Your session is invalid or has expired.", code="INVALID_TOKEN")
     if not user.is_active:

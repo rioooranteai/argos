@@ -100,7 +100,7 @@ def client_ip(request: Request) -> str:
 
 def rate_limit(group: str) -> Callable[..., None]:
     """FastAPI dependency: the `group` limit per signed-in user."""
-    from app.core.dependencies import get_current_user  # avoid a circular import
+    from app.api.dependencies import get_current_user  # avoid a circular import
     from app.services.user.model import CurrentUser
 
     def _check(user: CurrentUser = Depends(get_current_user)) -> None:

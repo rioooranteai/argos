@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.config import AppConfig
-from app.core.dependencies import get_current_user
+from app.api.dependencies import get_current_user
 from app.core.errors import RateLimited, register_exception_handlers
 from app.core.rate_limit import RateLimiter, limiter, rate_limit
 from app.services.user.model import CurrentUser

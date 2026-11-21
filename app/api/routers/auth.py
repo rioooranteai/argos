@@ -1,15 +1,17 @@
 import logging
 from urllib.parse import quote
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import RedirectResponse
 
+from app.api.dependencies import get_user_repo
 from app.core.config import secrets
 from app.core.errors import PermissionDenied, RateLimited
 from app.core.oauth import oauth
 from app.core.rate_limit import client_ip, limiter
 from app.core.security import GMAIL_DOMAIN, verify_google_identity
 from app.core.session import clear_session_cookie, create_session_token, set_session_cookie
+from app.services.user.ports import BaseUserRepository
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -41,7 +43,9 @@ async def google_login(request: Request):
 
 
 @router.get("/google/callback", name="google_callback")
-async def google_callback(request: Request):
+async def google_callback(
+    request: Request, user_repo: BaseUserRepository = Depends(get_user_repo)
+):
     if (blocked := _login_rate_limited(request)) is not None:
         return blocked
     token = await oauth.google.authorize_access_token(request)
@@ -53,7 +57,6 @@ async def google_callback(request: Request):
         logger.info("Sign-in rejected (%s) for %s", exc.code, google_user.get("email"))
         return _login_error(exc.code)
 
-    user_repo = request.app.state.user_repo
     user = user_repo.upsert_on_login(
         google_sub=google_user["sub"],
         email=google_user["email"],

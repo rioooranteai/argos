@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.api.routers.library import router as library_router
 from app.core.config import AppConfig
 from app.core.database import Database
-from app.core.dependencies import get_current_user, get_library_service
+from app.api.dependencies import get_current_user, get_library_service
 from app.core.errors import ConflictError, NotFoundError, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.tools.storage.sqlite.job import SQLiteJobRepository

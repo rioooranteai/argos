@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.api.routers.health import router
 from app.core.database import Database
-from app.core.dependencies import get_current_user
+from app.api.dependencies import get_current_user
 from app.core.errors import AuthenticationError, register_exception_handlers
 from app.services.observability.health import HealthChecker
 from app.core.observability.recorder import LLMCallRecorder

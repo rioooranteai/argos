@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.api.routers.notebooks import router
 from app.core.config import AppConfig
 from app.core.database import Database
-from app.core.dependencies import (
+from app.api.dependencies import (
     get_chat_engine,
     get_conversation_service,
     get_current_user,

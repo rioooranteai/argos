@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.core.dependencies import get_admin_service, require_admin
+from app.api.dependencies import get_admin_service, require_admin
 from app.core.security import is_admin
 from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 
-from app.core.dependencies import get_current_user, get_library_service
+from app.api.dependencies import get_current_user, get_library_service
 from app.core.rate_limit import rate_limit
 from app.services.library.model import (
     DocumentDetailOut,

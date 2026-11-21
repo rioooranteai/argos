@@ -86,7 +86,7 @@ _COMPONENTS = (
     ("app.engines.chat_engine", "chat"),
     ("app.api.routers", "api"),
     ("app.core.errors", "errors"),
-    ("app.core.startup", "startup"),
+    ("app.bootstrap", "startup"),
     ("app.core", "core"),
 )
 _COMPONENT_WIDTH = 10

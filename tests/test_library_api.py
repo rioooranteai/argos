@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from app.api.routers.library import router
 from app.core.config import AppConfig
 from app.core.database import Database
-from app.core.dependencies import get_current_user, get_library_service
+from app.api.dependencies import get_current_user, get_library_service, get_user_repo
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
 from app.tools.storage.sqlite.library import (
@@ -27,13 +27,15 @@ def client(tmp_path):
     database = Database(db_path=tmp_path / "t.db")
     with database.get_connection() as conn:
         run_migrations(conn)
-    SQLiteUserRepository(database).upsert_on_login(ALICE.id, ALICE.email, ALICE.name, None, new_user_id=ALICE.id)
+    users = SQLiteUserRepository(database)
+    users.upsert_on_login(ALICE.id, ALICE.email, ALICE.name, None, new_user_id=ALICE.id)
     svc = LibraryService(SQLiteLibraryRepository(database), tmp_path / "queue", AppConfig())
 
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router)
     app.dependency_overrides[get_library_service] = lambda: svc
+    app.dependency_overrides[get_user_repo] = lambda: users
     return app
 
 

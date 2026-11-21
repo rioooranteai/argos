@@ -9,7 +9,7 @@ from jose import jwt
 from app.api.routers.admin import router
 from app.core.config import AppConfig, app_config, secrets
 from app.core.database import Database
-from app.core.dependencies import get_admin_service
+from app.api.dependencies import get_admin_service
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
 from app.tools.storage.sqlite.library import (

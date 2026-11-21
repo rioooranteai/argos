@@ -5,10 +5,10 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from app.core.dependencies import require_admin
+from app.api.dependencies import get_health_checker, require_admin
 from app.services.observability.health import HealthChecker
 from app.services.user.model import CurrentUser
 
@@ -21,7 +21,9 @@ def live() -> dict[str, str]:
 
 
 @router.get("/ready", summary="Readiness of each component (admin only)")
-def ready(request: Request, _: CurrentUser = Depends(require_admin)) -> JSONResponse:
-    checker: HealthChecker = request.app.state.health_checker
+def ready(
+    _: CurrentUser = Depends(require_admin),
+    checker: HealthChecker = Depends(get_health_checker),
+) -> JSONResponse:
     report = checker.ready()
     return JSONResponse(report, status_code=503 if report["status"] == "fail" else 200)

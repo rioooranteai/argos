@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.dependencies import get_chat_engine
+from app.api.dependencies import get_chat_engine
 from app.core.errors import UpstreamError, UpstreamTimeout
 from app.engines.chat_engine.outcome import ChatResult, NodeIssue
 from tests.test_notebook_api import BOB, _publish, _setup_notebook, env  # noqa: F401 (fixture)
