@@ -6,7 +6,7 @@ is still reported).
 """
 from __future__ import annotations
 
-from app.core.telemetry.config import TelemetryConfig, telemetry_config
+from app.core.observability.telemetry.config import TelemetryConfig, telemetry_config
 
 
 def token_cost(

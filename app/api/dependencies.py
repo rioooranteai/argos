@@ -2,17 +2,17 @@ from collections.abc import Callable
 
 from fastapi import Depends, Request
 
-from app.core import log_context
 from app.core.errors import AuthenticationError, PermissionDenied
+from app.core.observability.logs import context as log_context
 from app.core.rate_limit import limiter
 from app.core.security import is_admin
 from app.core.session import decode_session_token, session_token_from
 from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.services.conversation.service import ConversationService
+from app.services.health.checker import HealthChecker
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
-from app.services.observability.health import HealthChecker
 from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User
 from app.services.user.ports import BaseUserRepository

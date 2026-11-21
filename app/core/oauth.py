@@ -1,5 +1,6 @@
-from app.core.config import secrets
 from authlib.integrations.starlette_client import OAuth
+
+from app.core.config import secrets
 
 oauth = OAuth()
 oauth.register(

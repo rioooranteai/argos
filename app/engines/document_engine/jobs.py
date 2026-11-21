@@ -7,8 +7,8 @@ import time
 import httpx
 import openai
 
-from app.core import log_context
 from app.core.errors import ArgosError
+from app.core.observability.logs import context as log_context
 from app.services.library.model import DocumentVersion
 from app.services.library.ports import BaseJobRepository
 from app.tools.document_parser.base import DocumentLoadError, ParserTimeout, ParserUnavailable

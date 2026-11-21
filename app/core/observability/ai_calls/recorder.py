@@ -32,12 +32,12 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from app.core import log_context
 from app.core.llm_errors import classify_llm_error
-from app.core.observability.model import LLMCall
-from app.core.observability.ports import BaseLLMCallRepository
-from app.core.request_context import get_request_id
-from app.core.telemetry import pricing, spans
+from app.core.observability.ai_calls.model import LLMCall
+from app.core.observability.ai_calls.ports import BaseLLMCallRepository
+from app.core.observability.logs import context as log_context
+from app.core.observability.logs.request_id import get_request_id
+from app.core.observability.telemetry import pricing, spans
 
 logger = logging.getLogger(__name__)
 

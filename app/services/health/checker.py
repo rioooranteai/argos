@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.core.database import Database
-from app.core.observability.recorder import LLMCallRecorder
+from app.core.observability.ai_calls.recorder import LLMCallRecorder
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class HealthChecker:
     recorder: LLMCallRecorder
     missing_config: Callable[[], list[str]]
     worker_poll_seconds: float
-    # "enabled (otlp → …)" / "disabled (…)" from core/telemetry/setup.status(). Informational:
+    # "enabled (otlp → …)" / "disabled (…)" from core/observability/telemetry/setup.status(). Informational:
     # telemetry being off never makes the app unready.
     telemetry: Callable[[], str] = lambda: "disabled (not configured)"
 

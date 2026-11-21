@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from app.core.llm_errors import LLM_ERROR, classify_llm_error
-from app.core.telemetry import spans
+from app.core.observability.telemetry import spans
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace

@@ -6,8 +6,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from app.core.database import Database
-from app.core.observability.model import LLMCall
-from app.core.observability.ports import BaseLLMCallRepository
+from app.core.observability.ai_calls.model import LLMCall
+from app.core.observability.ai_calls.ports import BaseLLMCallRepository
 
 # Same format as SQLite's CURRENT_TIMESTAMP (UTC), so it can be compared
 # directly with datetime('now', ...).

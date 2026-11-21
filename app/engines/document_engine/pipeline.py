@@ -23,8 +23,8 @@ from pathlib import Path
 
 from app.core.concurrency import AILimits
 from app.core.config import AppConfig
-from app.core.telemetry import spans
-from app.core.telemetry.context import bind_trace
+from app.core.observability.telemetry import spans
+from app.core.observability.telemetry.context import bind_trace
 from app.engines.document_engine.jobs import JobCancelled, JobContext, PermanentJobError
 from app.services.extraction.ports import BaseFeatureRepository
 from app.services.extraction.service import ExtractionService, ExtractionStats

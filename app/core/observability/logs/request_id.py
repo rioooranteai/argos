@@ -2,7 +2,7 @@
 
 - Taken from the ``X-Request-ID`` header (when safe) or newly generated.
 - Stored in ``request.state`` and a contextvar, returned in a response header,
-  and added to every log line through ``logging_setup.ContextFilter``.
+  and added to every log line through ``logs.setup.ContextFilter``.
 - The middleware also opens a new log context per request (``log_context``).
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core import log_context
+from app.core.observability.logs import context as log_context
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")

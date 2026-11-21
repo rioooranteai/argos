@@ -24,7 +24,7 @@ from collections.abc import Iterable
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.errors import error_body
-from app.core.request_context import get_request_id
+from app.core.observability.logs.request_id import get_request_id
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.core.errors import UpstreamError
 from app.core.llm_errors import classify_llm_error
-from app.core.telemetry import spans
+from app.core.observability.telemetry import spans
 from app.engines.chat_engine.citations import CitationRegistry
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node

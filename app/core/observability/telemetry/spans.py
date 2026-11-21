@@ -16,7 +16,7 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
 
-from app.core.telemetry.config import telemetry_config
+from app.core.observability.telemetry.config import telemetry_config
 
 # Langfuse observation types (langfuse.observation.type)
 SPAN = "span"

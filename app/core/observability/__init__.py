@@ -1,6 +1,13 @@
-"""AI call recording (DESIGN_GROUP_C.md §7.3) — shared kernel, used by every AI tool.
+"""Observability: everything that lets us see what Argos is doing.
 
-- ``recorder``: the process-wide recorder; tools wrap each call with ``recorder.track(...)``.
-- ``model``: ``LLMCall``, one recorded call.
-- ``ports``: ``BaseLLMCallRepository``, where records are written.
+- ``logs/``      — log lines: setup (text/JSON), per-request/job context, request ID.
+                   Always on, to stdout.
+- ``ai_calls/``  — the AI call recorder: one ``llm_calls`` row per OpenAI call (model,
+                   tokens, latency, status). Always on, Argos' own database; used by
+                   /health/ready and the "Show AI process" panel.
+- ``telemetry/`` — OpenTelemetry traces exported to Langfuse (or any OTLP backend), with
+                   its own config. Optional: off until keys are set.
+
+``ai_calls.recorder.track()`` is where they meet: one AI call becomes an ``llm_calls`` row
+and a trace span, and ``trace_id`` ties both to the log lines.
 """

@@ -290,7 +290,7 @@ destination, so another OTLP backend works the same way. Tracing is **off** unti
    LANGFUSE_PUBLIC_KEY=pk-lf-…
    LANGFUSE_SECRET_KEY=sk-lf-…
    ```
-2. Check the endpoint in `app/core/telemetry/config.py` (its own settings, separate from the app
+2. Check the endpoint in `app/core/observability/telemetry/config.py` (its own settings, separate from the app
    config):
 
    | Langfuse | `OTLP_ENDPOINT` |
@@ -327,7 +327,7 @@ to keep only metadata (timings, models, tokens, routes, errors).
 
 **Cost** — Langfuse does not price OpenTelemetry data on its own, so Argos sends the cost
 itself. Fill in `MODEL_PRICES_USD_PER_1M_TOKENS` (and, if you want, `STT_PRICE_USD_PER_MINUTE`
-and `TTS_PRICE_USD_PER_1M_CHARS`) in `app/core/telemetry/config.py` with the prices you pay;
+and `TTS_PRICE_USD_PER_1M_CHARS`) in `app/core/observability/telemetry/config.py` with the prices you pay;
 models without a price report token usage only.
 
 ### Docker commands
@@ -396,7 +396,7 @@ bootstrap ─► api ─► engines (orchestrators) ─► services (features) �
 | `app/services/<feature>/` | One feature each (library, notebook, conversation, nl2sql, ingestion, extraction, user, voice): entities (`model.py`), repository contracts (`ports.py`) and use cases (`service.py`) |
 | `app/tools/<tool>/` | External tools behind a contract: `base.py` (abstract class + its types) and the implementations — `llm`, `embedding`, `vector_store`, `document_parser`, `vision`, `extraction`, `speech`, and `storage/sqlite` (implements the services' ports) |
 | `app/tools/factory.py` | The only place that picks a concrete tool, from the `*_PROVIDER` constants in `config.py` |
-| `app/core/` | Shared kernel: config, errors, logging, request context, AI call recorder, telemetry (`telemetry/`: OpenTelemetry with its own config), database, security, session, middleware |
+| `app/core/` | Shared kernel: config, errors, database, security, session, middleware, and `observability/` — `logs/` (log setup, context, request ID), `ai_calls/` (the `llm_calls` recorder, always on) and `telemetry/` (OpenTelemetry → Langfuse, optional, its own config) |
 
 Rules:
 

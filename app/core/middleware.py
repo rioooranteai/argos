@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import app_config, secrets
 from app.core.fetch_metadata import FetchMetadataMiddleware
-from app.core.request_context import REQUEST_ID_HEADER, RequestIDMiddleware
+from app.core.observability.logs.request_id import REQUEST_ID_HEADER, RequestIDMiddleware
 
 
 def register_middleware(app: FastAPI) -> None:

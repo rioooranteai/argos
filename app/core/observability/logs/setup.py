@@ -21,9 +21,9 @@ import sys
 from datetime import UTC, datetime
 from typing import TextIO
 
-from app.core import log_context
-from app.core.request_context import get_request_id
-from app.core.telemetry.spans import current_trace_id
+from app.core.observability.logs import context as log_context
+from app.core.observability.logs.request_id import get_request_id
+from app.core.observability.telemetry.spans import current_trace_id
 
 _EXTRA_FIELDS = ("duration_ms", "trace_id")
 
@@ -84,13 +84,15 @@ _COMPONENTS = (
     ("app.services.nl2sql", "nl2sql"),
     ("app.services.voice", "voice"),
     ("app.services.user", "admin"),
-    ("app.services.observability", "observe"),
+    ("app.services.health", "health"),
     # engines, api, composition root, core
     ("app.engines.document_engine.worker", "worker"),
     ("app.engines.document_engine", "pipeline"),
     ("app.engines.chat_engine", "chat"),
     ("app.api", "api"),
     ("app.bootstrap", "startup"),
+    ("app.core.observability.ai_calls", "ai_calls"),
+    ("app.core.observability.telemetry", "telemetry"),
     ("app.core.observability", "observe"),
     ("app.core.errors", "errors"),
     ("app.core", "core"),

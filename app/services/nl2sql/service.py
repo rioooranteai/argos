@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from app.core.llm_errors import classify_llm_error
-from app.core.telemetry import spans
+from app.core.observability.telemetry import spans
 from app.services.nl2sql.exceptions import InvalidQuestionError
 from app.services.nl2sql.executor import (
     SQLExecutionFailed,

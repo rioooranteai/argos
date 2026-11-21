@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
 from app.core.config import app_config, secrets
-from app.core.observability.recorder import recorder, usage_from_langchain
+from app.core.observability.ai_calls.recorder import recorder, usage_from_langchain
 from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.vision.base import BaseVisionModel, VisionProcessingError
 

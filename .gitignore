@@ -38,7 +38,7 @@ documents/temp/
 
 # LOGS
 *.log
-logs/
+/logs/
 
 # TESTING & COVERAGE
 .pytest_cache/

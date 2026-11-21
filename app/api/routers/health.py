@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import get_health_checker, require_admin
-from app.services.observability.health import HealthChecker
+from app.services.health.checker import HealthChecker
 from app.services.user.model import CurrentUser
 
 router = APIRouter(prefix="/health", tags=["Health Check"])

@@ -7,7 +7,7 @@ from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.core.config import PROJECT_ROOT, app_config, secrets
-from app.core.observability.recorder import recorder
+from app.core.observability.ai_calls.recorder import recorder
 from app.tools.extraction.base import BaseExtractor, ExtractedFeature, ExtractionAgentError
 
 logger = logging.getLogger(__name__)

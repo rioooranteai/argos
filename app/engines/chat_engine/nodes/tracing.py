@@ -10,7 +10,7 @@ import functools
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.core.telemetry import spans
+from app.core.observability.telemetry import spans
 
 NodeFn = Callable[..., Awaitable[dict]]
 

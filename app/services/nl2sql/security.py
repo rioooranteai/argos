@@ -6,7 +6,7 @@ validator below, the isolated in-memory database + authorizer, and the timeout.
 """
 import sqlparse
 from sqlparse.sql import Statement
-from sqlparse.tokens import Keyword, DDL
+from sqlparse.tokens import DDL, Keyword
 
 ALLOWED_STATEMENT_TYPES = {"SELECT"}
 FORBIDDEN_KEYWORDS = {"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "EXEC", "EXECUTE", "REPLACE"}

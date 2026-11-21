@@ -34,7 +34,7 @@ from app.api.schemas.notebook import (
     SourceUploadOut,
     UpdateSourceRequest,
 )
-from app.core import log_context
+from app.core.observability.logs import context as log_context
 from app.engines.chat_engine.orchestrator import ChatOrchestrator, ChatReply
 from app.services.conversation.service import ConversationService
 from app.services.notebook.model import Notebook, NotebookSource

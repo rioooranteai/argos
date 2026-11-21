@@ -15,8 +15,8 @@ from typing import Any
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 
-from app.core import log_context
-from app.core.request_context import get_request_id
+from app.core.observability.logs import context as log_context
+from app.core.observability.logs.request_id import get_request_id
 
 # log_context field → Langfuse attribute(s)
 _IDENTITY = {"user_id": ("langfuse.user.id", "user.id"), "session_id": ("langfuse.session.id", "session.id")}

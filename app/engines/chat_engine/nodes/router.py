@@ -4,8 +4,8 @@ import json
 import logging
 from pathlib import Path
 
-from app.core.telemetry import spans
-from app.core.telemetry.context import bind_trace
+from app.core.observability.telemetry import spans
+from app.core.observability.telemetry.context import bind_trace
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace

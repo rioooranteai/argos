@@ -8,8 +8,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 from app.core.errors import UpstreamTimeout
-from app.core.observability.model import LLMCall
-from app.core.observability.recorder import recorder
+from app.core.observability.ai_calls.model import LLMCall
+from app.core.observability.ai_calls.recorder import recorder
 from app.engines.chat_engine.graph import build_graph
 from app.engines.chat_engine.outcome import ChatResult, NodeTrace, issues_from
 from app.services.conversation.model import Message
