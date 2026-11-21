@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 
 from app.core.database import Database
-from app.infrastructure.interface.user_repository import BaseUserRepository
+from app.services.user.ports import BaseUserRepository
 from app.services.user.model import User
 
 

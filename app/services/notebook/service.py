@@ -12,9 +12,8 @@ from fastapi import UploadFile
 
 from app.core.config import AppConfig
 from app.core.errors import NotFoundError, ValidationError
-from app.infrastructure.interface.job_repository import BaseJobRepository
-from app.infrastructure.interface.library_repository import BaseLibraryRepository
-from app.infrastructure.interface.notebook_repository import (
+from app.services.library.ports import BaseJobRepository, BaseLibraryRepository
+from app.services.notebook.ports import (
     BaseNotebookRepository,
     SourceLimitReached,
 )

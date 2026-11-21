@@ -11,10 +11,10 @@ from app.core.database import Database
 from app.core.dependencies import get_current_user, get_library_service
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 from app.services.library.service import LibraryService
 from app.services.user.model import CurrentUser
 from tests.library_helpers import make_pdf

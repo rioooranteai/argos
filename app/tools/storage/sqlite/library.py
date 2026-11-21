@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime
 
 from app.core.database import Database
-from app.infrastructure.interface.library_repository import BaseLibraryRepository
+from app.services.library.ports import BaseLibraryRepository
 from app.services.library.model import (
     STAGE_QUEUED,
     DocumentListItem,

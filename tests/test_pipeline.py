@@ -12,12 +12,12 @@ from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
-from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
-from app.infrastructure.providers.repositories.sqlite_feature_repository import (
+from app.tools.storage.sqlite.cache import SQLiteCacheRepository
+from app.tools.storage.sqlite.feature import (
     SQLiteFeatureRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_job_repository import SQLiteJobRepository
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.tools.storage.sqlite.job import SQLiteJobRepository
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
 from app.tools.extraction.base import ExtractedFeature

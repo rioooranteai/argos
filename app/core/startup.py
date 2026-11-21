@@ -25,24 +25,24 @@ from app.tools.factory import (
     build_vector_store,
     build_vision,
 )
-from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
-from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
+from app.tools.storage.sqlite.cache import SQLiteCacheRepository
+from app.tools.storage.sqlite.conversation import (
     SQLiteConversationRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_feature_repository import (
+from app.tools.storage.sqlite.feature import (
     SQLiteFeatureRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_job_repository import SQLiteJobRepository
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.tools.storage.sqlite.job import SQLiteJobRepository
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_llm_call_repository import (
+from app.tools.storage.sqlite.llm_call import (
     SQLiteLLMCallRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_notebook_repository import (
+from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 from app.services.conversation.service import ConversationService
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.service import FigureDescriber

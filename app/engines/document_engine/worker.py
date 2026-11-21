@@ -19,7 +19,7 @@ from pathlib import Path
 from app.core import log_context
 from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, classify
-from app.infrastructure.interface.job_repository import BaseJobRepository
+from app.services.library.ports import BaseJobRepository
 from app.services.library.model import DocumentVersion
 
 logger = logging.getLogger(__name__)

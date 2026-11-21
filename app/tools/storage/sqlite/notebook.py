@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 
 from app.core.database import Database
-from app.infrastructure.interface.notebook_repository import (
+from app.services.notebook.ports import (
     BaseNotebookRepository,
     SourceLimitReached,
 )

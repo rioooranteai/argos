@@ -29,9 +29,8 @@ from app.core.errors import (
     PermissionDenied,
     ValidationError,
 )
-from app.infrastructure.interface.library_repository import BaseLibraryRepository
-from app.infrastructure.interface.job_repository import BaseJobRepository
-from app.infrastructure.interface.user_repository import BaseUserRepository
+from app.services.library.ports import BaseJobRepository, BaseLibraryRepository
+from app.services.user.ports import BaseUserRepository
 from app.services.library.model import (
     FINAL_STAGES,
     RECLAIMABLE_STAGES,

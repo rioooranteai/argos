@@ -80,7 +80,7 @@ _COMPONENTS = (
     ("app.services.conversation", "chat"),
     ("app.services.observability", "observe"),
     ("app.services.user", "admin"),
-    ("app.infrastructure", "storage"),
+    ("app.tools.storage", "storage"),
     ("app.engines.document_engine.worker", "worker"),
     ("app.engines.document_engine", "pipeline"),
     ("app.engines.chat_engine", "chat"),

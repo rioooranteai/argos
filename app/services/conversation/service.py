@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 
 from app.core.errors import ConflictError, NotFoundError
-from app.infrastructure.interface.conversation_repository import BaseConversationRepository
+from app.services.conversation.ports import BaseConversationRepository
 from app.tools.llm.base import BaseLLM
 from app.services.conversation.model import Conversation, Message
 

@@ -10,7 +10,7 @@ import pytest
 
 from app.core.database import Database
 from app.core.migrations import run_migrations
-from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
+from app.tools.storage.sqlite.conversation import (
     SQLiteConversationRepository,
 )
 

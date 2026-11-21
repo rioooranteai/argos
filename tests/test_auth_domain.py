@@ -12,7 +12,7 @@ from app.core.dependencies import get_current_user, require_admin
 from app.core.errors import PermissionDenied, register_exception_handlers
 from app.core.migrations import run_migrations
 from app.core.security import is_admin, verify_google_identity
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 
 POLICY = Secrets(_env_file=None, ALLOWED_GOOGLE_DOMAIN="corp.com", ADMIN_EMAIL="Boss@corp.com")
 

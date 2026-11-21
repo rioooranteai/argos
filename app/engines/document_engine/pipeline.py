@@ -23,8 +23,8 @@ from pathlib import Path
 from app.core.concurrency import AILimits
 from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, PermanentJobError
-from app.infrastructure.interface.feature_repository import BaseFeatureRepository
-from app.infrastructure.interface.library_repository import BaseLibraryRepository
+from app.services.extraction.ports import BaseFeatureRepository
+from app.services.library.ports import BaseLibraryRepository
 from app.services.extraction.service import ExtractionService, ExtractionStats
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
 from app.services.ingestion.service import FigureDescriber, figures_in

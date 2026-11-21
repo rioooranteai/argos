@@ -10,7 +10,7 @@ from app.core.config import app_config, secrets
 from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.core.session import create_session_token
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 
 COOKIE = app_config.SESSION_COOKIE_NAME
 

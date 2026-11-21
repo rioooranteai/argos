@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.database import Database
-from app.infrastructure.interface.cache_repository import BaseCacheRepository
+from app.services.ingestion.ports import BaseCacheRepository
 
 
 class SQLiteCacheRepository(BaseCacheRepository):

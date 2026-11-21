@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from app.core.database import Database
-from app.infrastructure.interface.job_repository import BaseJobRepository
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.services.library.ports import BaseJobRepository
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
 from app.services.library.model import DocumentVersion

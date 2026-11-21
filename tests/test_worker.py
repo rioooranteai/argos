@@ -11,8 +11,8 @@ from app.core.database import Database
 from app.core.migrations import run_migrations
 from app.engines.document_engine.jobs import JobCancelled, PermanentJobError, classify
 from app.engines.document_engine.worker import DocumentWorker
-from app.infrastructure.providers.repositories.sqlite_job_repository import SQLiteJobRepository
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.tools.storage.sqlite.job import SQLiteJobRepository
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
 from app.tools.document_parser.base import DocumentLoadError

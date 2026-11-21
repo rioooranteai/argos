@@ -13,7 +13,7 @@ from app.core.dependencies import get_current_user
 from app.core.errors import register_exception_handlers
 from app.core.migrations import run_migrations
 from app.core.session import create_session_token
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 
 COOKIE = app_config.SESSION_COOKIE_NAME
 GOOGLE_USER = {

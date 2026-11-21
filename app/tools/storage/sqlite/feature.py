@@ -5,7 +5,7 @@ import logging
 import uuid
 
 from app.core.database import Database
-from app.infrastructure.interface.feature_repository import BaseFeatureRepository
+from app.services.extraction.ports import BaseFeatureRepository
 from app.services.extraction.model import FeatureRow
 from app.services.ingestion.model import Section
 

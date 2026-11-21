@@ -13,7 +13,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 
-from app.infrastructure.interface.cache_repository import BaseCacheRepository
+from app.services.ingestion.ports import BaseCacheRepository
 from app.services.extraction.model import FeatureRow
 from app.tools.extraction.base import BaseExtractor, ExtractedFeature
 from app.services.ingestion.model import ExtractionUnit

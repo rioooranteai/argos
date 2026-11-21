@@ -15,7 +15,7 @@ from app.core.llm_errors import classify_llm_error
 from app.core.migrations import run_migrations
 from app.core.request_context import _request_id_var
 from app.tools.llm.openai_llm import OpenAILLM
-from app.infrastructure.providers.repositories.sqlite_llm_call_repository import (
+from app.tools.storage.sqlite.llm_call import (
     SQLiteLLMCallRepository,
 )
 from app.core.observability.recorder import LLMCallRecorder, recorder

@@ -15,14 +15,14 @@ from app.core.database import Database
 from app.core.dependencies import get_current_user, get_library_service
 from app.core.errors import ConflictError, NotFoundError, register_exception_handlers
 from app.core.migrations import run_migrations
-from app.infrastructure.providers.repositories.sqlite_job_repository import SQLiteJobRepository
-from app.infrastructure.providers.repositories.sqlite_library_repository import (
+from app.tools.storage.sqlite.job import SQLiteJobRepository
+from app.tools.storage.sqlite.library import (
     SQLiteLibraryRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_notebook_repository import (
+from app.tools.storage.sqlite.notebook import (
     SQLiteNotebookRepository,
 )
-from app.infrastructure.providers.repositories.sqlite_user_repository import SQLiteUserRepository
+from app.tools.storage.sqlite.user import SQLiteUserRepository
 from app.services.library.service import LibraryService, pending_file_path, queued_file_path
 from app.services.notebook.service import NotebookService
 from app.services.user.model import CurrentUser
