@@ -174,7 +174,7 @@ class ChatOrchestrator:
             )
             trace_id = spans.current_trace_id()
             if trace_id:
-                result.trace["trace_id"] = trace_id  # "Show AI process" → open the trace in Langfuse
+                result.trace["trace_id"] = trace_id  # links the stored message trace to Langfuse
             bot_msg = conversations.append_assistant_message(
                 conversation_id, result.answer, citations=result.citations, trace=result.trace
             )

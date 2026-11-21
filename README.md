@@ -34,8 +34,8 @@ Google.
 - **Background processing** — uploads are parsed, described (images via a vision model),
   indexed and extracted by a queue worker; the UI shows the progress of each document.
 - **Transparent failures** — a failed message can be resent; an answer built while one data
-  source was unavailable is marked as incomplete; "Show AI process" reveals the route, SQL,
-  document chunks, timings and token usage behind each answer.
+  source was unavailable is marked as incomplete. The route, SQL, document chunks, timings and
+  token usage behind each answer are stored with the message (and sent to Langfuse when enabled).
 - **Voice** — speech-to-text input (language detected automatically) and spoken answers.
 - **Admin** — the admin can deactivate users; their documents are transferred to the admin.
 
@@ -325,7 +325,7 @@ destination, so another OTLP backend works the same way. Tracing is **off** unti
   Vision, embedding and extraction call under them. The outcome is `ready`, `retry_scheduled`
   (with the retry delay), `failed` or `cancelled`.
 - Every AI call is a *generation* with model, token usage and — when its price is set — cost.
-- Log lines carry `trace_id`, and so does the trace stored with each answer ("Show AI process").
+- Log lines carry `trace_id`, and so does the trace stored with each answer.
 
 **Content and privacy** — with `CAPTURE_CONTENT = True` (the default) traces include prompts,
 answers, SQL, retrieved document chunks, extracted rows and image descriptions, cut to

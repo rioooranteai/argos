@@ -1197,7 +1197,7 @@ function clearRetryButtons() {
 
 /**
  * A bot answer. `info` (optional) = chat response metadata or a message from history:
- * {degraded, issues, trace} (DESIGN_GROUP_C.md §3, §7.4).
+ * {degraded, issues} (DESIGN_GROUP_C.md §3).
  */
 const SAFE_MARKDOWN = { USE_PROFILES: { html: true }, FORBID_TAGS: ["style", "form", "input", "button", "img"], FORBID_ATTR: ["style"] };
 
@@ -1228,8 +1228,6 @@ function appendBotMessage(text, citations, pending = [], info = {}) {
         group.append(h("p", { class: "answer-note",
             text: `Not used yet because they are still being processed: ${pending.join(", ")}.` }));
     }
-
-    if (info.trace) group.append(tracePanel(info.trace));
 
     const tts = h("button", { type: "button", class: "btn-action-icon btn-tts", title: "Listen", "aria-label": "Listen to the answer" });
     tts.innerHTML = iconSpeaker();
@@ -1262,89 +1260,6 @@ function degradedBanner(issues) {
         parts.push("Source selection failed, so every source was read.");
     }
     return h("div", { class: "degraded-banner", role: "note" }, iconAlert(), h("span", { text: parts.join(" ") }));
-}
-
-const TRACE_STEPS = [
-    ["router", "Choosing sources"],
-    ["sql", "Structured data (SQL)"],
-    ["vector", "Document search"],
-    ["synthesizer", "Writing the answer"],
-];
-const TRACE_STATUS = { ok: "succeeded", empty: "no data", error: "failed" };
-const ROUTE_LABEL = {
-    sql: "structured data",
-    vector: "documents",
-    both: "structured data + documents",
-    none: "no sources",
-};
-
-function formatMs(ms) {
-    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
-}
-
-/** Collapsible panel; its content is only built when first opened. */
-function tracePanel(trace) {
-    const panelEl = h("details", { class: "ai-trace" }, h("summary", { text: "Show AI process" }));
-    let built = false;
-    panelEl.addEventListener("toggle", () => {
-        if (panelEl.open && !built) {
-            panelEl.append(traceBody(trace));
-            built = true;
-        }
-    });
-    return panelEl;
-}
-
-function traceBody(t) {
-    const body = h("div", { class: "ai-trace-body" });
-
-    body.append(h("p", { class: "trace-route" },
-        h("span", { class: "trace-label", text: "Route" }),
-        h("span", { text: ROUTE_LABEL[t.route] || t.route || "-" }),
-        t.router_reasoning ? h("span", { class: "trace-meta", text: ` — ${t.router_reasoning}` }) : null));
-
-    const steps = h("ol", { class: "trace-steps" });
-    for (const [key, label] of TRACE_STEPS) {
-        const step = t[key];
-        if (!step) continue;
-        const meta = [];
-        if (key === "sql" && step.status !== "error") {
-            meta.push(`${step.row_count ?? 0} row(s)${step.truncated ? " (truncated)" : ""}`);
-        }
-        if (key === "vector" && step.hits !== undefined) meta.push(`${step.hits} text chunk(s)`);
-        if (step.duration_ms !== undefined) meta.push(formatMs(step.duration_ms));
-        steps.append(h("li", { class: `trace-step is-${step.status}` },
-            h("span", { class: "trace-dot", "aria-hidden": "true" }),
-            h("span", { class: "trace-name", text: label }),
-            h("span", { class: "trace-status", text: TRACE_STATUS[step.status] || step.status }),
-            step.code ? h("code", { class: "trace-code", text: step.code }) : null,
-            meta.length ? h("span", { class: "trace-meta", text: meta.join(" · ") }) : null));
-    }
-    body.append(steps);
-
-    if (t.sql && t.sql.query) {
-        body.append(h("div", { class: "trace-block" },
-            h("div", { class: "trace-label", text: "SQL that ran" }),
-            h("pre", { class: "trace-sql" }, h("code", { text: t.sql.query }))));
-    }
-
-    if (t.chunks && t.chunks.length) {
-        body.append(h("div", { class: "trace-block" },
-            h("div", { class: "trace-label", text: "Document chunks that were read" }),
-            h("ul", { class: "trace-chunks" }, ...t.chunks.map((c) => h("li", {},
-                h("span", { class: "cite-num", text: (c.label || "–").replace(/[[\]]/g, "") }),
-                h("span", { text: c.page ? `p. ${c.page}` : "page unknown" }),
-                typeof c.distance === "number"
-                    ? h("span", { class: "trace-meta", text: `distance ${c.distance.toFixed(3)}` })
-                    : null)))));
-    }
-
-    if (t.llm) {
-        const n = (x) => (x || 0).toLocaleString("en-US");
-        body.append(h("p", { class: "trace-meta trace-tokens",
-            text: `${t.llm.calls} AI call(s) · ${n(t.llm.input_tokens)} input tokens · ${n(t.llm.output_tokens)} output tokens` }));
-    }
-    return body;
 }
 
 function citationLine(c) {

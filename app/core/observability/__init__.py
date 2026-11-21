@@ -4,7 +4,7 @@
                    Always on, to stdout.
 - ``ai_calls/``  — the AI call recorder: one ``llm_calls`` row per OpenAI call (model,
                    tokens, latency, status). Always on, Argos' own database; used by
-                   /health/ready and the "Show AI process" panel.
+                   /health/ready and the per-answer trace stored with each message.
 - ``telemetry/`` — OpenTelemetry traces exported to Langfuse (or any OTLP backend), with
                    its own config. Optional: off until keys are set.
 
