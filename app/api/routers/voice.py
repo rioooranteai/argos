@@ -81,7 +81,7 @@ def _voice_errors() -> Iterator[None]:
 @router.post("/stt")
 async def speech_to_text(
         audio: UploadFile = File(...),
-        language: str = Query(default="id"),
+        language: str | None = Query(default=None),  # None = Whisper detects the language
         with_timestamps: bool = Query(default=False),
         voice_service: VoiceService = Depends(get_voice_service),
 ):

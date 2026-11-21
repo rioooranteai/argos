@@ -73,10 +73,10 @@ class BaseSTTProvider(ABC):
         ...
 
 
-    def validate_language(self, language: str) -> None:
-        """Language validation helper — usable directly by every provider."""
+    def validate_language(self, language: str | None) -> None:
+        """Language validation helper — usable directly by every provider. None = auto-detect."""
         supported = self.supported_languages
-        if supported == ["*"]:
+        if language is None or supported == ["*"]:
             return
         if language not in supported:
             raise UnsupportedLanguageError(language, self.provider_name, supported)

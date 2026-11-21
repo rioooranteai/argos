@@ -18,8 +18,10 @@ USER = CurrentUser(id="u1", email="a@corp.com", name="A", given_name="", picture
 class FakeVoice:
     def __init__(self, error: BaseException | None = None):
         self.error = error
+        self.requests = []
 
     async def speech_to_text(self, audio_bytes, request):
+        self.requests.append(request)
         if self.error is not None:
             raise self.error
         return {"text": f"{len(audio_bytes)} bytes"}
@@ -77,6 +79,41 @@ def test_provider_failure_is_503_without_details(monkeypatch):
 
     r = _post(_client(monkeypatch, 1, FakeVoice(UnsupportedLanguageError("xx", "openai", ["id"]))))
     assert r.status_code == 400 and r.json()["error"]["code"] == "VOICE_UNSUPPORTED"
+
+
+def test_language_is_detected_automatically_unless_given(monkeypatch):
+    service = FakeVoice()
+    client = _client(monkeypatch, 1, service)
+    _post(client)
+    client.post("/api/v1/voice/stt?language=en", files={"audio": ("a.webm", b"x", "audio/webm")})
+    assert [r.language for r in service.requests] == [None, "en"]
+
+
+class _FakeTranscriptions:
+    def __init__(self):
+        self.kwargs = []
+
+    async def create(self, **kwargs):
+        self.kwargs.append(kwargs)
+        return type("R", (), {"text": "halo", "language": "indonesian", "segments": []})()
+
+
+async def test_openai_stt_omits_language_when_auto():
+    from types import SimpleNamespace
+
+    from app.services.voice.model import STTRequest
+    from app.services.voice.providers.openai_stt import OpenAISTTProvider
+
+    calls = _FakeTranscriptions()
+    provider = object.__new__(OpenAISTTProvider)
+    provider._client = SimpleNamespace(audio=SimpleNamespace(transcriptions=calls))
+
+    result = await provider.transcribe(b"x", STTRequest())
+    assert "language" not in calls.kwargs[0] and "prompt" not in calls.kwargs[0]
+    assert result.language == "indonesian"
+
+    await provider.transcribe(b"x", STTRequest(language="en"))
+    assert calls.kwargs[1]["language"] == "en"
 
 
 def test_voice_requires_login(monkeypatch):

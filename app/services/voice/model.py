@@ -36,7 +36,9 @@ class TTSResult(BaseModel):
 
 
 class STTRequest(BaseModel):
-    language: str = Field(default="id", description="ISO 639-1 language code, e.g. 'id', 'en'")
+    language: str | None = Field(
+        default=None, description="ISO 639-1 code, e.g. 'id', 'en'. None = detect automatically"
+    )
     prompt: str | None = Field(default=None, description="Context hint to improve accuracy")
     audio_format: str = Field(default="webm", description="Audio format: wav, webm, mp3, etc.")
     with_timestamps: bool = False

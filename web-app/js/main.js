@@ -1609,7 +1609,7 @@ async function transcribe(blob) {
     const form = new FormData();
     form.append("audio", blob, "recording.webm");
     try {
-        const result = await api("/voice/stt?language=id&with_timestamps=false", { method: "POST", form });
+        const result = await api("/voice/stt?with_timestamps=false", { method: "POST", form });
         if (result && result.text) { el.chatInput.value = result.text; el.chatInput.focus(); }
     } catch (err) {
         toast(errorText(err), "error");

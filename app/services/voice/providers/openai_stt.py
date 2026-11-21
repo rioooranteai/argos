@@ -71,15 +71,20 @@ class OpenAISTTProvider(BaseSTTProvider):
             audio_file = io.BytesIO(audio_bytes)
             audio_file.name = filename
 
+            # Only send language/prompt when set: without `language` Whisper detects it.
+            optional = {
+                k: v for k, v in (("language", request.language), ("prompt", request.prompt))
+                if v is not None
+            }
+
             if request.with_timestamps:
                 with recorder.track("stt", self._model):
                     response = await self._client.audio.transcriptions.create(
                         model=self._model,
                         file=audio_file,
-                        language=request.language,
-                        prompt=request.prompt,
                         response_format="verbose_json",
                         timestamp_granularities=["segment"],
+                        **optional,
                     )
                 segments = [
                     STTSegment(
@@ -100,11 +105,12 @@ class OpenAISTTProvider(BaseSTTProvider):
                     response = await self._client.audio.transcriptions.create(
                         model="whisper-1",
                         file=(filename, audio_bytes),
-                        language=request.language,
-                        prompt=request.prompt,
+                        response_format="verbose_json",  # includes the detected language
+                        **optional,
                     )
                 return STTResult(
                     text=response.text,
+                    language=getattr(response, "language", None),
                     provider=self.provider_name,
                 )
 
