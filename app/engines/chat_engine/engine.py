@@ -14,8 +14,8 @@ from app.infrastructure.interface.llm import BaseLLM
 from app.services.conversation.model import Message
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.model import ActiveSource
-from app.services.observability.llm_recorder import recorder
-from app.services.observability.model import LLMCall
+from app.core.observability.recorder import recorder
+from app.core.observability.model import LLMCall
 from app.services.vector_store.service import VectorStoreService
 
 logger = logging.getLogger(__name__)

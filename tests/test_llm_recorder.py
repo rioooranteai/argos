@@ -18,8 +18,8 @@ from app.infrastructure.providers.llms.openai_llm import OpenAILLM
 from app.infrastructure.providers.repositories.sqlite_llm_call_repository import (
     SQLiteLLMCallRepository,
 )
-from app.services.observability.llm_recorder import LLMCallRecorder, recorder
-from app.services.observability.model import LLMCall
+from app.core.observability.recorder import LLMCallRecorder, recorder
+from app.core.observability.model import LLMCall
 
 
 @pytest.fixture

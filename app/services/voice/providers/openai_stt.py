@@ -2,7 +2,7 @@ import logging
 import io
 
 from app.core.config import app_config, secrets
-from app.services.observability.llm_recorder import recorder
+from app.core.observability.recorder import recorder
 from app.services.voice.base.stt_base import BaseSTTProvider
 from app.services.voice.exceptions import STTError
 from app.services.voice.model import STTRequest, STTResult, STTSegment

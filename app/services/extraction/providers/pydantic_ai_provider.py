@@ -10,7 +10,7 @@ from app.core.config import app_config, secrets
 from app.services.extraction.base.extraction_base import BaseExtractionProvider
 from app.services.extraction.exceptions import ExtractionAgentError
 from app.services.extraction.model import ExtractedFeature
-from app.services.observability.llm_recorder import recorder
+from app.core.observability.recorder import recorder
 
 logger = logging.getLogger(__name__)
 

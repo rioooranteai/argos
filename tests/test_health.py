@@ -12,8 +12,8 @@ from app.core.database import Database
 from app.core.dependencies import get_current_user
 from app.core.errors import AuthenticationError, register_exception_handlers
 from app.services.observability.health import HealthChecker
-from app.services.observability.llm_recorder import LLMCallRecorder
-from app.services.observability.model import LLMCall
+from app.core.observability.recorder import LLMCallRecorder
+from app.core.observability.model import LLMCall
 from app.services.user.model import CurrentUser
 
 ADMIN = CurrentUser(id="a", email="admin@corp.com", name="A", given_name="", picture="", is_admin=True)

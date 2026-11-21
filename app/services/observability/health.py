@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.core.database import Database
-from app.services.observability.llm_recorder import LLMCallRecorder
+from app.core.observability.recorder import LLMCallRecorder
 
 logger = logging.getLogger(__name__)
 

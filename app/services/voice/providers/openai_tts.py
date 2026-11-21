@@ -1,7 +1,7 @@
 import logging
 
 from app.core.config import app_config, secrets
-from app.services.observability.llm_recorder import recorder
+from app.core.observability.recorder import recorder
 from app.services.voice.base.tts_base import BaseTTSProvider
 from app.services.voice.exceptions import TTSError
 from app.services.voice.model import TTSRequest, TTSResult

@@ -1,1 +1,1 @@
-"""Observability: AI call records (DESIGN_GROUP_C.md §7)."""
+"""System readiness checks for /health/ready (DESIGN_GROUP_C.md §6)."""

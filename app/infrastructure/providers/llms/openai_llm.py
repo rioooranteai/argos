@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.core.config import app_config
 from app.infrastructure.interface.llm import BaseLLM
-from app.services.observability.llm_recorder import recorder, usage_from_langchain
+from app.core.observability.recorder import recorder, usage_from_langchain
 
 logger = logging.getLogger(__name__)
 

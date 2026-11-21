@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from app.services.observability.model import LLMCall
+from app.core.observability.model import LLMCall
 
 
 class BaseLLMCallRepository(ABC):

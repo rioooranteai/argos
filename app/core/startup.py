@@ -44,7 +44,7 @@ from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
 from app.services.notebook.service import NotebookService
 from app.services.observability.health import HealthChecker
-from app.services.observability.llm_recorder import recorder as llm_recorder
+from app.core.observability.recorder import recorder as llm_recorder
 from app.services.vector_store.service import VectorStoreService
 from app.services.user.admin import AdminService
 from app.services.voice.service import VoiceService
