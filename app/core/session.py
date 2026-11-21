@@ -1,10 +1,10 @@
-"""Sesi login lewat cookie ``HttpOnly`` (DESIGN_GROUP_D.md D1).
+"""Sign-in session in an ``HttpOnly`` cookie (DESIGN_GROUP_D.md D1).
 
-- Token tidak pernah lewat URL dan tidak bisa dibaca JavaScript.
-- ``SameSite=Lax``: cookie tidak ikut pada POST/PATCH/DELETE dari situs lain (CSRF),
-  tetapi tetap ikut saat Google mengalihkan kembali ke Argos setelah login.
-- ``Secure`` bila request datang lewat https (di belakang proxy: uvicorn membaca
-  ``X-Forwarded-Proto`` dari IP di ``FORWARDED_ALLOW_IPS``).
+- The token never travels in a URL and cannot be read by JavaScript.
+- ``SameSite=Lax``: the cookie is not sent on POST/PATCH/DELETE from other sites (CSRF),
+  but it is still sent when Google redirects back to Argos after sign-in.
+- ``Secure`` when the request comes over https (behind a proxy: uvicorn reads
+  ``X-Forwarded-Proto`` from the IPs in ``FORWARDED_ALLOW_IPS``).
 """
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ from app.core.config import app_config, secrets
 
 
 def create_session_token(user_id: str, given_name: str = "") -> str:
-    """JWT minimal: hanya ID user (UUID) dan nama depan. Data lain dibaca dari DB."""
+    """Minimal JWT: only the user ID (UUID) and first name. Everything else is read from the DB."""
     expire = datetime.now(UTC) + timedelta(minutes=app_config.JWT_EXPIRE_MINUTES)
     payload = {"sub": user_id, "given_name": given_name, "exp": expire}
     return jwt.encode(payload, secrets.SECRET_KEY, algorithm=app_config.JWT_ALGORITHM)
 
 
 def decode_session_token(token: str) -> dict[str, Any] | None:
-    """Payload bila tanda tangan & masa berlaku sah, selain itu None."""
+    """The payload when the signature & expiry are valid, otherwise None."""
     try:
         return jwt.decode(token, secrets.SECRET_KEY, algorithms=[app_config.JWT_ALGORITHM])
     except JWTError:

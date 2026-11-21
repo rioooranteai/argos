@@ -9,7 +9,7 @@ from app.core.config import infra
 
 DB_PATH = infra.sqlite_path
 
-# Worker & request bisa menulis bersamaan; tunggu lock alih-alih langsung gagal.
+# The worker and requests can write at the same time; wait for the lock instead of failing.
 BUSY_TIMEOUT_SECONDS = 10
 
 

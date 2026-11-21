@@ -20,7 +20,7 @@ from app.services.voice.service import VoiceService
 
 logger = logging.getLogger(__name__)
 
-# Wajib login: STT/TTS memakai kredit OpenAI (audit poin 4, DESIGN_GROUP_D.md D4).
+# Sign-in required: STT/TTS spend OpenAI credit (audit point 4, DESIGN_GROUP_D.md D4).
 router = APIRouter(
     prefix="/api/v1/voice",
     tags=["Voice"],
@@ -66,15 +66,15 @@ MIME_TO_EXT = {
 
 @contextmanager
 def _voice_errors() -> Iterator[None]:
-    """Error layanan suara → kontrak error standar (DESIGN_GROUP_C.md §2)."""
+    """Voice service errors → the standard error contract (DESIGN_GROUP_C.md §2)."""
     try:
         yield
     except (UnsupportedFormatError, UnsupportedLanguageError) as e:
         raise ValidationError(str(e), code="VOICE_UNSUPPORTED") from e
     except VoiceServiceError as e:
-        # Detail OpenAI hanya di log (handler global mencatat error 5xx beserta stack).
+        # OpenAI details only go to the log (the global handler logs 5xx errors with the stack).
         raise UpstreamError(
-            "Layanan suara sedang tidak tersedia. Coba lagi sebentar.", code="VOICE_UNAVAILABLE"
+            "The voice service is unavailable right now. Try again shortly.", code="VOICE_UNAVAILABLE"
         ) from e
 
 
@@ -88,22 +88,22 @@ async def speech_to_text(
     content_type = audio.content_type or "application/octet-stream"
 
     if content_type not in ALLOWED_AUDIO:
-        raise UnsupportedMediaType("Format audio tidak didukung.", code="AUDIO_UNSUPPORTED")
+        raise UnsupportedMediaType("Unsupported audio format.", code="AUDIO_UNSUPPORTED")
 
-    # Dibaca bertahap & dihentikan begitu melewati batas (DESIGN_GROUP_B.md §8);
-    # batas mengikuti Whisper API (25 MB).
+    # Read in chunks & stopped as soon as it goes over the limit (DESIGN_GROUP_B.md §8);
+    # the limit follows the Whisper API (25 MB).
     max_bytes = app_config.STT_MAX_MB * 1024 * 1024
     chunks: list[bytes] = []
     size = 0
     while chunk := await audio.read(1024 * 1024):
         size += len(chunk)
         if size > max_bytes:
-            raise PayloadTooLarge(f"Audio melebihi {app_config.STT_MAX_MB} MB.", code="AUDIO_TOO_LARGE")
+            raise PayloadTooLarge(f"Audio is larger than {app_config.STT_MAX_MB} MB.", code="AUDIO_TOO_LARGE")
         chunks.append(chunk)
     audio_bytes = b"".join(chunks)
 
     if not audio_bytes:
-        raise ValidationError("File audio kosong.", code="AUDIO_EMPTY")
+        raise ValidationError("The audio file is empty.", code="AUDIO_EMPTY")
 
     ext = MIME_TO_EXT.get(content_type, "webm")
 

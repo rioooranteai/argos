@@ -1,8 +1,8 @@
-"""Batas concurrency global untuk panggilan AI (DESIGN_GROUP_B.md §6).
+"""Global concurrency limits for AI calls (DESIGN_GROUP_B.md §6).
 
-Batas berlaku untuk SEMUA dokumen yang sedang diproses, bukan per dokumen.
-Chat sengaja tidak memakai batas ini agar tidak tertahan oleh upload besar.
-Docling dibatasi oleh subprocess tunggalnya sendiri (docling_process.py).
+The limits apply to ALL documents being processed, not per document.
+Chat deliberately does not use these limits so a large upload cannot hold it up.
+Docling is limited by its own single subprocess (docling_process.py).
 """
 from __future__ import annotations
 

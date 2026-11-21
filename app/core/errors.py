@@ -1,10 +1,10 @@
-"""Kontrak error Argos (DESIGN_GROUP_C.md §2).
+"""Argos error contract (DESIGN_GROUP_C.md §2).
 
-Semua error yang sampai ke klien memakai bentuk yang sama::
+Every error that reaches the client has the same shape::
 
     {"error": {"code": "...", "message": "...", "request_id": "...", "retryable": false}}
 
-Detail teknis (pesan exception asli, stack trace) hanya masuk log.
+Technical details (the original exception message, stack trace) only go to the log.
 """
 from __future__ import annotations
 
@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class ArgosError(Exception):
-    """Basis semua error domain. Subclass menetapkan default code/status."""
+    """Base of every domain error. Subclasses set the default code/status."""
 
     code: str = "INTERNAL_ERROR"
     http_status: int = 500
     retryable: bool = False
-    default_message: str = "Terjadi kesalahan pada sistem."
+    default_message: str = "Something went wrong on our side."
 
     def __init__(
         self,
@@ -49,64 +49,64 @@ class ArgosError(Exception):
 class ValidationError(ArgosError):
     code = "VALIDATION_ERROR"
     http_status = 400
-    default_message = "Permintaan tidak valid."
+    default_message = "Invalid request."
 
 
 class AuthenticationError(ArgosError):
     code = "UNAUTHENTICATED"
     http_status = 401
-    default_message = "Silakan login terlebih dahulu."
+    default_message = "Please sign in first."
 
 
 class PermissionDenied(ArgosError):
     code = "PERMISSION_DENIED"
     http_status = 403
-    default_message = "Anda tidak memiliki akses."
+    default_message = "You do not have access."
 
 
 class NotFoundError(ArgosError):
     code = "NOT_FOUND"
     http_status = 404
-    default_message = "Data tidak ditemukan."
+    default_message = "Not found."
 
 
 class ConflictError(ArgosError):
     code = "CONFLICT"
     http_status = 409
-    default_message = "Permintaan bertentangan dengan kondisi data saat ini."
+    default_message = "The request conflicts with the current state of the data."
 
 
 class PayloadTooLarge(ArgosError):
     code = "PAYLOAD_TOO_LARGE"
     http_status = 413
-    default_message = "Ukuran data melebihi batas."
+    default_message = "The data exceeds the size limit."
 
 
 class UnsupportedMediaType(ArgosError):
     code = "UNSUPPORTED_MEDIA_TYPE"
     http_status = 415
-    default_message = "Format file tidak didukung."
+    default_message = "Unsupported file format."
 
 
 class UpstreamError(ArgosError):
     code = "UPSTREAM_UNAVAILABLE"
     http_status = 503
     retryable = True
-    default_message = "Layanan AI sedang tidak tersedia. Coba lagi sebentar."
+    default_message = "The AI service is unavailable right now. Try again shortly."
 
 
 class UpstreamTimeout(ArgosError):
     code = "UPSTREAM_TIMEOUT"
     http_status = 504
     retryable = True
-    default_message = "Proses terlalu lama dan dihentikan. Coba lagi."
+    default_message = "The request took too long and was stopped. Try again."
 
 
 class RateLimited(ArgosError):
     code = "RATE_LIMITED"
     http_status = 429
     retryable = True
-    default_message = "Terlalu banyak permintaan. Coba lagi sebentar."
+    default_message = "Too many requests. Try again shortly."
 
     def __init__(self, message: str | None = None, *, retry_after: int = 60) -> None:
         super().__init__(message, details={"retry_after": retry_after})
@@ -161,7 +161,7 @@ async def _argos_error_handler(request: Request, exc: ArgosError) -> JSONRespons
 
 async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     rid = request_id_from(request)
-    message = exc.detail if isinstance(exc.detail, str) else "Permintaan tidak dapat diproses."
+    message = exc.detail if isinstance(exc.detail, str) else "The request could not be processed."
     return _response(request, exc.status_code, error_body(f"HTTP_{exc.status_code}", message, rid))
 
 
@@ -173,7 +173,7 @@ async def _validation_handler(request: Request, exc: RequestValidationError) -> 
     return _response(
         request,
         422,
-        error_body("VALIDATION_ERROR", "Data permintaan tidak valid.", rid, details={"fields": fields}),
+        error_body("VALIDATION_ERROR", "Invalid request data.", rid, details={"fields": fields}),
     )
 
 

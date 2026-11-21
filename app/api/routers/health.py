@@ -1,7 +1,7 @@
 """Health check (DESIGN_GROUP_C.md §6).
 
-- ``/health/live``  — publik; proses hidup. Dipakai healthcheck Docker.
-- ``/health/ready`` — khusus admin; status tiap komponen, tanpa memanggil OpenAI.
+- ``/health/live``  — public; the process is alive. Used by the Docker healthcheck.
+- ``/health/ready`` — admin only; the status of each component, without calling OpenAI.
 """
 from __future__ import annotations
 
@@ -15,12 +15,12 @@ from app.services.user.model import CurrentUser
 router = APIRouter(prefix="/health", tags=["Health Check"])
 
 
-@router.get("/live", summary="Proses hidup (untuk Docker)")
+@router.get("/live", summary="Process is alive (for Docker)")
 def live() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/ready", summary="Kesiapan tiap komponen (khusus admin)")
+@router.get("/ready", summary="Readiness of each component (admin only)")
 def ready(request: Request, _: CurrentUser = Depends(require_admin)) -> JSONResponse:
     checker: HealthChecker = request.app.state.health_checker
     report = checker.ready()

@@ -1,4 +1,4 @@
-"""Endpoint admin (satu admin per deployment, ditentukan ADMIN_EMAIL)."""
+"""Admin endpoints (one admin per deployment, set by ADMIN_EMAIL)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -36,7 +36,7 @@ class SetActiveOut(UserOut):
     documents_transferred: int
 
 
-@router.get("/users", summary="Daftar user")
+@router.get("/users", summary="List users")
 def list_users(
     _: CurrentUser = Depends(require_admin),
     svc: AdminService = Depends(get_admin_service),
@@ -44,7 +44,7 @@ def list_users(
     return [UserOut.from_user(u) for u in svc.list_users()]
 
 
-@router.patch("/users/{user_id}", summary="Aktifkan / nonaktifkan user")
+@router.patch("/users/{user_id}", summary="Activate / deactivate a user")
 def set_active(
     user_id: str,
     body: SetActiveRequest,

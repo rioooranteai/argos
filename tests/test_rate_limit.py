@@ -86,7 +86,7 @@ def test_http_429_with_retry_after_header():
     body = r.json()["error"]
     assert body["code"] == "RATE_LIMITED" and body["retryable"] is True
     assert body["details"]["retry_after"] == int(r.headers["retry-after"])
-    assert "Coba lagi dalam" in body["message"]
+    assert "Try again in" in body["message"]
 
 
 def test_routes_carry_the_right_groups():

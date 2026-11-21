@@ -1,11 +1,11 @@
-"""Halaman web (DESIGN_GROUP_D.md D3).
+"""Web pages (DESIGN_GROUP_D.md D3).
 
-- ``/``, ``/home``: hanya dikirim ke user dengan sesi sah; selain itu → ``/login``.
-- ``/js/*``: kode aplikasi, hanya untuk user dengan sesi sah; selain itu → 404.
-- ``/login``: publik; bila sesi masih sah langsung → ``/``.
-- ``/css/*`` tetap publik (dipakai halaman login), di-mount di ``main.py``.
+- ``/``, ``/home``: only sent to users with a valid session; otherwise → ``/login``.
+- ``/js/*``: application code, only for users with a valid session; otherwise → 404.
+- ``/login``: public; with a valid session it goes straight to ``/``.
+- ``/css/*`` stays public (used by the login page), mounted in ``main.py``.
 
-Halaman memakai cookie sesi saja (bukan header Bearer), karena dibuka langsung oleh browser.
+Pages use the session cookie only, since the browser opens them directly.
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from app.core.session import session_token_from
 WEB_DIR = PROJECT_ROOT / "web-app"
 JS_DIR = (WEB_DIR / "js").resolve()
 
-# Halaman berisi data user setelah dimuat: jangan disimpan cache browser/proxy,
-# agar tombol Back setelah logout tidak menampilkannya lagi.
+# Once loaded the page holds user data: keep it out of browser/proxy caches
+# so the Back button after sign-out does not show it again.
 _NO_STORE = {"Cache-Control": "no-store"}
 
 router = APIRouter(include_in_schema=False)
@@ -56,7 +56,7 @@ def app_script(file_path: str, request: Request) -> Response:
 
 
 def _safe_js_path(file_path: str) -> Path | None:
-    """Hanya file di dalam web-app/js (mencegah ../ keluar folder)."""
+    """Only files inside web-app/js (prevents ../ from leaving the folder)."""
     try:
         target = (JS_DIR / file_path).resolve()
     except (OSError, ValueError):

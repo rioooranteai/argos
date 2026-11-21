@@ -1,19 +1,19 @@
-"""API tidak bisa dibuka lewat URL di browser (DESIGN_GROUP_D.md D2).
+"""The API cannot be opened by URL in a browser (DESIGN_GROUP_D.md D2).
 
-Browser modern selalu mengirim header Fetch Metadata (``Sec-Fetch-Mode``,
-``Sec-Fetch-Dest``, ``Sec-Fetch-Site``), dan halaman web tidak bisa memalsukannya.
+Modern browsers always send Fetch Metadata headers (``Sec-Fetch-Mode``,
+``Sec-Fetch-Dest``, ``Sec-Fetch-Site``), and a web page cannot forge them.
 
-Untuk ``/api/*`` dan ``/health/ready``:
+For ``/api/*`` and ``/health/ready``:
 
-- Navigasi (address bar, link, tab baru) atau dimuat sebagai dokumen/iframe → 404.
-- Dipanggil dari situs lain (``cross-site``/``same-site``) atau tanpa asal (``none``) → 404.
-- ``fetch()`` dari halaman Argos sendiri (``same-origin``) → lanjut ke cek login.
-- Tanpa header Fetch Metadata (curl, skrip, browser sangat lama) → lanjut ke cek login.
-  Bila request itu memakai cookie sesi dan mengubah data (POST/PUT/PATCH/DELETE),
-  header ``Origin`` wajib cocok dengan origin Argos (lapis CSRF kedua) → selain itu 403.
+- Navigations (address bar, links, new tab) or loads as a document/iframe → 404.
+- Calls from another site (``cross-site``/``same-site``) or with no origin (``none``) → 404.
+- ``fetch()`` from the Argos page itself (``same-origin``) → on to the login check.
+- No Fetch Metadata headers (curl, scripts, very old browsers) → on to the login check.
+  When such a request uses the session cookie and changes data (POST/PUT/PATCH/DELETE),
+  the ``Origin`` header must match the Argos origin (a second CSRF layer) → otherwise 403.
 
-404 tanpa isi dipakai agar orang yang mencoba tidak mendapat petunjuk bahwa
-endpoint itu ada. Pengecualian: alur login Google memang navigasi browser.
+An empty 404 is used so that someone probing gets no hint that the endpoint
+exists. Exception: the Google login flow really is a browser navigation.
 """
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class FetchMetadataMiddleware:
 
         if mode == "navigate" or dest in _DOCUMENT_DESTS or site in _FOREIGN_SITES:
             logger.info(
-                "API diblokir (Fetch Metadata): %s %s mode=%s dest=%s site=%s",
+                "API blocked (Fetch Metadata): %s %s mode=%s dest=%s site=%s",
                 scope["method"], scope["path"], mode, dest, site,
             )
             await self._send(send, 404, b"", None)
@@ -69,9 +69,9 @@ class FetchMetadataMiddleware:
             and self._uses_session_cookie(headers)
             and not self._origin_allowed(headers, scope)
         ):
-            logger.warning("Origin ditolak untuk %s %s: %s", scope["method"], scope["path"],
+            logger.warning("Origin rejected for %s %s: %s", scope["method"], scope["path"],
                            headers.get("origin"))
-            body = error_body("ORIGIN_NOT_ALLOWED", "Permintaan dari asal yang tidak diizinkan.",
+            body = error_body("ORIGIN_NOT_ALLOWED", "Request from an origin that is not allowed.",
                               get_request_id())
             await self._send(send, 403, json.dumps(body).encode(), "application/json")
             return

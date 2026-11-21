@@ -17,13 +17,13 @@ def register_middleware(app: FastAPI) -> None:
         allow_headers=["Content-Type", "Accept", REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],
     )
-    # API tidak bisa dibuka dari address bar / situs lain (DESIGN_GROUP_D.md D2).
-    # Dicek sebelum CORS & autentikasi.
+    # The API cannot be opened from the address bar / other sites (DESIGN_GROUP_D.md D2).
+    # Checked before CORS & authentication.
     app.add_middleware(
         FetchMetadataMiddleware,
         allowed_origins=secrets.cors_origins,
         cookie_name=app_config.SESSION_COOKIE_NAME,
     )
-    # Ditambahkan terakhir = lapisan terluar, sehingga request ID sudah ada
-    # untuk semua middleware & handler di dalamnya.
+    # Added last = outermost layer, so the request ID already exists
+    # for every middleware & handler inside it.
     app.add_middleware(RequestIDMiddleware)

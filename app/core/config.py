@@ -1,14 +1,14 @@
-"""Konfigurasi aplikasi Argos.
+"""Argos application configuration.
 
-Aturan (lihat DESIGN_GROUP_A.md §13):
+Rules (see DESIGN_GROUP_A.md §13):
 
-- ``Secrets``   — SATU-SATUNYA yang membaca ``.env``. Hanya nilai rahasia dan
-                  kebijakan keamanan (siapa yang boleh login, siapa admin, CORS).
-- ``Infra``     — nilai yang berbeda per mesin (lokasi data, device Docling).
-                  Dibaca dari environment variable OS saja (diisi docker-compose),
-                  TIDAK pernah dari ``.env``. Default-nya langsung jalan di lokal.
-- ``AppConfig`` — semua nilai lain (provider, model, timeout, batas, concurrency)
-                  sebagai konstanta di kode. Tidak bisa ditimpa lewat environment.
+- ``Secrets``   — the ONLY class that reads ``.env``. Only secrets and security
+                  policy (who may sign in, who is admin, CORS).
+- ``Infra``     — values that differ per machine (data location, Docling device).
+                  Read from OS environment variables only (set by docker-compose),
+                  NEVER from ``.env``. The defaults work out of the box locally.
+- ``AppConfig`` — every other value (provider, model, timeouts, limits, concurrency)
+                  as constants in code. Cannot be overridden through the environment.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ _ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Secrets(BaseSettings):
-    """Nilai rahasia & keamanan. Sumber: file ``.env`` (dan env OS)."""
+    """Secrets & security policy. Source: the ``.env`` file (and the OS environment)."""
 
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,
@@ -35,8 +35,8 @@ class Secrets(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     SECRET_KEY: str = ""
 
-    # Kebijakan keamanan
-    ALLOWED_GOOGLE_DOMAIN: str = ""  # klaim `hd` Google Workspace yang boleh login
+    # Security policy
+    ALLOWED_GOOGLE_DOMAIN: str = ""  # Google Workspace `hd` claim allowed to sign in; "gmail.com" = personal Gmail
     ADMIN_EMAIL: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:8000"
 
@@ -53,7 +53,7 @@ class Secrets(BaseSettings):
         return self.ALLOWED_GOOGLE_DOMAIN.strip().lower()
 
     def missing_required(self) -> list[str]:
-        """Nama field wajib yang masih kosong."""
+        """Names of required fields that are still empty."""
         required = (
             "OPENAI_API_KEY",
             "GOOGLE_CLIENT_ID",
@@ -67,7 +67,7 @@ class Secrets(BaseSettings):
 
 
 class Infra(BaseSettings):
-    """Nilai infrastruktur per mesin. Sumber: environment variable OS saja."""
+    """Per-machine infrastructure values. Source: OS environment variables only."""
 
     model_config = SettingsConfigDict(env_file=None, extra="ignore")
 
@@ -84,13 +84,13 @@ class Infra(BaseSettings):
 
     @property
     def upload_queue_dir(self) -> Path:
-        """File yang menunggu diproses worker (nama UUID)."""
+        """Files waiting for the worker (UUID names)."""
         return self.DATA_DIR / "queue"
 
 
 @dataclass(frozen=True)
 class AppConfig:
-    """Konstanta aplikasi. Ubah di sini (kode), bukan lewat environment."""
+    """Application constants. Change them here (in code), not through the environment."""
 
     # ── Provider & model ─────────────────────────────────────────────
     LLM_PROVIDER: str = "openai"
@@ -108,24 +108,24 @@ class AppConfig:
 
     # ── Docling ──────────────────────────────────────────────────────
     DOCLING_NUM_THREADS: int = 4
-    DOCLING_OCR: bool = False  # True hanya untuk PDF hasil scan (lebih lambat)
+    DOCLING_OCR: bool = False  # True only for scanned PDFs (slower)
     DOCLING_CONCURRENCY: int = 1
-    DOCLING_TIMEOUT_BASE: int = 30  # detik
-    DOCLING_TIMEOUT_PER_PAGE: int = 3  # detik per halaman
+    DOCLING_TIMEOUT_BASE: int = 30  # seconds
+    DOCLING_TIMEOUT_PER_PAGE: int = 3  # seconds per page
 
     # ── Auth ─────────────────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
     SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly (DESIGN_GROUP_D.md D1)
-    API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json publik (D5, portofolio)
+    API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json are public (D5, portfolio)
 
-    # ── Rate limit per menit (DESIGN_GROUP_D.md D9) ──────────────────
+    # ── Rate limits per minute (DESIGN_GROUP_D.md D9) ────────────────
     RATE_LIMIT_WINDOW_SECONDS: int = 60
-    RATE_LIMIT_CHAT: int = 20      # kirim pesan & kirim ulang (3–5 panggilan LLM per pesan)
+    RATE_LIMIT_CHAT: int = 20      # send & resend message (3–5 LLM calls per message)
     RATE_LIMIT_VOICE: int = 10     # STT & TTS
-    RATE_LIMIT_UPLOAD: int = 10    # upload / versi baru / resolve pending
-    RATE_LIMIT_LOGIN: int = 10     # per IP, sebelum login
-    RATE_LIMIT_DEFAULT: int = 120  # semua endpoint lain (polling status ±24/menit)
+    RATE_LIMIT_UPLOAD: int = 10    # upload / new version / resolve pending
+    RATE_LIMIT_LOGIN: int = 10     # per IP, before sign-in
+    RATE_LIMIT_DEFAULT: int = 120  # every other endpoint (status polling ≈24/min)
 
     # ── Library & notebook ───────────────────────────────────────────
     NOTEBOOK_MAX_SOURCES: int = 10
@@ -135,14 +135,14 @@ class AppConfig:
     UPLOAD_MAX_BATCH_MB: int = 30
     UPLOAD_ALLOWED_EXTENSIONS: tuple[str, ...] = (".pdf", ".md")
 
-    # ── Saran kemiripan saat upload (A §6.3, Tahap 3) ────────────────
-    # Dikalibrasi pada data/eval_corpus: produk berbeda tertinggi 0,894; versi baru ≥ 0,913.
+    # ── Similarity suggestion on upload (A §6.3, stage 3) ────────────
+    # Calibrated on data/eval_corpus: different products peak at 0.894; new versions ≥ 0.913.
     SIMILARITY_THRESHOLD: float = 0.9
-    SIMILARITY_MIN_SHINGLES: int = 200     # teks lebih sedikit (mis. PDF scan) → tanpa saran
-    PENDING_UPLOAD_TTL_MINUTES: int = 60   # pilihan yang tidak diputuskan → file dihapus
+    SIMILARITY_MIN_SHINGLES: int = 200     # less text (e.g. a scanned PDF) → no suggestion
+    PENDING_UPLOAD_TTL_MINUTES: int = 60   # choices left undecided → file is deleted
 
     # ── Worker ───────────────────────────────────────────────────────
-    # Naikkan saat prompt/chunker/model ingestion berubah (A §5 `pipeline_version`).
+    # Bump when the ingestion prompts/chunker/models change (A §5 `pipeline_version`).
     PIPELINE_VERSION: str = "1"
     DOC_WORKERS: int = 2
     VERSION_LEASE_MINUTES: int = 10
@@ -156,7 +156,7 @@ class AppConfig:
     EXTRACTION_CONCURRENCY: int = 3
     EMBED_CONCURRENCY: int = 2
 
-    # ── Timeout (detik) ──────────────────────────────────────────────
+    # ── Timeouts (seconds) ───────────────────────────────────────────
     LLM_TIMEOUT_ROUTER: int = 10
     LLM_TIMEOUT_NL2SQL: int = 20
     LLM_TIMEOUT_CHAT: int = 60
@@ -169,7 +169,7 @@ class AppConfig:
     DOC_TOTAL_TIMEOUT: int = 1200
     CHAT_TOTAL_TIMEOUT: int = 90
 
-    # ── Ekstraksi ────────────────────────────────────────────────────
+    # ── Extraction ───────────────────────────────────────────────────
     EXTRACTION_MIN_SECTION_TOKENS: int = 300
     EXTRACTION_MAX_UNIT_TOKENS: int = 4000
 
@@ -177,8 +177,8 @@ class AppConfig:
     STT_MAX_MB: int = 25
 
     # ── Logging & observability (DESIGN_GROUP_C.md §7) ───────────────
-    LOG_FORMAT: str = "json"          # "json" | "text" (text untuk dibaca saat dev lokal)
-    LOG_PROMPTS: bool = False         # True: prompt & respons LLM ditulis ke log level DEBUG
+    LOG_FORMAT: str = "json"          # "json" | "text" (text is easier to read in local dev)
+    LOG_PROMPTS: bool = False         # True: LLM prompts & responses are logged at DEBUG
     LLM_CALLS_RETENTION_DAYS: int = 90
 
 
@@ -188,9 +188,9 @@ app_config = AppConfig()
 
 
 def validate_required_config() -> None:
-    """Gagal start (fail-fast) jika nilai rahasia/keamanan wajib kosong."""
+    """Fail fast on startup when a required secret/security value is empty."""
     missing = secrets.missing_required()
     if missing:
         raise RuntimeError(
-            "Konfigurasi wajib di .env belum diisi: " + ", ".join(missing)
+            "Required settings missing in .env: " + ", ".join(missing)
         )

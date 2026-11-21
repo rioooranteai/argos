@@ -1,7 +1,7 @@
-"""Klasifikasi kegagalan panggilan AI menjadi kode stabil (DESIGN_GROUP_C.md §3, §7.3).
+"""Classify failed AI calls into stable codes (DESIGN_GROUP_C.md §3, §7.3).
 
-Kode ini masuk ke ``llm_calls.error_code`` dan ``metadata.issues`` chat. Pesan
-exception asli tidak pernah dikirim ke klien; hanya ke log.
+The codes go into ``llm_calls.error_code`` and the chat ``metadata.issues``. The
+original exception message is never sent to the client; it only goes to the log.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ LLM_ERROR = "LLM_ERROR"
 
 
 def causes(exc: BaseException) -> Iterator[BaseException]:
-    """Exception beserta rantai ``__cause__`` / ``__context__``-nya."""
+    """The exception and its ``__cause__`` / ``__context__`` chain."""
     seen: set[int] = set()
     current: BaseException | None = exc
     while current is not None and id(current) not in seen:
@@ -36,7 +36,7 @@ def _bad_response_types() -> tuple[type[BaseException], ...]:
         from pydantic_ai.exceptions import UnexpectedModelBehavior
 
         types.append(UnexpectedModelBehavior)
-    except ImportError:  # pragma: no cover — pydantic-ai selalu terpasang
+    except ImportError:  # pragma: no cover — pydantic-ai is always installed
         pass
     return tuple(types)
 
@@ -45,9 +45,9 @@ _BAD_RESPONSE = _bad_response_types()
 
 
 def classify_llm_error(exc: BaseException) -> str:
-    """Kode stabil untuk kegagalan panggilan OpenAI (atau pembungkusnya)."""
+    """Stable code for a failed OpenAI call (or a wrapper around it)."""
     for e in causes(exc):
-        # APITimeoutError adalah subclass APIConnectionError → cek lebih dulu.
+        # APITimeoutError is a subclass of APIConnectionError → check it first.
         if isinstance(e, (openai.APITimeoutError, httpx.TimeoutException, TimeoutError)):
             return LLM_TIMEOUT
         if isinstance(e, openai.RateLimitError):

@@ -20,7 +20,7 @@ def _login_error(code: str) -> RedirectResponse:
 
 
 def _login_rate_limited(request: Request) -> RedirectResponse | None:
-    """Batas percobaan login per IP (D9). Alur login = navigasi browser → redirect, bukan JSON."""
+    """Sign-in attempt limit per IP (D9). The sign-in flow is a browser navigation → redirect, not JSON."""
     try:
         limiter.check("login", client_ip(request))
     except RateLimited:
@@ -33,7 +33,7 @@ async def google_login(request: Request):
     if (blocked := _login_rate_limited(request)) is not None:
         return blocked
     redirect_uri = request.url_for("google_callback")
-    # `hd` hanya petunjuk untuk layar pilih akun Google; penegakan tetap di callback.
+    # `hd` is only a hint for Google's account picker; it is enforced in the callback.
     return await oauth.google.authorize_redirect(
         request, redirect_uri, hd=secrets.allowed_domain or None
     )
@@ -49,7 +49,7 @@ async def google_callback(request: Request):
     try:
         verify_google_identity(google_user)
     except PermissionDenied as exc:
-        logger.info("Login ditolak (%s) untuk %s", exc.code, google_user.get("email"))
+        logger.info("Sign-in rejected (%s) for %s", exc.code, google_user.get("email"))
         return _login_error(exc.code)
 
     user_repo = request.app.state.user_repo
@@ -60,17 +60,17 @@ async def google_callback(request: Request):
         picture=google_user.get("picture"),
     )
     if not user.is_active:
-        logger.info("Login ditolak (USER_INACTIVE) untuk %s", user.email)
+        logger.info("Sign-in rejected (USER_INACTIVE) for %s", user.email)
         return _login_error("USER_INACTIVE")
 
     token = create_session_token(user.id, google_user.get("given_name", ""))
-    # Token di cookie HttpOnly, bukan di URL (audit poin 5, DESIGN_GROUP_D.md D1).
+    # The token goes in an HttpOnly cookie, not in the URL (audit point 5, DESIGN_GROUP_D.md D1).
     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     set_session_cookie(response, request, token)
     return response
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Keluar (hapus cookie sesi)")
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Sign out (clear the session cookie)")
 def logout(request: Request) -> Response:
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookie(response, request)

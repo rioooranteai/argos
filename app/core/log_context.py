@@ -1,18 +1,18 @@
-"""Konteks log per request / per job (DESIGN_GROUP_C.md §7.2).
+"""Log context per request / per job (DESIGN_GROUP_C.md §7.2).
 
-Field yang dikenal: ``user_id``, ``notebook_id``, ``version_id``, ``stage``,
-``message_id``. Nilainya masuk ke setiap baris log (lihat ``logging_setup``) dan
-ke catatan ``llm_calls``.
+Known fields: ``user_id``, ``notebook_id``, ``version_id``, ``stage``,
+``message_id``. Their values go into every log line (see ``logging_setup``) and
+into the ``llm_calls`` records.
 
-Dua cara mengisi:
+Two ways to set them:
 
-- ``bind_request(**fields)`` mengubah dict milik request yang sedang berjalan
-  *di tempat*. Dipakai oleh dependency sinkron FastAPI (dijalankan di thread):
-  contextvar yang di-``set`` di thread tidak terlihat oleh endpoint, sedangkan
-  perubahan isi dict yang sama terlihat.
-- ``scoped(**fields)`` membuat dict baru untuk blok ``with`` lalu
-  mengembalikannya. Dipakai oleh worker dokumen (tiap task asyncio punya
-  salinan konteksnya sendiri).
+- ``bind_request(**fields)`` updates the current request's dict *in place*.
+  Used by synchronous FastAPI dependencies (which run in a thread): a
+  contextvar ``set`` in a thread is not visible to the endpoint, but changes to
+  the same dict are.
+- ``scoped(**fields)`` creates a new dict for a ``with`` block and then
+  restores the previous one. Used by the document worker (each asyncio task has
+  its own copy of the context).
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ _log_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", defa
 
 
 def current() -> dict[str, Any]:
-    """Salinan field konteks yang terisi saat ini."""
+    """A copy of the context fields currently set."""
     ctx = _log_context.get()
     return dict(ctx) if ctx else {}
 
@@ -38,7 +38,7 @@ def get(name: str) -> Any:
 
 
 def start_request() -> object:
-    """Dict baru untuk satu request HTTP. Dipanggil oleh middleware request ID."""
+    """A new dict for one HTTP request. Called by the request ID middleware."""
     return _log_context.set({})
 
 
@@ -47,7 +47,7 @@ def end_request(token: object) -> None:
 
 
 def bind_request(**fields: Any) -> None:
-    """Isi field untuk sisa request ini (lihat docstring modul)."""
+    """Set fields for the rest of this request (see the module docstring)."""
     ctx = _log_context.get()
     clean = {k: v for k, v in fields.items() if v is not None}
     if ctx is None:
@@ -58,7 +58,7 @@ def bind_request(**fields: Any) -> None:
 
 @contextmanager
 def scoped(**fields: Any) -> Iterator[None]:
-    """Field berlaku hanya di dalam blok ``with``."""
+    """Fields apply only inside the ``with`` block."""
     merged = {**current(), **{k: v for k, v in fields.items() if v is not None}}
     token = _log_context.set(merged)
     try:

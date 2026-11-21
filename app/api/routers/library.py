@@ -1,4 +1,4 @@
-"""Library: dokumen bersama seluruh karyawan (DESIGN_GROUP_A.md §6, §10)."""
+"""Library: documents shared by every employee (DESIGN_GROUP_A.md §6, §10)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/v1/library", tags=["Library"])
 @router.post(
     "/documents",
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Upload dokumen baru ke Library (diproses di background)",
+    summary="Upload new documents to the Library (processed in the background)",
     dependencies=[Depends(rate_limit("upload"))],
 )
 async def upload_documents(
@@ -31,16 +31,16 @@ async def upload_documents(
     user: CurrentUser = Depends(get_current_user),
     svc: LibraryService = Depends(get_library_service),
 ) -> UploadBatchOut:
-    """Hasil per file: `queued` (masuk antrean), `existing` (file identik sudah ada,
-    dipakai tanpa diproses ulang), `similar` (mirip dokumen Library, menunggu
-    keputusan lewat `POST /pending/{pending_id}/resolve`), atau `rejected`."""
+    """Result per file: `queued` (added to the queue), `existing` (an identical file
+    already exists and is reused without reprocessing), `similar` (resembles a Library
+    document; waiting for a choice via `POST /pending/{pending_id}/resolve`), or `rejected`."""
     return UploadBatchOut(results=await svc.upload_documents(user, files))
 
 
 @router.post(
     "/pending/{pending_id}/resolve",
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Upload yang mirip: jadikan versi baru dokumen yang mirip, atau dokumen terpisah",
+    summary="Similar upload: make it a new version of the similar document, or a separate document",
     dependencies=[Depends(rate_limit("upload"))],
 )
 async def resolve_pending(
@@ -55,7 +55,7 @@ async def resolve_pending(
 @router.post(
     "/documents/{document_id}/versions",
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Upload versi baru dari dokumen yang ada",
+    summary="Upload a new version of an existing document",
     dependencies=[Depends(rate_limit("upload"))],
 )
 async def upload_new_version(
@@ -67,7 +67,7 @@ async def upload_new_version(
     return await svc.upload_new_version(user, document_id, file)
 
 
-@router.get("/documents", summary="Cari dokumen di Library")
+@router.get("/documents", summary="Search Library documents")
 def list_documents(
     q: str | None = Query(default=None, max_length=200),
     uploaded_by: str | None = Query(default=None),
@@ -79,7 +79,7 @@ def list_documents(
     return [DocumentOut.from_item(i) for i in svc.list_documents(q, uploaded_by, limit, offset)]
 
 
-@router.get("/documents/{document_id}", summary="Detail dokumen beserta riwayat versi")
+@router.get("/documents/{document_id}", summary="Document details with version history")
 def get_document(
     document_id: str,
     _: CurrentUser = Depends(get_current_user),
@@ -92,7 +92,7 @@ def get_document(
     )
 
 
-@router.patch("/documents/{document_id}", summary="Ganti nama tampilan dokumen")
+@router.patch("/documents/{document_id}", summary="Rename a document")
 def rename_document(
     document_id: str,
     body: RenameDocumentRequest,
@@ -104,7 +104,7 @@ def rename_document(
 
 @router.delete(
     "/documents/{document_id}",
-    summary="Hapus dokumen (diarsipkan bila masih dipakai notebook orang lain)",
+    summary="Delete a document (archived if another user's notebook still uses it)",
 )
 def delete_document(
     document_id: str,
@@ -117,7 +117,7 @@ def delete_document(
 @router.delete(
     "/documents/{document_id}/versions/{version_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Hapus satu versi dokumen",
+    summary="Delete one document version",
 )
 def delete_version(
     document_id: str,
@@ -129,7 +129,7 @@ def delete_version(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/versions/{version_id}", summary="Status pemrosesan sebuah versi (untuk polling)")
+@router.get("/versions/{version_id}", summary="Processing status of a version (for polling)")
 def get_version_status(
     version_id: str,
     _: CurrentUser = Depends(get_current_user),

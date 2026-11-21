@@ -64,17 +64,17 @@ def _token_counter():
 
 
 async def _warm_up_docling(docling: DoclingProcess) -> None:
-    """Muat model Docling di background agar upload pertama tidak menunggu."""
+    """Load the Docling models in the background so the first upload does not wait."""
     try:
         await docling.start()
     except Exception:
-        logger.exception("Subprocess Docling gagal dimulai; akan dicoba lagi saat dibutuhkan.")
+        logger.exception("The Docling subprocess failed to start; it will be retried when needed.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    # --- Fail-fast: konfigurasi wajib & folder data ---
+    # --- Fail fast: required config & data folders ---
     validate_required_config()
     infra.DATA_DIR.mkdir(parents=True, exist_ok=True)
     infra.upload_queue_dir.mkdir(parents=True, exist_ok=True)
@@ -91,11 +91,11 @@ async def lifespan(app: FastAPI):
 
     conversation_repo = SQLiteConversationRepository(database=db)
 
-    # --- Catatan panggilan AI (DESIGN_GROUP_C.md §7.3) ---
+    # --- AI call records (DESIGN_GROUP_C.md §7.3) ---
     llm_call_repo = SQLiteLLMCallRepository(database=db)
     purged = llm_call_repo.purge_older_than(app_config.LLM_CALLS_RETENTION_DAYS)
     if purged:
-        logger.info("%d catatan llm_calls lebih dari %d hari dihapus.",
+        logger.info("Deleted %d llm_calls records older than %d days.",
                     purged, app_config.LLM_CALLS_RETENTION_DAYS)
     llm_recorder.attach(llm_call_repo)
     app.state.llm_recorder = llm_recorder
@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
     )
     app.state.library_service.purge_expired_pending()
 
-    # --- Pipeline dokumen & worker (DESIGN_GROUP_B.md) ---
+    # --- Document pipeline & worker (DESIGN_GROUP_B.md) ---
     docling = DoclingProcess()
     pipeline = DocumentPipeline(
         parser=docling,
@@ -157,7 +157,7 @@ async def lifespan(app: FastAPI):
         config=app_config,
     )
     app.state.docling = docling
-    app.state.document_pipeline = pipeline  # dipakai eval/run_eval.py untuk instrumentasi
+    app.state.document_pipeline = pipeline  # used by eval/run_eval.py for instrumentation
     app.state.document_worker = worker
 
     app.state.nl2sql_service = NL2SQLService(
@@ -196,9 +196,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # --- Shutdown: hentikan worker dulu, baru subprocess Docling ---
+    # --- Shutdown: stop the worker first, then the Docling subprocess ---
     await worker.stop()
     warm_up.cancel()
     await asyncio.gather(warm_up, return_exceptions=True)
     await docling.stop()
-    llm_recorder.close()  # tulis sisa catatan llm_calls
+    llm_recorder.close()  # write the remaining llm_calls records

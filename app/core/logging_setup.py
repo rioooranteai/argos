@@ -1,11 +1,11 @@
-"""Konfigurasi logging (DESIGN_GROUP_C.md §7.2).
+"""Logging configuration (DESIGN_GROUP_C.md §7.2).
 
-Format ``json``: satu objek JSON per baris, dengan field
-``ts, level, logger, msg, request_id`` + field konteks yang terisi
-(``user_id, notebook_id, version_id, stage, message_id``) + ``duration_ms`` bila
-dikirim lewat ``extra``. Exception masuk ke field ``exc``.
+``json`` format: one JSON object per line, with the fields
+``ts, level, logger, msg, request_id`` + any context fields that are set
+(``user_id, notebook_id, version_id, stage, message_id``) + ``duration_ms`` when
+passed through ``extra``. Exceptions go into the ``exc`` field.
 
-Format ``text`` untuk dibaca langsung saat pengembangan lokal.
+``text`` format is for reading directly during local development.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ _EXTRA_FIELDS = ("duration_ms",)
 
 
 class ContextFilter(logging.Filter):
-    """Menempelkan request ID dan field konteks ke setiap LogRecord."""
+    """Attaches the request ID and context fields to every LogRecord."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = get_request_id() or "-"
@@ -62,7 +62,7 @@ class TextFormatter(logging.Formatter):
 
 
 def configure_logging(fmt: str = "json", level: int = logging.INFO) -> None:
-    """Ganti handler root dengan satu handler stdout berformat ``fmt``."""
+    """Replace the root handlers with a single stdout handler in ``fmt`` format."""
     handler = logging.StreamHandler()
     handler.addFilter(ContextFilter())
     handler.setFormatter(JsonFormatter() if fmt == "json" else TextFormatter())
@@ -73,7 +73,7 @@ def configure_logging(fmt: str = "json", level: int = logging.INFO) -> None:
     root.addHandler(handler)
     root.setLevel(level)
 
-    # Log akses uvicorn memakai handler-nya sendiri; arahkan ke root agar ikut format ini.
+    # uvicorn access logs use their own handlers; route them to root so they use this format.
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logger = logging.getLogger(name)
         logger.handlers.clear()

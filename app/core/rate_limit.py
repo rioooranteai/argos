@@ -1,10 +1,10 @@
-"""Rate limit per user per kelompok endpoint (DESIGN_GROUP_D.md D9).
+"""Rate limits per user per endpoint group (DESIGN_GROUP_D.md D9).
 
-Jendela geser (sliding window): setiap kunci menyimpan waktu request dalam
-``window`` detik terakhir. Melewati batas → ``RateLimited`` (429 + ``Retry-After``).
+Sliding window: each key stores the request times within the last ``window``
+seconds. Going over the limit → ``RateLimited`` (429 + ``Retry-After``).
 
-Disimpan di memori proses: cukup karena aplikasi berjalan dengan 1 worker.
-Penghitung hilang saat restart; bila nanti lebih dari 1 instance, pindahkan ke Redis.
+Kept in process memory: enough because the app runs with 1 worker.
+Counters are lost on restart; if there is ever more than 1 instance, move this to Redis.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from app.core.errors import RateLimited
 
 logger = logging.getLogger(__name__)
 
-_CLEANUP_EVERY = 1000  # hit; kunci yang sudah tidak aktif dibuang agar memori tidak tumbuh
+_CLEANUP_EVERY = 1000  # hits; idle keys are dropped so memory does not grow
 
 
 class RateLimiter:
@@ -40,18 +40,18 @@ class RateLimiter:
         self._since_cleanup = 0
 
     def check(self, group: str, key: str) -> None:
-        """Catat satu request; lempar ``RateLimited`` bila batas grup terlewati."""
+        """Record one request; raise ``RateLimited`` when the group limit is exceeded."""
         retry_after = self.hit(group, key)
         if retry_after is not None:
-            logger.warning("Rate limit '%s' terlewati (kunci %s), coba lagi %s dtk.",
+            logger.warning("Rate limit '%s' exceeded (key %s), retry in %s s.",
                            group, key, retry_after)
             raise RateLimited(
-                f"Terlalu banyak permintaan. Coba lagi dalam {retry_after} detik.",
+                f"Too many requests. Try again in {retry_after} seconds.",
                 retry_after=retry_after,
             )
 
     def hit(self, group: str, key: str) -> int | None:
-        """None bila diizinkan (dan dicatat); selain itu detik sampai boleh lagi."""
+        """None when allowed (and recorded); otherwise the seconds until it is allowed again."""
         limit = self._limits[group]
         now = self._clock()
         with self._lock:
@@ -94,13 +94,13 @@ limiter = RateLimiter(
 
 
 def client_ip(request: Request) -> str:
-    """IP klien (di belakang proxy: dari X-Forwarded-For bila proxy dipercaya uvicorn)."""
+    """Client IP (behind a proxy: from X-Forwarded-For when uvicorn trusts the proxy)."""
     return request.client.host if request.client else "unknown"
 
 
 def rate_limit(group: str) -> Callable[..., None]:
-    """Dependency FastAPI: batas grup `group` per user yang login."""
-    from app.core.dependencies import get_current_user  # hindari import melingkar
+    """FastAPI dependency: the `group` limit per signed-in user."""
+    from app.core.dependencies import get_current_user  # avoid a circular import
     from app.services.user.model import CurrentUser
 
     def _check(user: CurrentUser = Depends(get_current_user)) -> None:

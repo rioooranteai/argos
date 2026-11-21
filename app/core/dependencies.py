@@ -14,12 +14,12 @@ from app.services.user.admin import AdminService
 from app.services.user.model import CurrentUser, User
 from app.services.voice.service import VoiceService
 
-# Sesi hanya dari cookie HttpOnly (DESIGN_GROUP_D.md D1). Argos hanya dipakai lewat
-# browser, jadi header ``Authorization: Bearer`` sengaja tidak diterima.
+# The session comes only from the HttpOnly cookie (DESIGN_GROUP_D.md D1). Argos is only
+# used from the browser, so the ``Authorization: Bearer`` header is deliberately not accepted.
 
 
 def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | None:
-    """User aktif + payload bila token sah; selain itu None. Tidak melempar error."""
+    """The active user + payload when the token is valid; otherwise None. Never raises."""
     if not token:
         return None
     payload = decode_session_token(token)
@@ -32,23 +32,23 @@ def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | 
 
 
 def get_current_user(request: Request) -> CurrentUser:
-    """Sesi dari cookie HttpOnly; user harus ada & aktif. Header Bearer diabaikan."""
+    """Session from the HttpOnly cookie; the user must exist & be active. Bearer headers are ignored."""
     token = session_token_from(request)
     if not token:
         raise AuthenticationError()
 
     payload = decode_session_token(token)
     if payload is None:
-        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN")
+        raise AuthenticationError("Your session is invalid or has expired.", code="INVALID_TOKEN")
 
     user = request.app.state.user_repo.get(payload.get("sub", ""))
     if user is None:
-        raise AuthenticationError("Sesi tidak valid atau sudah berakhir.", code="INVALID_TOKEN")
+        raise AuthenticationError("Your session is invalid or has expired.", code="INVALID_TOKEN")
     if not user.is_active:
-        raise PermissionDenied("Akun Anda dinonaktifkan.", code="USER_INACTIVE")
+        raise PermissionDenied("Your account has been deactivated.", code="USER_INACTIVE")
 
     log_context.bind_request(user_id=user.id)
-    # Batas umum per user untuk semua endpoint yang butuh login (D9).
+    # General per-user limit for every endpoint that needs a sign-in (D9).
     limiter.check("default", user.id)
 
     return CurrentUser(
@@ -63,7 +63,7 @@ def get_current_user(request: Request) -> CurrentUser:
 
 def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     if not user.is_admin:
-        raise PermissionDenied("Hanya admin yang dapat melakukan ini.")
+        raise PermissionDenied("Only the admin can do this.")
     return user
 
 

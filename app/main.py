@@ -13,7 +13,7 @@ from app.core.startup import lifespan
 configure_logging(app_config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
-_docs = app_config.API_DOCS_ENABLED  # D5: publik untuk portofolio; matikan di config.py
+_docs = app_config.API_DOCS_ENABLED  # D5: public for the portfolio; turn off in config.py
 app = FastAPI(
     title="Argos - Competitive Intelligence API",
     description="API for RAG and Agentic Extraction",
@@ -28,5 +28,5 @@ register_middleware(app)
 register_exception_handlers(app)
 register_routers(app)
 
-# CSS publik (dipakai halaman login). Halaman & /js dilayani router `pages` (wajib sesi).
+# Public CSS (used by the login page). Pages & /js are served by the `pages` router (session required).
 app.mount("/css", StaticFiles(directory="web-app/css"), name="css")

@@ -1,9 +1,9 @@
-"""Request ID per request (DESIGN_GROUP_C.md §7).
+"""A request ID per request (DESIGN_GROUP_C.md §7).
 
-- Diterima dari header ``X-Request-ID`` (jika aman) atau dibuat baru.
-- Disimpan di ``request.state`` dan contextvar, dikembalikan di header respons,
-  dan disisipkan ke setiap baris log lewat ``logging_setup.ContextFilter``.
-- Middleware juga membuka konteks log baru per request (``log_context``).
+- Taken from the ``X-Request-ID`` header (when safe) or newly generated.
+- Stored in ``request.state`` and a contextvar, returned in a response header,
+  and added to every log line through ``logging_setup.ContextFilter``.
+- The middleware also opens a new log context per request (``log_context``).
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def get_request_id() -> str | None:
 
 
 def request_id_from(request: Request) -> str | None:
-    """Ambil request ID dari request.state (tetap ada walau contextvar sudah di-reset)."""
+    """Read the request ID from request.state (still there after the contextvar is reset)."""
     return getattr(request.state, "request_id", None) or get_request_id()
 
 
@@ -37,7 +37,7 @@ def _new_request_id() -> str:
 
 
 class RequestIDMiddleware:
-    """Middleware ASGI murni (tidak membungkus body seperti BaseHTTPMiddleware)."""
+    """Pure ASGI middleware (does not wrap the body like BaseHTTPMiddleware)."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
