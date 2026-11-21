@@ -1199,11 +1199,19 @@ function clearRetryButtons() {
  * A bot answer. `info` (optional) = chat response metadata or a message from history:
  * {degraded, issues, trace} (DESIGN_GROUP_C.md §3, §7.4).
  */
+const SAFE_MARKDOWN = { USE_PROFILES: { html: true }, FORBID_TAGS: ["style", "form", "input", "button", "img"], FORBID_ATTR: ["style"] };
+
 function appendBotMessage(text, citations, pending = [], info = {}) {
     const byLabel = new Map(citations.map((c) => [c.label, c]));
     const bubble = h("div", { class: "message bot" });
-    bubble.innerHTML = window.marked ? marked.parse(text || "") : "";
-    if (!window.marked) bubble.textContent = text;
+    // The answer comes from an LLM that reads uploaded documents, so it is untrusted: the
+    // Markdown → HTML result is sanitized (no scripts, event handlers, iframes, forms…).
+    // Without both libraries the answer is shown as plain text, never as raw HTML.
+    if (window.marked && window.DOMPurify) {
+        bubble.innerHTML = DOMPurify.sanitize(marked.parse(text || ""), SAFE_MARKDOWN);
+    } else {
+        bubble.textContent = text;
+    }
     linkCitations(bubble, byLabel);
 
     const group = h("div", { class: "bubble-group" });
@@ -1652,10 +1660,13 @@ function iconPause() {
 // Sidebar (mobile)
 // ---------------------------------------------------------------------------
 
-window.toggleSidebar = function () {
+function toggleSidebar() {
     $("sidebar").classList.toggle("open");
     $("sidebarOverlay").classList.toggle("active");
-};
+}
+for (const id of ["sidebarOverlay", "btnCloseSidebar", "btnMenuToggle"]) {
+    $(id)?.addEventListener("click", toggleSidebar);
+}
 
 function closeSidebarOnMobile() {
     if (window.matchMedia("(max-width: 768px)").matches && $("sidebar").classList.contains("open")) toggleSidebar();

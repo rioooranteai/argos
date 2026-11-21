@@ -144,6 +144,14 @@ so reprocessing does not pay twice for the same work.
   checked for type and page count.
 - **Errors** — clients get a stable error code, a safe message and a request ID; technical
   details only go to the log.
+- **AI answers are untrusted** — the answering model reads uploaded documents, so:
+  - prompts are split into blocks (`<<HISTORY>>`, `<<DATA>>`, `<<INSTRUCTIONS>>`, `<<QUESTION>>`,
+    `<<CURRENT_DATE>>`), and the rules tell the model to ignore instructions found inside
+    history or document data (indirect prompt injection);
+  - the answer's Markdown is rendered through DOMPurify (no scripts, event handlers, iframes,
+    forms, images or inline styles), or as plain text if the libraries did not load;
+  - the pages send a Content-Security-Policy (scripts only from this site and the two pinned,
+    integrity-checked CDN libraries; no inline scripts; network calls only to this site).
 
 ---
 

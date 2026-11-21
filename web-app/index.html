@@ -6,13 +6,16 @@
     <title>Argos — Competitive Intelligence</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link href="/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
+            integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"
+            integrity="sha384-JEyTNhjM6R1ElGoJns4U2Ln4ofPcqzSsynQkmEc/KGy6336qAZl70tDLufbkla+3" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap"
           rel="stylesheet">
 </head>
 <body>
 
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="app-wrapper">
 
@@ -22,7 +25,7 @@
         <div class="sidebar-header">
             <div class="brand-container">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36"
-                     width="160" height="36" style="display:block;" aria-label="ArgosAI">
+                     width="160" height="36" class="brand-logo" aria-label="ArgosAI">
                     <defs>
                         <linearGradient id="argos-bg" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#e27c4a"/>
@@ -44,7 +47,7 @@
                     </text>
                 </svg>
             </div>
-            <button class="btn-close-sidebar" onclick="toggleSidebar()" title="Close menu" aria-label="Close menu">
+            <button class="btn-close-sidebar" id="btnCloseSidebar" title="Close menu" aria-label="Close menu">
                 <svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16">
                     <path d="M9 18l6-6-6-6"/>
                 </svg>
@@ -167,7 +170,7 @@
         <!-- Header -->
         <div class="chat-header">
             <div class="header-left">
-                <button class="btn-menu-toggle" onclick="toggleSidebar()" title="Open menu" aria-label="Open menu">
+                <button class="btn-menu-toggle" id="btnMenuToggle" title="Open menu" aria-label="Open menu">
                     <svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18">
                         <line x1="3" x2="21" y1="6" y2="6"/>
                         <line x1="3" x2="21" y1="12" y2="12"/>
