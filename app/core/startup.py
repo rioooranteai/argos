@@ -14,7 +14,14 @@ from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
-from app.tools.factory import build_embedder, build_llm, build_vector_store
+from app.tools.document_parser.base import BaseDocumentParser
+from app.tools.factory import (
+    build_document_parser,
+    build_embedder,
+    build_llm,
+    build_vector_store,
+    build_vision,
+)
 from app.infrastructure.providers.repositories.sqlite_cache_repository import SQLiteCacheRepository
 from app.infrastructure.providers.repositories.sqlite_conversation_repository import (
     SQLiteConversationRepository,
@@ -36,8 +43,6 @@ from app.infrastructure.providers.repositories.sqlite_user_repository import SQL
 from app.services.conversation.service import ConversationService
 from app.services.extraction.providers.pydantic_ai_provider import PydanticAIExtractionProvider
 from app.services.extraction.service import ExtractionService
-from app.services.ingestion.factories.vision_factory import VisionFactory
-from app.services.ingestion.providers.loaders.docling_process import DoclingProcess
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
@@ -61,7 +66,7 @@ def _token_counter():
     return lambda text: len(encoding.encode(text, disallowed_special=()))
 
 
-async def _warm_up_docling(docling: DoclingProcess) -> None:
+async def _warm_up_docling(docling: BaseDocumentParser) -> None:
     """Load the Docling models in the background so the first upload does not wait."""
     try:
         await docling.start()
@@ -116,11 +121,11 @@ async def lifespan(app: FastAPI):
     app.state.library_service.purge_expired_pending()
 
     # --- Document pipeline & worker (DESIGN_GROUP_B.md) ---
-    docling = DoclingProcess()
+    docling = build_document_parser()
     pipeline = DocumentPipeline(
         parser=docling,
         describer=FigureDescriber(
-            processor=VisionFactory().get_processor(),
+            processor=build_vision(),
             cache=cache_repo,
             model_name=app_config.OPENAI_VLM_MODEL,
             semaphore=limits.vision,

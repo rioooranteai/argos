@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.tools.embedding.base import BaseEmbedder
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.vector_store.base import IndexChunk
 from app.tools.vector_store.chroma import ChromaVectorStore
 from tests.test_pipeline import (  # noqa: F401 — the `env` fixture is reused

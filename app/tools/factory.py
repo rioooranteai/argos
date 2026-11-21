@@ -9,13 +9,17 @@ change the provider constant in ``app/core/config.py``.
 """
 from __future__ import annotations
 
-from app.core.config import app_config, secrets
+from app.core.config import PROJECT_ROOT, app_config, secrets
+from app.tools.document_parser.base import BaseDocumentParser
+from app.tools.document_parser.docling_process import DoclingProcess
 from app.tools.embedding.base import BaseEmbedder
 from app.tools.embedding.openai_embedder import OpenAIEmbedder
 from app.tools.llm.base import BaseLLM
 from app.tools.llm.openai_llm import OpenAILLM
 from app.tools.vector_store.base import BaseVectorStore
 from app.tools.vector_store.chroma import ChromaVectorStore
+from app.tools.vision.base import BaseVisionModel
+from app.tools.vision.openai_vision import OpenAIVision
 
 # profile → (model, timeout seconds, retries, purpose in llm_calls). DESIGN_GROUP_B.md §5, C §7.3.
 _OPENAI_LLM_PROFILES = {
@@ -66,3 +70,25 @@ def build_vector_store(embedder: BaseEmbedder) -> BaseVectorStore:
     if provider == "chroma":
         return ChromaVectorStore(embedder)
     raise _unknown("vector store", provider)
+
+
+def build_document_parser() -> BaseDocumentParser:
+    provider = app_config.DOCUMENT_PARSER_PROVIDER.lower()
+    if provider == "docling":
+        return DoclingProcess()
+    raise _unknown("document parser", provider)
+
+
+_VISION_PROMPT = PROJECT_ROOT / "prompts" / "vision_description.md"
+_VISION_FALLBACK_PROMPT = "You are an expert data analyst. Describe this chart or image in detail."
+
+
+def build_vision() -> BaseVisionModel:
+    provider = app_config.VISION_PROVIDER.lower()
+    if provider == "openai":
+        try:
+            prompt = _VISION_PROMPT.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            prompt = _VISION_FALLBACK_PROMPT
+        return OpenAIVision(prompt_template=prompt)
+    raise _unknown("vision", provider)

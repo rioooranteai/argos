@@ -19,7 +19,6 @@ import asyncio
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
 
 from app.core.concurrency import AILimits
 from app.core.config import AppConfig
@@ -28,23 +27,19 @@ from app.infrastructure.interface.feature_repository import BaseFeatureRepositor
 from app.infrastructure.interface.library_repository import BaseLibraryRepository
 from app.services.extraction.service import ExtractionService, ExtractionStats
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
-from app.services.ingestion.model import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber, figures_in
 from app.services.library.model import STAGE_READY, DocumentVersion, LibraryDocument
 from app.services.library.service import queued_file_path
+from app.tools.document_parser.base import BaseDocumentParser, ElementType
 from app.tools.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger(__name__)
 
 
-class DocumentParser(Protocol):
-    async def parse(self, path: str, timeout: float) -> list[DocumentElement]: ...
-
-
 class DocumentPipeline:
     def __init__(
         self,
-        parser: DocumentParser,
+        parser: BaseDocumentParser,
         describer: FigureDescriber,
         vector_store: BaseVectorStore,
         extraction: ExtractionService,

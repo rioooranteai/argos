@@ -10,11 +10,7 @@ import openai
 from app.core import log_context
 from app.core.errors import ArgosError
 from app.infrastructure.interface.job_repository import BaseJobRepository
-from app.services.ingestion.exceptions import DocumentLoadError
-from app.services.ingestion.providers.loaders.docling_process import (
-    ParserTimeout,
-    ParserUnavailable,
-)
+from app.tools.document_parser.base import DocumentLoadError, ParserTimeout, ParserUnavailable
 from app.services.library.model import DocumentVersion
 
 

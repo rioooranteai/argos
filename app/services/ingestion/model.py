@@ -1,32 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
 
-from pydantic import BaseModel, Field
-
-
-class ElementType(str, Enum):
-    TEXT = "text"
-    HEADING = "heading"
-    TABLE = "table"
-    LIST_ITEM = "list_item"
-    FIGURE = "figure"
-    CAPTION = "caption"
-    PAGE_HEADER = "page_header"
-    PAGE_FOOTER = "page_footer"
-
-
-class DocumentElement(BaseModel):
-    """One parsed element (text/table/image), in document order."""
-
-    element_type: ElementType
-    content: str
-    page_number: int = 0
-    section_heading: str = ""
-    image_bytes: bytes | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+from app.tools.document_parser.base import DocumentElement
 
 
 @dataclass

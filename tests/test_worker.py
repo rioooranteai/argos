@@ -15,8 +15,8 @@ from app.infrastructure.providers.repositories.sqlite_job_repository import SQLi
 from app.infrastructure.providers.repositories.sqlite_library_repository import (
     SQLiteLibraryRepository,
 )
-from app.services.ingestion.exceptions import DocumentLoadError
-from app.services.ingestion.providers.loaders.docling_process import ParserTimeout
+from app.tools.document_parser.base import DocumentLoadError
+from app.tools.document_parser.base import ParserTimeout
 from app.services.library.model import NewVersion
 
 

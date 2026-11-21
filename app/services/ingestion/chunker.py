@@ -11,12 +11,8 @@ import hashlib
 import re
 from collections.abc import Callable
 
-from app.services.ingestion.model import (
-    DocumentElement,
-    ElementType,
-    ExtractionUnit,
-    Section,
-)
+from app.services.ingestion.model import ExtractionUnit, Section
+from app.tools.document_parser.base import DocumentElement, ElementType
 from app.tools.vector_store.base import IndexChunk
 
 _WS = re.compile(r"\s+")

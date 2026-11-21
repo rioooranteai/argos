@@ -63,7 +63,8 @@ class JsonFormatter(logging.Formatter):
 _COMPONENTS = (
     ("uvicorn.access", "http"),
     ("uvicorn", "uvicorn"),
-    ("app.services.ingestion.providers.loaders", "docling"),
+    ("app.tools.document_parser", "docling"),
+    ("app.tools.vision", "vision"),
     ("app.services.ingestion", "ingestion"),
     ("app.tools.vector_store", "vector"),
     ("app.tools.llm", "llm"),

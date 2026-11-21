@@ -14,22 +14,18 @@ import multiprocessing
 from multiprocessing.connection import Connection
 from typing import Any
 
-from app.services.ingestion.exceptions import DocumentLoadError, IngestionError
-from app.services.ingestion.model import DocumentElement
+from app.tools.document_parser.base import (
+    BaseDocumentParser,
+    DocumentElement,
+    DocumentLoadError,
+    ParserTimeout,
+    ParserUnavailable,
+)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LOADER = "app.services.ingestion.providers.loaders.docling_loader:DoclingLoader"
+DEFAULT_LOADER = "app.tools.document_parser.docling_loader:DoclingLoader"
 _SPAWN = multiprocessing.get_context("spawn")  # same on Windows & Linux
-
-
-class ParserUnavailable(IngestionError):
-    """The parser subprocess died, failed to start, or was stopped after a timeout.
-    Temporary: the job may be retried."""
-
-
-class ParserTimeout(ParserUnavailable):
-    """Parsing went over the time limit; the subprocess was killed."""
 
 
 def _load_factory(spec: str) -> Any:
@@ -58,7 +54,7 @@ def _serve(conn: Connection, loader_spec: str) -> None:
             conn.send(("error", f"{type(exc).__name__}: {exc}"))
 
 
-class DoclingProcess:
+class DoclingProcess(BaseDocumentParser):
     def __init__(self, loader_spec: str = DEFAULT_LOADER, start_timeout: float = 300.0) -> None:
         self._loader_spec = loader_spec
         self._start_timeout = start_timeout

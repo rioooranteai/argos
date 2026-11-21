@@ -22,7 +22,7 @@ from app.infrastructure.providers.repositories.sqlite_library_repository import 
 )
 from app.services.extraction.model import ExtractedFeature
 from app.services.extraction.service import ExtractionService
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import DocumentElement, ElementType
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.model import NewVersion
 from app.tools.vector_store.base import AddChunksResult

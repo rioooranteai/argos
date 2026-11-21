@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import DocumentElement, ElementType
 
 
 def el(text: str, heads: list[str], page: int = 1, kind=ElementType.TEXT) -> DocumentElement:

@@ -10,8 +10,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from app.infrastructure.interface.cache_repository import BaseCacheRepository
-from app.services.ingestion.base.vision import BaseVisionProcessor
-from app.services.ingestion.model import DocumentElement, ElementType, Section
+from app.services.ingestion.model import Section
+from app.tools.document_parser.base import DocumentElement, ElementType
+from app.tools.vision.base import BaseVisionModel
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def figures_in(sections: list[Section]) -> list[DocumentElement]:
 class FigureDescriber:
     def __init__(
         self,
-        processor: BaseVisionProcessor,
+        processor: BaseVisionModel,
         cache: BaseCacheRepository,
         model_name: str,
         semaphore: asyncio.Semaphore,

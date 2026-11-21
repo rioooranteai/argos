@@ -4,14 +4,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 from app.core.config import app_config, secrets
-from app.services.ingestion.base.vision import BaseVisionProcessor
-from app.services.ingestion.model import DocumentElement, ElementType
-from app.services.ingestion.exceptions import VisionProcessingError
 from app.core.observability.recorder import recorder, usage_from_langchain
+from app.tools.document_parser.base import DocumentElement, ElementType
+from app.tools.vision.base import BaseVisionModel, VisionProcessingError
 
 logger = logging.getLogger(__name__)
 
-class OpenAIVisionProcessor(BaseVisionProcessor):
+class OpenAIVision(BaseVisionModel):
     """
     Turns images into text with an OpenAI Vision model,
     asynchronously so the main pipeline is not blocked.

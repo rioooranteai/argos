@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.ingestion.exceptions import DocumentLoadError
-from app.services.ingestion.providers.loaders.docling_process import (
+from app.tools.document_parser.base import DocumentLoadError
+from app.tools.document_parser.docling_process import (
     DoclingProcess,
     ParserTimeout,
     ParserUnavailable,

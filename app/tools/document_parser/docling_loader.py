@@ -4,9 +4,12 @@ import threading
 
 import tiktoken
 from app.core.config import app_config, infra
-from app.services.ingestion.base.loader import BaseDocumentLoader
-from app.services.ingestion.exceptions import DocumentLoadError
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import (
+    BaseDocumentLoader,
+    DocumentElement,
+    DocumentLoadError,
+    ElementType,
+)
 from docling.chunking import HybridChunker
 from docling.datamodel.accelerator_options import AcceleratorOptions, AcceleratorDevice
 from docling.datamodel.base_models import InputFormat

@@ -11,7 +11,7 @@ from app.infrastructure.providers.repositories.sqlite_cache_repository import SQ
 from app.services.extraction.model import ExtractedFeature
 from app.services.extraction.service import ExtractionService
 from app.services.ingestion.chunker import build_sections, build_units
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import DocumentElement, ElementType
 
 
 class FakeProvider:

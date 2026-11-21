@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import time
 
-from app.services.ingestion.model import DocumentElement, ElementType
+from app.tools.document_parser.base import DocumentElement, ElementType
 
 
 class EchoLoader:
