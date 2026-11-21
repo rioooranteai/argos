@@ -11,16 +11,16 @@ class BaseVisionProcessor(ABC):
     @abstractmethod
     def supports(self, element: DocumentElement) -> bool:
         """
-        Return True jika element ini bisa diproses.
-        Umumnya hanya True untuk ElementType.FIGURE yang punya image_bytes.
+        Return True if this element can be processed.
+        Usually only True for an ElementType.FIGURE that has image_bytes.
         """
 
     @abstractmethod
     async def describe_image(self, element: DocumentElement) -> str:
         """
-        Kirim gambar ke VLM dan kembalikan deskripsi teks.
-        Deskripsi harus mencakup: angka, label, tren, dan konteks visual.
+        Send the image to the VLM and return a text description.
+        The description must cover: numbers, labels, trends and visual context.
 
         Raises:
-            VisionProcessingError: jika VLM gagal memproses gambar.
+            VisionProcessingError: if the VLM fails to process the image.
         """

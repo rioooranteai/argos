@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 class VisionFactory:
     """
-    Factory pattern untuk memilih dan merakit Vision Processor.
-    Bertugas memuat konfigurasi berat (seperti file prompt) di awal.
+    Factory that picks and assembles the Vision Processor.
+    It loads the heavy configuration (such as the prompt file) up front.
     """
 
     def __init__(self):
@@ -17,18 +17,18 @@ class VisionFactory:
         self._vision_prompt = self._load_prompt(prompt_path)
 
     def _load_prompt(self, path: Path) -> str:
-        """Membaca isi file markdown dengan aman."""
+        """Read the markdown file safely."""
         try:
             return path.read_text(encoding="utf-8")
         except FileNotFoundError:
             return (
-                "Kamu adalah ahli analis data. "
-                "Tolong deskripsikan grafik atau gambar ini secara detail."
+                "You are an expert data analyst. "
+                "Describe this chart or image in detail."
             )
 
     def get_processor(self) -> BaseVisionProcessor:
         """
-        Merakit dan mengembalikan instance OpenAIVisionProcessor
-        dengan menyuntikkan prompt yang sudah diload.
+        Assemble and return an OpenAIVisionProcessor instance
+        with the loaded prompt injected.
         """
         return OpenAIVisionProcessor(prompt_template=self._vision_prompt)

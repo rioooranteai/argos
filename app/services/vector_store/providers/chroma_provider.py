@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_metadata(meta: dict[str, Any]) -> dict[str, Any]:
-    """Chroma hanya menerima nilai skalar."""
+    """Chroma only accepts scalar values."""
     clean: dict[str, Any] = {}
     for k, v in meta.items():
         if v is None:
@@ -41,7 +41,7 @@ class ChromaProvider(BaseVectorStoreProvider):
 
         self.client = chromadb.PersistentClient(path=str(resolved_path))
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
-        logger.info(f"ChromaProvider siap. Collection: '{self.collection_name}' | Path: '{resolved_path}'")
+        logger.info(f"ChromaProvider ready. Collection: '{self.collection_name}' | Path: '{resolved_path}'")
 
     def add_chunks(
         self, chunks: list[IndexChunk], reuse: Mapping[str, str] | None = None
@@ -66,13 +66,13 @@ class ChromaProvider(BaseVectorStoreProvider):
             ]
             self.collection.upsert(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
         except Exception as e:
-            raise VectorStoreInsertError(f"Gagal menyimpan data ke ChromaDB: {e}") from e
+            raise VectorStoreInsertError(f"Failed to store data in ChromaDB: {e}") from e
         return AddChunksResult(ids=ids, reused=len(documents) - len(missing))
 
     def _reused_embeddings(
         self, documents: list[str], reuse: Mapping[str, str]
     ) -> dict[str, list[float]]:
-        """Vektor chunk lama untuk teks yang identik (hanya batch ini, hemat memori)."""
+        """Old chunk vectors for identical texts (this batch only, to save memory)."""
         wanted = {reuse[t]: t for t in documents if t in reuse}
         if not wanted:
             return {}
@@ -96,7 +96,7 @@ class ChromaProvider(BaseVectorStoreProvider):
 
     def search(self, query: str, version_ids: list[str] | None, limit: int = 5) -> list[SearchHit]:
         if version_ids is not None and not version_ids:
-            return []  # tidak ada sumber aktif → tidak ada hasil, bukan "semua"
+            return []  # no active sources → no results, not "everything"
         where = None
         if version_ids is not None:
             where = (
@@ -110,7 +110,7 @@ class ChromaProvider(BaseVectorStoreProvider):
                 query_embeddings=[query_embedding], n_results=limit, where=where
             )
         except Exception as e:
-            raise VectorStoreSearchError(f"Gagal melakukan pencarian di ChromaDB: {e}") from e
+            raise VectorStoreSearchError(f"Failed to search ChromaDB: {e}") from e
 
         ids = (raw.get("ids") or [[]])[0]
         docs = (raw.get("documents") or [[]])[0]

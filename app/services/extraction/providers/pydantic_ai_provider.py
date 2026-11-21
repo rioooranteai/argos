@@ -31,8 +31,8 @@ class PydanticAIExtractionProvider(BaseExtractionProvider):
         resolved_model = model or app_config.OPENAI_LLM_MODEL
         system_prompt = _load_prompt(_PROMPT_PATH)
 
-        # Klien OpenAI eksplisit: API key dari Secrets (.env tidak dimuat ke env OS),
-        # timeout & retry HTTP (timeout/429/5xx) diatur di sini, tidak memakai default 600 dtk.
+        # Explicit OpenAI client: the API key comes from Secrets (.env is not loaded into the OS env),
+        # HTTP timeout & retries (timeout/429/5xx) are set here instead of the 600 s default.
         client = AsyncOpenAI(
             api_key=secrets.OPENAI_API_KEY,
             timeout=timeout or app_config.EXTRACTION_TIMEOUT,
@@ -44,7 +44,7 @@ class PydanticAIExtractionProvider(BaseExtractionProvider):
             output_type=list[ExtractedFeature],
             system_prompt=system_prompt,
         )
-        logger.info(f"PydanticAIExtractionProvider siap dengan model: '{resolved_model}'")
+        logger.info(f"PydanticAIExtractionProvider ready with model: '{resolved_model}'")
 
     async def extract(self, text: str) -> list[ExtractedFeature]:
         try:
@@ -54,4 +54,4 @@ class PydanticAIExtractionProvider(BaseExtractionProvider):
                 call.usage(usage.input_tokens, usage.output_tokens)
             return result.output
         except Exception as e:
-            raise ExtractionAgentError(f"Agent gagal melakukan ekstraksi: {e}") from e
+            raise ExtractionAgentError(f"The extraction agent failed: {e}") from e

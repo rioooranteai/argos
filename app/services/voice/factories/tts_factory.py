@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 class TTSFactory:
     """
-    Factory untuk membuat instance TTS provider.
+    Factory that creates TTS provider instances.
 
-    Provider yang tersedia secara default:
+    Providers available by default:
         - 'openai' : OpenAI TTS API (tts-1 / tts-1-hd)
 
-    Cara tambah provider baru tanpa ubah kode lain:
+    How to add a new provider without changing other code:
         TTSFactory.register("elevenlabs", ElevenLabsTTSProvider)
     """
 
@@ -22,24 +22,24 @@ class TTSFactory:
 
     @classmethod
     def _load_defaults(cls) -> None:
-        """Register provider bawaan — lazy import supaya tidak error kalau lib belum install."""
+        """Register the built-in providers — lazy import so nothing fails when a library is not installed."""
         if not cls._providers:
             cls._providers["openai"] = OpenAITTSProvider
 
     @classmethod
     def create(cls, provider: str = "openai", **kwargs) -> BaseTTSProvider:
         """
-        Buat instance provider TTS.
+        Create a TTS provider instance.
 
         Args:
-            provider : Nama provider ('openai', dst.)
-            **kwargs : Argumen tambahan untuk constructor provider
+            provider : Provider name ('openai', etc.)
+            **kwargs : Extra arguments for the provider constructor
 
         Returns:
             Instance BaseTTSProvider
 
         Raises:
-            UnsupportedProviderError: jika provider tidak terdaftar
+            UnsupportedProviderError: if the provider is not registered
         """
         cls._load_defaults()
         if provider not in cls._providers:
@@ -51,16 +51,16 @@ class TTSFactory:
     @classmethod
     def register(cls, name: str, provider_class: type[BaseTTSProvider]) -> None:
         """
-        Daftarkan provider baru.
+        Register a new provider.
 
         Args:
-            name           : Identifier provider (misal: 'elevenlabs')
-            provider_class : Class yang inherit BaseTTSProvider
+            name           : Provider identifier (e.g. 'elevenlabs')
+            provider_class : A class that inherits BaseTTSProvider
         """
         if not issubclass(provider_class, BaseTTSProvider):
-            raise TypeError(f"{provider_class.__name__} harus inherit dari BaseTTSProvider")
+            raise TypeError(f"{provider_class.__name__} must inherit from BaseTTSProvider")
         cls._providers[name] = provider_class
-        logger.info(f"[TTSFactory] Provider '{name}' berhasil didaftarkan.")
+        logger.info(f"[TTSFactory] Provider '{name}' registered.")
 
     @classmethod
     def available_providers(cls) -> list[str]:

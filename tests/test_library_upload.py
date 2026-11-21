@@ -45,8 +45,8 @@ async def test_path_traversal_name_never_used_on_disk(tmp_path):
         ("..\\..\\evil.pdf", "evil.pdf"),
         ("/etc/passwd", "passwd"),
         ("a\x00b.pdf", "ab.pdf"),
-        ("", "dokumen"),
-        (None, "dokumen"),
+        ("", "document"),
+        (None, "document"),
     ],
 )
 def test_safe_original_filename(raw, expected):

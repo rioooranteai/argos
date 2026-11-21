@@ -38,7 +38,7 @@ class TestValidateGeneratedSQL:
         "TRUNCATE features",
     ])
     def test_destructive_sql_rejected(self, unsafe_sql):
-        with pytest.raises(ValueError, match="Sistem keamanan"):
+        with pytest.raises(ValueError, match="Blocked by the safety check"):
             validate_generated_sql(unsafe_sql)
 
     def test_empty_sql_rejected(self):

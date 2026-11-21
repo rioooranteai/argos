@@ -20,18 +20,18 @@ class Notebook:
 
 @dataclass(frozen=True)
 class NotebookSource:
-    """Satu sumber di notebook: dokumen Library + versi yang di-pin."""
+    """One source in a notebook: a Library document + the pinned version."""
 
     notebook_id: str
     document_id: str
     display_name: str
     document_status: str  # active | archived
-    version_id: str  # versi yang di-pin
+    version_id: str  # the pinned version
     version_no: int
     stage: str
     uploaded_at: datetime
     page_count: int | None
-    latest_version_id: str | None  # versi ready terbaru di Library
+    latest_version_id: str | None  # latest ready version in the Library
     latest_version_no: int | None
     enabled: bool
     added_at: datetime
@@ -55,7 +55,7 @@ class NotebookSource:
 
 @dataclass(frozen=True)
 class ActiveSource:
-    """Sumber yang benar-benar dipakai chat: dicentang DAN versinya ready."""
+    """A source the chat really uses: checked AND its version is ready."""
 
     version_id: str
     document_id: str
@@ -73,7 +73,7 @@ class NotebookOut(BaseModel):
     source_count: int
     created_at: datetime
     updated_at: datetime
-    last_opened_at: datetime | None = None  # untuk memilih notebook default (D8)
+    last_opened_at: datetime | None = None  # to pick the default notebook (D8)
 
 
 class NotebookSourceOut(BaseModel):
@@ -110,7 +110,7 @@ class NotebookSourceOut(BaseModel):
             progress_done=s.progress_done,
             progress_total=s.progress_total,
             error=s.error,
-            warnings=[f"{s.vision_failed} gambar tidak terbaca"] if s.vision_failed else [],
+            warnings=[f"{s.vision_failed} image(s) could not be read"] if s.vision_failed else [],
         )
 
 
@@ -120,7 +120,7 @@ class NotebookDetailOut(NotebookOut):
 
 
 class CreateNotebookRequest(BaseModel):
-    title: str = Field(default="Notebook baru", min_length=1, max_length=200)
+    title: str = Field(default="New notebook", min_length=1, max_length=200)
 
 
 class RenameNotebookRequest(BaseModel):
@@ -137,7 +137,7 @@ class UpdateSourceRequest(BaseModel):
 
 
 class SourceUploadOut(BaseModel):
-    """Hasil upload langsung ke notebook: hasil per file + daftar sumber terbaru."""
+    """Result of uploading straight to a notebook: per-file results + the updated source list."""
 
     results: list[UploadFileResult]
     sources: list[NotebookSourceOut]

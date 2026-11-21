@@ -52,17 +52,17 @@ class CompetitorFeature(BaseModel):
 
 
 class ExtractedFeature(CompetitorFeature):
-    """Output LLM: feature + label bagian asalnya (DESIGN_GROUP_B.md §7)."""
+    """LLM output: a feature + the label of its source section (DESIGN_GROUP_B.md §7)."""
 
     section_ref: str = Field(
         default="",
-        description="Label bagian sumber, mis. 'S1'. Harus salah satu label di input.",
+        description="Source section label, e.g. 'S1'. Must be one of the labels in the input.",
     )
 
 
 @dataclass(frozen=True)
 class FeatureRow:
-    """Feature siap simpan, sudah terikat ke bagian dokumen (asal-usul)."""
+    """A feature ready to store, tied to its document section (provenance)."""
 
     section_hash: str
     section_heading: str

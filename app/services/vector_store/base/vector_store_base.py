@@ -12,29 +12,29 @@ class BaseVectorStoreProvider(ABC):
     def add_chunks(
         self, chunks: list[IndexChunk], reuse: Mapping[str, str] | None = None
     ) -> AddChunksResult:
-        """Embed lalu simpan/perbarui chunk.
+        """Embed, then store/update chunks.
 
-        ``reuse`` memetakan teks chunk → ID chunk lama yang teksnya identik. Vektor
-        chunk lama itu dipakai ulang (tanpa memanggil embedder); chunk lama tidak
-        diubah. Chunk lama yang ternyata sudah hilang di-embed seperti biasa.
+        ``reuse`` maps a chunk text → the ID of an old chunk with identical text. That
+        old chunk's vector is reused (without calling the embedder); the old chunk is
+        not changed. Old chunks that turn out to be gone are embedded as usual.
         """
 
     @abstractmethod
     def version_texts(self, version_id: str) -> dict[str, str]:
-        """Teks chunk → ID chunk untuk satu versi (bahan ``reuse``)."""
+        """Chunk text → chunk ID for one version (input for ``reuse``)."""
 
     @abstractmethod
     def search(self, query: str, version_ids: list[str] | None, limit: int = 5) -> list[SearchHit]:
-        """Cari chunk paling relevan, hanya dari `version_ids` (None = tanpa filter)."""
+        """Find the most relevant chunks, only from `version_ids` (None = no filter)."""
 
     @abstractmethod
     def delete_version(self, version_id: str) -> None:
-        """Hapus semua chunk milik satu versi dokumen."""
+        """Delete every chunk of one document version."""
 
     @abstractmethod
     def count_version(self, version_id: str) -> int:
-        """Jumlah chunk milik satu versi (untuk pemeriksaan & test)."""
+        """Number of chunks of one version (for checks & tests)."""
 
     def heartbeat(self) -> None:
-        """Lempar exception bila penyimpanan vektor tidak bisa diakses (/health/ready)."""
+        """Raise if the vector store cannot be reached (/health/ready)."""
         raise NotImplementedError

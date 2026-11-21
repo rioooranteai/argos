@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 class OpenAIVisionProcessor(BaseVisionProcessor):
     """
-    Memproses ekstraksi visual dari gambar ke teks menggunakan model OpenAI Vision
-    secara asynchronous agar tidak memblokir pipeline utama.
+    Turns images into text with an OpenAI Vision model,
+    asynchronously so the main pipeline is not blocked.
     """
 
-    def __init__(self, prompt_template: str): # <--- Menerima prompt dari Factory
+    def __init__(self, prompt_template: str): # <--- Receives the prompt from the factory
         self.prompt_template = prompt_template
         try:
             self.vision_model = ChatOpenAI(
@@ -32,7 +32,7 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
             raise
 
     def supports(self, element: DocumentElement) -> bool:
-        """Hanya memproses elemen berjenis FIGURE yang memiliki byte gambar."""
+        """Only processes FIGURE elements that have image bytes."""
         return (
             element.element_type == ElementType.FIGURE
             and element.image_bytes is not None
@@ -40,7 +40,7 @@ class OpenAIVisionProcessor(BaseVisionProcessor):
 
     async def describe_image(self, element: DocumentElement) -> str:
         """
-        Kirim gambar ke OpenAI dan eksekusi secara async.
+        Send the image to OpenAI and run it asynchronously.
         """
         if not self.supports(element):
             return ""

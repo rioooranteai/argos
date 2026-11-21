@@ -1,3 +1,3 @@
 class InvalidQuestionError(ValueError):
-    """Dilempar saat pertanyaan tidak relevan dengan domain."""
+    """Raised when the question is not relevant to the domain."""
     pass

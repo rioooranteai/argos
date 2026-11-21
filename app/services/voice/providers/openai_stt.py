@@ -29,9 +29,9 @@ MIME_TO_EXT = {
 
 class OpenAISTTProvider(BaseSTTProvider):
     """
-    STT Provider menggunakan OpenAI Whisper API (cloud).
+    STT provider using the OpenAI Whisper API (cloud).
     Model  : whisper-1
-    Biaya  : $0.006 per menit audio
+    Cost   : $0.006 per minute of audio
     Docs   : https://platform.openai.com/docs/guides/speech-to-text
     """
 
@@ -44,7 +44,7 @@ class OpenAISTTProvider(BaseSTTProvider):
 
     @property
     def supported_languages(self) -> list[str]:
-        # Whisper API support 57 bahasa, return ['*'] untuk semua
+        # The Whisper API supports 57 languages; return ['*'] for all
         return ["*"]
 
     @property
@@ -110,4 +110,4 @@ class OpenAISTTProvider(BaseSTTProvider):
 
         except Exception as e:
             logger.error(f"[OpenAI STT] Error: {e}")
-            raise STTError(f"OpenAI STT gagal: {e}") from e
+            raise STTError(f"OpenAI STT failed: {e}") from e

@@ -1,9 +1,9 @@
-"""Ekstraksi feature per unit bagian, dengan batas concurrency, timeout, dan cache.
+"""Feature extraction per section unit, with concurrency limits, timeouts and a cache.
 
-(DESIGN_GROUP_B.md §7; audit poin 11 — tidak ada lagi pemotongan 100.000 karakter.)
+(DESIGN_GROUP_B.md §7; audit point 11 — no more 100,000-character truncation.)
 
-Error dibiarkan naik ke worker: unit yang sudah selesai tersimpan di cache,
-sehingga percobaan ulang hanya membayar unit yang belum selesai.
+Errors propagate to the worker: finished units are stored in the cache,
+so a retry only pays for the units that did not finish.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExtractionStats:
-    """Diisi oleh ``extract_units``: berapa unit yang hasilnya diambil dari cache."""
+    """Set by ``extract_units``: how many units came from the cache."""
 
     units: int = 0
     cached: int = 0
@@ -65,8 +65,8 @@ class ExtractionService:
                 if on_progress is not None:
                     await on_progress(done)
 
-        # Tunggu semua unit selesai (berhasil atau gagal) sebelum melempar error,
-        # agar unit yang sukses sempat masuk cache untuk percobaan berikutnya.
+        # Wait for every unit to finish (success or failure) before raising,
+        # so the successful units make it into the cache for the next attempt.
         outcomes = await asyncio.gather(
             *(one(i, u) for i, u in enumerate(units)), return_exceptions=True
         )
@@ -76,7 +76,7 @@ class ExtractionService:
         return [row for rows in results for row in rows]
 
     async def _extract_unit(self, unit: ExtractionUnit) -> tuple[list[FeatureRow], bool]:
-        """Return (baris feature, diambil dari cache?)."""
+        """Return (feature rows, taken from the cache?)."""
         cached = await asyncio.to_thread(
             self._cache.get_extraction, unit.unit_hash, self._pipeline_version
         )
@@ -103,13 +103,13 @@ class ExtractionService:
         first_label = next(iter(unit.labels))
         rows: list[FeatureRow] = []
         for f in features:
-            # `product_name` wajib (Rule 3); `brand_name` boleh null (Rule 20).
+            # `product_name` is required (Rule 3); `brand_name` may be null (Rule 20).
             if not (f.product_name and f.product_name.strip()):
                 continue
             label = (f.section_ref or "").strip().strip("[]")
             if label not in unit.labels:
                 logger.info(
-                    "section_ref %r tidak valid untuk unit %s; memakai %s.",
+                    "section_ref %r is not valid for unit %s; using %s.",
                     f.section_ref, unit.unit_hash[:12], first_label,
                 )
                 label = first_label

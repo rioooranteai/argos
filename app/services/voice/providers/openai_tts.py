@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class OpenAITTSProvider(BaseTTSProvider):
     """
-    TTS Provider menggunakan OpenAI Text-to-Speech API.
+    TTS provider using the OpenAI Text-to-Speech API.
     """
 
     def __init__(self):
@@ -57,4 +57,4 @@ class OpenAITTSProvider(BaseTTSProvider):
             )
         except Exception as e:
             logger.error(f"[OpenAI TTS] Error: {e}")
-            raise TTSError(f"OpenAI TTS gagal: {e}") from e
+            raise TTSError(f"OpenAI TTS failed: {e}") from e

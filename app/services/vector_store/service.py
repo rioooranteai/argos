@@ -16,7 +16,7 @@ class VectorStoreService:
         self._store: BaseVectorStoreProvider = VectorStoreFactory.create(
             embedder=embedder, provider=provider, **kwargs
         )
-        logger.info(f"VectorStoreService siap dengan provider: '{provider}'")
+        logger.info(f"VectorStoreService ready with provider: '{provider}'")
 
     def add_chunks(
         self, chunks: list[IndexChunk], reuse: Mapping[str, str] | None = None

@@ -16,8 +16,8 @@ from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
 logger = logging.getLogger(__name__)
 
-# Sisi terpendek gambar (px, images_scale=1.0 ≈ 72 dpi) di bawah ini dianggap
-# logo/ikon dan tidak dikirim ke Vision API.
+# Images whose shortest side (px, images_scale=1.0 ≈ 72 dpi) is below this are treated
+# as logos/icons and are not sent to the Vision API.
 MIN_FIGURE_SIDE_PX = 100
 
 _DEVICE_MAP = {
@@ -30,11 +30,11 @@ _DEVICE_MAP = {
 
 
 def _resolve_device(name: str) -> AcceleratorDevice:
-    """Ubah nilai DOCLING_DEVICE jadi AcceleratorDevice, turun ke CPU kalau CUDA tidak ada."""
+    """Turn DOCLING_DEVICE into an AcceleratorDevice, falling back to CPU when CUDA is missing."""
     key = (name or "auto").strip().lower()
     device = _DEVICE_MAP.get(key)
     if device is None:
-        logger.warning("DOCLING_DEVICE=%r tidak dikenal, memakai 'auto'.", name)
+        logger.warning("Unknown DOCLING_DEVICE=%r, using 'auto'.", name)
         device = AcceleratorDevice.AUTO
 
     try:
@@ -42,17 +42,17 @@ def _resolve_device(name: str) -> AcceleratorDevice:
 
         cuda_ok = torch.cuda.is_available()
         gpu_name = torch.cuda.get_device_name(0) if cuda_ok else None
-    except Exception:  # noqa: BLE001 — torch opsional; tanpa torch/CUDA = jalan di CPU
+    except Exception:  # noqa: BLE001 — torch is optional; without torch/CUDA it runs on CPU
         cuda_ok, gpu_name = False, None
 
     if device == AcceleratorDevice.CUDA and not cuda_ok:
-        logger.warning("DOCLING_DEVICE=cuda tapi CUDA tidak tersedia — beralih ke CPU.")
+        logger.warning("DOCLING_DEVICE=cuda but CUDA is not available — switching to CPU.")
         device = AcceleratorDevice.CPU
 
     if device == AcceleratorDevice.CUDA or (device == AcceleratorDevice.AUTO and cuda_ok):
         logger.info("Docling memakai GPU: %s", gpu_name)
     elif device == AcceleratorDevice.AUTO:
-        logger.info("Docling mode auto: CUDA tidak terdeteksi, memakai CPU.")
+        logger.info("Docling auto mode: no CUDA detected, using CPU.")
     else:
         logger.info("Docling memakai device: %s", device.value)
     return device
@@ -60,8 +60,8 @@ def _resolve_device(name: str) -> AcceleratorDevice:
 
 class DoclingLoader(BaseDocumentLoader):
     """
-    Loader PDF dengan HybridChunker dan Image Extraction.
-    Device (GPU/CPU) diatur lewat DOCLING_DEVICE di .env (default: auto).
+    PDF loader with HybridChunker and image extraction.
+    The device (GPU/CPU) is set by the DOCLING_DEVICE environment variable (default: auto).
     """
 
     def __init__(self):
@@ -71,8 +71,8 @@ class DoclingLoader(BaseDocumentLoader):
         )
 
         pipeline_options = PdfPipelineOptions()
-        # OCR hanya perlu untuk PDF hasil scan. Gambar/grafik sudah dibaca oleh
-        # OpenAI Vision, jadi untuk PDF digital OCR hanya menambah waktu.
+        # OCR is only needed for scanned PDFs. Images/charts are already read by
+        # OpenAI Vision, so for digital PDFs OCR only adds time.
         pipeline_options.do_ocr = app_config.DOCLING_OCR
         pipeline_options.accelerator_options = accel_options
         pipeline_options.generate_picture_images = True
@@ -106,8 +106,8 @@ class DoclingLoader(BaseDocumentLoader):
         elements: list[DocumentElement] = []
 
         try:
-            # Satu converter dipakai bersama; kunci agar upload paralel tidak
-            # memakai model yang sama secara bersamaan (aman untuk memori GPU).
+            # One shared converter; a lock stops parallel uploads from using the
+            # same model at the same time (safe for GPU memory).
             with self._convert_lock:
                 result = self.converter.convert(file_path)
             doc = result.document
@@ -135,8 +135,8 @@ class DoclingLoader(BaseDocumentLoader):
                         content=enriched_text.strip(),
                         page_number=page_num,
                         section_heading=current_heading,
-                        # Jalur heading lengkap: dipakai untuk mengelompokkan bagian
-                        # & unit ekstraksi (DESIGN_GROUP_B.md §7).
+                        # The full heading path: used to group sections
+                        # & extraction units (DESIGN_GROUP_B.md §7).
                         metadata={"headings": list(c.meta.headings or [])},
                     )
                 )
@@ -147,10 +147,10 @@ class DoclingLoader(BaseDocumentLoader):
 
                     try:
                         pil_image = pic.get_image(doc)
-                        # Logo/ikon kecil tidak berisi data → jangan dikirim ke
-                        # OpenAI Vision (hemat biaya & waktu).
+                        # Small logos/icons hold no data → do not send them to
+                        # OpenAI Vision (saves cost & time).
                         if pil_image and min(pil_image.size) < MIN_FIGURE_SIDE_PX:
-                            logger.debug(f"Gambar {idx + 1} hal. {page_num} terlalu kecil {pil_image.size}, dilewati.")
+                            logger.debug(f"Image {idx + 1} on p. {page_num} is too small {pil_image.size}, skipped.")
                             continue
                         if pil_image:
                             img_byte_arr = io.BytesIO()
@@ -160,7 +160,7 @@ class DoclingLoader(BaseDocumentLoader):
                             elements.append(
                                 DocumentElement(
                                     element_type=ElementType.FIGURE,
-                                    content=f"[GAMBAR/GRAFIK {idx + 1}] Menunggu diproses oleh Vision API...",
+                                    content=f"[IMAGE/CHART {idx + 1}] Waiting for the Vision API...",
                                     page_number=page_num,
                                     section_heading="",
                                     image_bytes=image_bytes,
@@ -168,12 +168,12 @@ class DoclingLoader(BaseDocumentLoader):
                                 )
                             )
                     except Exception:
-                        # Satu gambar rusak tidak menggagalkan dokumen; teks tetap diproses.
+                        # One broken image does not fail the document; the text is still processed.
                         logger.warning(
-                            "Gagal mengekstrak gambar di halaman %s.", page_num, exc_info=True
+                            "Failed to extract an image on page %s.", page_num, exc_info=True
                         )
 
             return elements
 
         except Exception as e:
-            raise DocumentLoadError(file_path, f"Docling gagal memproses dokumen: {str(e)}") from e
+            raise DocumentLoadError(file_path, f"Docling failed to process the document: {str(e)}") from e

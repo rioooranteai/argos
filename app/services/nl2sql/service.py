@@ -42,7 +42,7 @@ def _load_prompt(filename: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise FileNotFoundError(f"Prompt file tidak ditemukan: {path}") from None
+        raise FileNotFoundError(f"Prompt file not found: {path}") from None
 
 
 _SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md")
@@ -50,15 +50,15 @@ _SQL_PROMPT_TEXT = _load_prompt("nl2sql_generator.md")
 
 @dataclass
 class NL2SQLResult:
-    """Hasil NL2SQL bertipe (menggantikan dict).
+    """Typed NL2SQL result (replaces the old dict).
 
-    - ``ok``    : query berhasil dan ada baris
-    - ``empty`` : query berhasil tanpa baris, atau pertanyaan memang tidak bisa
-                  dijawab dari tabel features (``INVALID_QUESTION``)
-    - ``error`` : sistem gagal; kode di ``error_code`` (DESIGN_GROUP_C.md §3):
-                  ``SQL_REJECTED``, ``SQL_TIMEOUT``, ``SQL_FAILED``, atau kode LLM_*
+    - ``ok``    : the query succeeded and returned rows
+    - ``empty`` : the query succeeded with no rows, or the question really cannot be
+                  answered from the features table (``INVALID_QUESTION``)
+    - ``error`` : a system failure; the code is in ``error_code`` (DESIGN_GROUP_C.md §3):
+                  ``SQL_REJECTED``, ``SQL_TIMEOUT``, ``SQL_FAILED``, or an LLM_* code
 
-    ``message`` hanya untuk log; tidak dikirim ke user maupun ke prompt.
+    ``message`` is only for the log; it is sent neither to the user nor to the prompt.
     """
 
     status: Literal["ok", "empty", "error"]
@@ -71,7 +71,7 @@ class NL2SQLResult:
 
     @property
     def is_row_level(self) -> bool:
-        """Baris bisa disitasi per fakta bila membawa version_id; selain itu agregat."""
+        """Rows can be cited per fact when they carry version_id; otherwise they are aggregates."""
         return bool(self.raw_data) and "version_id" in self.raw_data[0]
 
 
@@ -90,9 +90,9 @@ class NL2SQLService:
         )
 
     async def process_query(self, user_question: str, version_ids: list[str]) -> NL2SQLResult:
-        """Jawab pertanyaan hanya dari baris milik `version_ids` (sumber aktif notebook)."""
+        """Answer the question only from the rows of `version_ids` (the notebook's active sources)."""
         if not version_ids:
-            return NL2SQLResult(status="empty", message="Tidak ada sumber aktif.")
+            return NL2SQLResult(status="empty", message="No active sources.")
         sql: str | None = None
         try:
             sql = await self._generate_sql(user_question.strip())
@@ -100,20 +100,20 @@ class NL2SQLService:
                 execute_scoped_sql, sql, self._db_path, version_ids, self._exec_timeout, MAX_RAW_ROWS
             )
         except InvalidQuestionError as e:
-            # Bukan kegagalan sistem: pertanyaan tidak cocok untuk data terstruktur.
+            # Not a system failure: the question does not fit the structured data.
             return NL2SQLResult(status="empty", message=str(e))
         except SQLExecutionTimeout as e:
             logger.warning("NL2SQL: %s", e)
             return self._error("SQL_TIMEOUT", sql, e)
         except SQLExecutionFailed as e:
-            logger.warning("NL2SQL gagal dieksekusi: %s", e)
+            logger.warning("NL2SQL execution failed: %s", e)
             return self._error("SQL_FAILED", sql, e)
         except (SQLRejected, ValueError) as e:
-            # ValueError = validator SELECT menolak keluaran LLM.
-            logger.warning("NL2SQL ditolak: %s", e)
+            # ValueError = the SELECT validator rejected the LLM output.
+            logger.warning("NL2SQL rejected: %s", e)
             return self._error("SQL_REJECTED", sql, e)
         except Exception as e:
-            logger.exception("NL2SQL: panggilan LLM gagal.")
+            logger.exception("NL2SQL: the LLM call failed.")
             return self._error(classify_llm_error(e), sql, e)
 
         return NL2SQLResult(
@@ -134,8 +134,8 @@ class NL2SQLService:
 
         if raw_sql.strip().upper() == "INVALID_QUESTION":
             raise InvalidQuestionError(
-                "Pertanyaan tidak relevan dengan database intelijen kompetitor "
-                "atau tidak dapat dijawab dengan data yang tersedia."
+                "The question is not relevant to the competitor intelligence database "
+                "or cannot be answered with the available data."
             )
 
         clean_sql = raw_sql.replace("```sql", "").replace("```", "").strip()

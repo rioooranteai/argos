@@ -1,6 +1,6 @@
-"""Deskripsi gambar dengan Vision: dibatasi, di-cache, dan kegagalan tercatat.
+"""Image descriptions with Vision: rate-limited, cached, and failures recorded.
 
-(DESIGN_GROUP_B.md §6, audit poin 10.)
+(DESIGN_GROUP_B.md §6, audit point 10.)
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from app.services.ingestion.model import DocumentElement, ElementType, Section
 
 logger = logging.getLogger(__name__)
 
-FAILED_IMAGE_TEXT = "[GAMBAR TIDAK TERBACA]"
-DESCRIPTION_PREFIX = "[DESKRIPSI VISUAL GRAFIK/GAMBAR]: "
+FAILED_IMAGE_TEXT = "[UNREADABLE IMAGE]"
+DESCRIPTION_PREFIX = "[VISUAL DESCRIPTION OF CHART/IMAGE]: "
 
 
 @dataclass(frozen=True)
@@ -54,8 +54,8 @@ class FigureDescriber:
         sections: list[Section],
         on_progress: Callable[[int], Awaitable[None]] | None = None,
     ) -> VisionOutcome:
-        """Isi `content` setiap gambar dengan deskripsi. Gambar yang gagal setelah
-        retry diberi penanda dan dihitung, tidak menggagalkan dokumen."""
+        """Fill each image's `content` with a description. Images that still fail after
+        retries get a marker and are counted; they do not fail the document."""
         figures = figures_in(sections)
         done = 0
         stats = {"cache": 0, "ok": 0, "failed": 0}
@@ -90,9 +90,9 @@ class FigureDescriber:
             async with self._semaphore:
                 description = await self._processor.describe_image(el)
         except Exception:
-            # Gambar gagal tidak menggagalkan dokumen; dihitung di `vision_failed`.
+            # A failed image does not fail the document; it is counted in `vision_failed`.
             logger.warning(
-                "Vision gagal untuk gambar hal. %s (%s).", el.page_number, key[:12], exc_info=True
+                "Vision failed for the image on p. %s (%s).", el.page_number, key[:12], exc_info=True
             )
             el.content = FAILED_IMAGE_TEXT
             el.image_bytes = None

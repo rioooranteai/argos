@@ -1,22 +1,22 @@
-"""Pencatat panggilan AI (DESIGN_GROUP_C.md §7.3).
+"""AI call recorder (DESIGN_GROUP_C.md §7.3).
 
-Setiap provider OpenAI membungkus panggilannya dengan ``recorder.track(...)``::
+Every OpenAI provider wraps its calls with ``recorder.track(...)``::
 
     with recorder.track("router", model) as call:
         response = await client.ainvoke(...)
         call.usage(input_tokens=..., output_tokens=...)
 
-Aturan:
-- Pencatatan **tidak pernah** menggagalkan atau memperlambat panggilan AI.
-  ``track`` hanya mengukur waktu dan menaruh catatan di antrean; satu thread
-  latar menulisnya ke SQLite secara batch.
-- ``request_id``, ``version_id``, dan ``message_id`` diambil dari konteks
-  (``request_context`` / ``log_context``), jadi provider tidak perlu tahu.
-- Prompt dan isi dokumen tidak pernah dicatat.
-- Status panggilan terakhir per ``purpose`` disimpan di memori untuk
-  ``/health/ready`` (yang tidak boleh memanggil OpenAI).
-- ``collect()`` mengumpulkan catatan selama satu blok (dipakai ChatEngine untuk
-  ringkasan token di trace pesan).
+Rules:
+- Recording **never** fails or slows down an AI call.
+  ``track`` only measures time and puts a record in a queue; one background
+  thread writes the records to SQLite in batches.
+- ``request_id``, ``version_id`` and ``message_id`` come from the context
+  (``request_context`` / ``log_context``), so providers do not need to know them.
+- Prompts and document content are never recorded.
+- The status of the latest call per ``purpose`` is kept in memory for
+  ``/health/ready`` (which must not call OpenAI).
+- ``collect()`` gathers the records made during a block (used by ChatEngine for
+  the token summary in the message trace).
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ class LastCall:
 
 
 class _CallHandle:
-    """Dikembalikan oleh ``track``; provider mengisi pemakaian token bila tersedia."""
+    """Returned by ``track``; the provider fills in token usage when available."""
 
     def __init__(self) -> None:
         self.input_tokens: int | None = None
@@ -74,7 +74,7 @@ class LLMCallRecorder:
     # ── Siklus hidup ────────────────────────────────────────────────
 
     def attach(self, repository: BaseLLMCallRepository) -> None:
-        """Mulai menulis ke ``repository``. Tanpa ini, catatan hanya ke memori."""
+        """Start writing to ``repository``. Without this, records only go to memory."""
         with self._lock:
             self._repo = repository
             if self._thread is None or not self._thread.is_alive():
@@ -84,7 +84,7 @@ class LLMCallRecorder:
                 self._thread.start()
 
     def close(self, timeout: float = 5.0) -> None:
-        """Tulis sisa antrean lalu hentikan thread penulis."""
+        """Write the rest of the queue, then stop the writer thread."""
         with self._lock:
             thread, self._thread = self._thread, None
         if thread is not None:
@@ -93,7 +93,7 @@ class LLMCallRecorder:
         self._repo = None
 
     def flush(self, timeout: float = 5.0) -> None:
-        """Tunggu sampai antrean saat ini tertulis (untuk test & shutdown)."""
+        """Wait until the current queue is written (for tests & shutdown)."""
         if self._thread is None:
             return
         done = threading.Event()
@@ -109,7 +109,7 @@ class LLMCallRecorder:
         try:
             yield handle
         except BaseException as exc:
-            # CancelledError (shutdown/timeout chat) juga dicatat sebagai gagal.
+            # CancelledError (shutdown/chat timeout) is also recorded as a failure.
             self._emit(purpose, model, start, handle, "error", classify_llm_error(exc))
             raise
         else:
@@ -125,7 +125,7 @@ class LLMCallRecorder:
 
     @contextmanager
     def collect(self) -> Iterator[list[LLMCall]]:
-        """Kumpulkan semua catatan di blok ini (termasuk task & thread turunan)."""
+        """Collect every record made in this block (including child tasks & threads)."""
         calls: list[LLMCall] = []
         token = _sink.set(calls)
         try:
@@ -165,7 +165,7 @@ class LLMCallRecorder:
                 )
             )
         except Exception:
-            logger.exception("Gagal mencatat panggilan AI (%s).", purpose)
+            logger.exception("Failed to record an AI call (%s).", purpose)
 
     def _run(self) -> None:
         while True:
@@ -199,11 +199,11 @@ class LLMCallRecorder:
         try:
             repo.insert_many(batch)
         except Exception:
-            logger.exception("Gagal menulis %d catatan llm_calls.", len(batch))
+            logger.exception("Failed to write %d llm_calls records.", len(batch))
 
 
 def usage_from_langchain(message: object) -> tuple[int | None, int | None]:
-    """Token dari ``AIMessage.usage_metadata`` LangChain (None bila tidak ada)."""
+    """Tokens from LangChain's ``AIMessage.usage_metadata`` (None when absent)."""
     meta = getattr(message, "usage_metadata", None) or {}
     return meta.get("input_tokens"), meta.get("output_tokens")
 

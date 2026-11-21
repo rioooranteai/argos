@@ -1,10 +1,10 @@
-"""Penerimaan file upload yang aman (DESIGN_GROUP_B.md §8).
+"""Safe handling of uploaded files (DESIGN_GROUP_B.md §8).
 
-- File dibaca bertahap (1 MB) dan dihentikan begitu melewati batas ukuran;
-  header Content-Length tidak dipercaya.
-- Nama file di disk selalu UUID; nama asli hanya disimpan sebagai metadata
-  (menutup celah path traversal, audit poin 3).
-- SHA-256 dihitung sambil menulis, tanpa membaca file dua kali.
+- Files are read in chunks (1 MB) and stopped as soon as they go over the size limit;
+  the Content-Length header is not trusted.
+- On disk the file name is always a UUID; the original name is only kept as metadata
+  (closes the path traversal hole, audit point 3).
+- SHA-256 is computed while writing, without reading the file twice.
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ _MAX_FILENAME_CHARS = 200
 
 @dataclass(frozen=True)
 class ReceivedFile:
-    path: Path  # file sementara bernama UUID
+    path: Path  # temporary file with a UUID name
     original_filename: str
     ext: str
     size_bytes: int
@@ -34,10 +34,10 @@ class ReceivedFile:
 
 
 def safe_original_filename(raw: str | None) -> str:
-    """Nama file untuk ditampilkan: tanpa folder, tanpa karakter kontrol."""
+    """File name for display: no folders, no control characters."""
     name = PurePath((raw or "").replace("\\", "/")).name
     name = "".join(ch for ch in name if ch.isprintable()).strip()
-    return name[:_MAX_FILENAME_CHARS] or "dokumen"
+    return name[:_MAX_FILENAME_CHARS] or "document"
 
 
 def file_extension(filename: str) -> str:
@@ -45,11 +45,11 @@ def file_extension(filename: str) -> str:
 
 
 async def receive_upload(file: UploadFile, dest_dir: Path, max_bytes: int) -> ReceivedFile:
-    """Simpan upload ke ``dest_dir/tmp-<uuid><ext>`` sambil menghitung hash & ukuran.
+    """Store the upload in ``dest_dir/tmp-<uuid><ext>`` while computing its hash & size.
 
     Raises:
-        PayloadTooLarge: ukuran melebihi ``max_bytes`` (file sementara dihapus).
-        ValidationError: file kosong.
+        PayloadTooLarge: larger than ``max_bytes`` (the temporary file is deleted).
+        ValidationError: the file is empty.
     """
     original = safe_original_filename(file.filename)
     ext = file_extension(original)
@@ -64,13 +64,13 @@ async def receive_upload(file: UploadFile, dest_dir: Path, max_bytes: int) -> Re
                 size += len(chunk)
                 if size > max_bytes:
                     raise PayloadTooLarge(
-                        f"File melebihi {max_bytes // (1024 * 1024)} MB.",
+                        f"The file is larger than {max_bytes // (1024 * 1024)} MB.",
                         code="FILE_TOO_LARGE",
                     )
                 digest.update(chunk)
                 out.write(chunk)
         if size == 0:
-            raise ValidationError("File kosong.", code="FILE_EMPTY")
+            raise ValidationError("The file is empty.", code="FILE_EMPTY")
     except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
@@ -85,14 +85,14 @@ async def receive_upload(file: UploadFile, dest_dir: Path, max_bytes: int) -> Re
 
 
 def count_pages(path: Path, ext: str) -> int | None:
-    """Jumlah halaman PDF (cepat, tanpa Docling). None untuk Markdown.
+    """Number of PDF pages (fast, no Docling). None for Markdown.
 
     Raises:
-        ValidationError: PDF rusak / tidak bisa dibuka.
+        ValidationError: the PDF is broken / cannot be opened.
     """
     if ext != ".pdf":
         return None
-    import pypdfium2 as pdfium  # dependensi Docling, sudah terpasang
+    import pypdfium2 as pdfium  # a Docling dependency, already installed
 
     try:
         pdf = pdfium.PdfDocument(str(path))
@@ -101,7 +101,7 @@ def count_pages(path: Path, ext: str) -> int | None:
         finally:
             pdf.close()
     except Exception as exc:
-        logger.info("PDF tidak bisa dibuka (%s): %s", path.name, exc)
+        logger.info("Could not open the PDF (%s): %s", path.name, exc)
         raise ValidationError(
-            "File PDF rusak atau terkunci kata sandi.", code="FILE_CORRUPT"
+            "The PDF is broken or password-protected.", code="FILE_CORRUPT"
         ) from exc

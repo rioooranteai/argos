@@ -6,25 +6,25 @@ from app.services.voice.model import TTSRequest, TTSResult
 
 class BaseTTSProvider(ABC):
     """
-    Kontrak wajib untuk semua TTS provider.
+    The required contract for every TTS provider.
 
-    Setiap provider yang inherit class ini WAJIB mengimplementasikan
-    semua abstract method/property di bawah. Jika tidak, Python akan
-    raise TypeError saat provider di-instantiate.
+    Every provider that inherits this class MUST implement every
+    abstract method/property below. Otherwise Python raises
+    TypeError when the provider is instantiated.
 
-    Cara tambah provider baru:
-        1. Buat file baru di providers/
+    How to add a new provider:
+        1. Create a new file in providers/
         2. Inherit BaseTTSProvider
-        3. Implement semua method di bawah
-        4. Register ke TTSFactory
+        3. Implement every method below
+        4. Register it in TTSFactory
     """
 
     @property
     @abstractmethod
     def provider_name(self) -> str:
         """
-        Identifier unik provider.
-        Contoh: 'openai', 'google', 'elevenlabs'
+        Unique provider identifier.
+        Example: 'openai', 'google', 'elevenlabs'
         """
         ...
 
@@ -32,8 +32,8 @@ class BaseTTSProvider(ABC):
     @abstractmethod
     def supported_voices(self) -> list[str]:
         """
-        Daftar nama voice yang bisa digunakan.
-        Contoh: ['alloy', 'echo', 'nova']
+        Voice names that can be used.
+        Example: ['alloy', 'echo', 'nova']
         """
         ...
 
@@ -41,37 +41,37 @@ class BaseTTSProvider(ABC):
     @abstractmethod
     def supported_formats(self) -> list[str]:
         """
-        Daftar format audio output yang didukung.
-        Contoh: ['mp3', 'wav', 'opus']
+        Supported output audio formats.
+        Example: ['mp3', 'wav', 'opus']
         """
         ...
 
     @abstractmethod
     async def synthesize(self, request: TTSRequest) -> TTSResult:
         """
-        Convert teks ke audio bytes.
+        Convert text to audio bytes.
 
         Args:
-            request: TTSRequest berisi text, voice, format, speed
+            request: TTSRequest with text, voice, format, speed
 
         Returns:
-            TTSResult berisi audio_bytes, format, character_count, provider
+            TTSResult with audio_bytes, format, character_count, provider
 
         Raises:
-            TTSError: jika proses gagal
-            UnsupportedFormatError: jika format tidak didukung
+            TTSError: if synthesis fails
+            UnsupportedFormatError: if the format is not supported
         """
         ...
 
     def validate_format(self, fmt: str) -> None:
-        """Helper validasi format — bisa dipakai langsung di semua provider."""
+        """Format validation helper — usable directly by every provider."""
         if fmt not in self.supported_formats:
             raise UnsupportedFormatError(fmt, self.provider_name, self.supported_formats)
 
     def validate_voice(self, voice: str) -> None:
-        """Helper validasi voice — bisa dipakai langsung di semua provider."""
+        """Voice validation helper — usable directly by every provider."""
         if voice not in self.supported_voices:
             raise ValueError(
-                f"Voice '{voice}' tidak didukung oleh {self.provider_name}. "
-                f"Tersedia: {', '.join(self.supported_voices)}"
+                f"Voice '{voice}' is not supported by {self.provider_name}. "
+                f"Available: {', '.join(self.supported_voices)}"
             )

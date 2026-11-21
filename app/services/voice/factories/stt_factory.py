@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 class STTFactory:
     """
-    Factory untuk membuat instance STT provider.
+    Factory that creates STT provider instances.
 
-    Provider yang tersedia:
+    Available providers:
         - 'openai_whisper' : Whisper via OpenAI API (default)
 
-    Cara tambah provider baru:
+    How to add a new provider:
         STTFactory.register("deepgram", DeepgramSTTProvider)
     """
 
@@ -25,18 +25,18 @@ class STTFactory:
     @classmethod
     def create(cls, provider: str = "openai_whisper", **kwargs) -> BaseSTTProvider:
         """
-        Buat instance provider STT.
+        Create an STT provider instance.
 
         Args:
-            provider : Nama provider (default: 'openai_whisper')
-            **kwargs : Argumen tambahan untuk constructor provider
-                       Contoh: model='whisper-1', language='id'
+            provider : Provider name (default: 'openai_whisper')
+            **kwargs : Extra arguments for the provider constructor
+                       Example: model='whisper-1', language='id'
 
         Returns:
             Instance BaseSTTProvider
 
         Raises:
-            UnsupportedProviderError: jika provider tidak terdaftar
+            UnsupportedProviderError: if the provider is not registered
         """
         if provider not in cls._providers:
             raise UnsupportedProviderError(provider, list(cls._providers.keys()))
@@ -47,16 +47,16 @@ class STTFactory:
     @classmethod
     def register(cls, name: str, provider_class: type[BaseSTTProvider]) -> None:
         """
-        Daftarkan provider baru.
+        Register a new provider.
 
         Args:
-            name           : Identifier provider (misal: 'deepgram')
-            provider_class : Class yang inherit BaseSTTProvider
+            name           : Provider identifier (e.g. 'deepgram')
+            provider_class : A class that inherits BaseSTTProvider
         """
         if not issubclass(provider_class, BaseSTTProvider):
-            raise TypeError(f"{provider_class.__name__} harus inherit dari BaseSTTProvider")
+            raise TypeError(f"{provider_class.__name__} must inherit from BaseSTTProvider")
         cls._providers[name] = provider_class
-        logger.info(f"[STTFactory] Provider '{name}' berhasil didaftarkan.")
+        logger.info(f"[STTFactory] Provider '{name}' registered.")
 
     @classmethod
     def available_providers(cls) -> list[str]:

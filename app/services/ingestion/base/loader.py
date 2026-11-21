@@ -12,16 +12,16 @@ class BaseDocumentLoader(ABC):
     @abstractmethod
     def supports(self, file_path: str) -> bool:
         """
-        Return True jika provider ini bisa handle file tersebut.
-        Biasanya dicek dari ekstensi atau MIME type.
+        Return True if this provider can handle the file.
+        Usually checked from the extension or MIME type.
         """
 
     @abstractmethod
     def load(self, file_path: str) -> list[DocumentElement]:
         """
-        Parse dokumen dan kembalikan list elemen terstruktur.
-        Urutan elemen harus mengikuti urutan kemunculan di dokumen.
+        Parse the document and return a list of structured elements.
+        The elements must be in the order they appear in the document.
 
         Raises:
-            DocumentLoadError: jika dokumen tidak bisa dibaca.
+            DocumentLoadError: if the document cannot be read.
         """

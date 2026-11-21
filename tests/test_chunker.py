@@ -112,4 +112,4 @@ def test_chunk_ids_unique_per_version():
     assert a[0].metadata["version_id"] == "v1"
     assert a[0].metadata["section_hash"] == sections[0].section_hash
     assert a[0].metadata["page_number"] == 2
-    assert a[0].text.startswith("[Dokumen: Pricelist]")
+    assert a[0].text.startswith("[Document: Pricelist]")

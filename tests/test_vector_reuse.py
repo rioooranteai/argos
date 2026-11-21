@@ -44,7 +44,7 @@ async def test_unchanged_chunks_reuse_vectors(env):
     await _process(db, library, queue, 2, V2, vectors)
 
     # Hanya chunk yang berubah dikirim ke embedder.
-    assert vectors.embedded == ["[Dokumen: Pricelist]\nAvanza Rp 245 jt"]
+    assert vectors.embedded == ["[Document: Pricelist]\nAvanza Rp 245 jt"]
     assert vectors.count_version("v2") == 3
     assert vectors.count_version("v1") == 3  # versi lama utuh (masih bisa di-pin)
     [v2] = _q(db, "SELECT stage FROM document_versions WHERE id = 'v2'")

@@ -117,7 +117,7 @@ def test_repository_failure_never_breaks_the_ai_call(rec, repo, caplog):
         result = "jawaban"
     rec.flush()
     assert result == "jawaban"
-    assert "Gagal menulis" in caplog.text
+    assert "Failed to write" in caplog.text
 
 
 def test_context_survives_to_thread_and_collect_sees_child_tasks(rec, repo):

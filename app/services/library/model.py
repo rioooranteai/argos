@@ -6,13 +6,13 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-# Tahap pemrosesan versi (DESIGN_GROUP_B.md §3.1)
+# Version processing stages (DESIGN_GROUP_B.md §3.1)
 STAGE_QUEUED = "queued"
 STAGE_READY = "ready"
 STAGE_FAILED = "failed"
 STAGE_CANCELLED = "cancelled"
 FINAL_STAGES = frozenset({STAGE_READY, STAGE_FAILED, STAGE_CANCELLED})
-# Versi dengan tahap ini boleh diambil alih oleh upload ulang file yang sama.
+# A version in one of these stages may be taken over by a re-upload of the same file.
 RECLAIMABLE_STAGES = frozenset({STAGE_FAILED, STAGE_CANCELLED})
 
 
@@ -47,7 +47,7 @@ class DocumentVersion:
     pipeline_version: str
     error: str | None
     finished_at: datetime | None
-    # {chunks, chunks_reused, units, units_cached, images, images_cached}; None sebelum ready
+    # {chunks, chunks_reused, units, units_cached, images, images_cached}; None before ready
     reuse_stats: dict[str, int] | None = None
 
     @property
@@ -57,7 +57,7 @@ class DocumentVersion:
 
 @dataclass(frozen=True)
 class NewVersion:
-    """Data versi baru yang sudah diterima & divalidasi, siap disimpan."""
+    """A new version that has been received & validated, ready to store."""
 
     id: str
     content_hash: str
@@ -72,7 +72,7 @@ class NewVersion:
 
 @dataclass(frozen=True)
 class PendingUpload:
-    """Upload yang mirip dokumen Library dan menunggu keputusan user (A §6.3)."""
+    """An upload that resembles a Library document and waits for the user's choice (A §6.3)."""
 
     id: str
     user_id: str
@@ -119,7 +119,7 @@ class VersionOut(BaseModel):
     def from_version(cls, v: DocumentVersion) -> VersionOut:
         warnings = []
         if v.vision_failed:
-            warnings.append(f"{v.vision_failed} gambar tidak terbaca")
+            warnings.append(f"{v.vision_failed} image(s) could not be read")
         return cls(
             id=v.id,
             document_id=v.document_id,
@@ -171,7 +171,7 @@ class DocumentDetailOut(DocumentOut):
 
 
 class UploadFileResult(BaseModel):
-    """Hasil per file dalam satu batch upload."""
+    """Result per file in one upload batch."""
 
     filename: str
     status: Literal["queued", "existing", "rejected", "similar"]
@@ -180,7 +180,7 @@ class UploadFileResult(BaseModel):
     stage: str | None = None
     error_code: str | None = None
     error_message: str | None = None
-    # status "similar": file disimpan sementara, menunggu POST .../pending/{id}/resolve
+    # status "similar": the file is kept temporarily, waiting for POST .../pending/{id}/resolve
     pending_id: str | None = None
     similar_document_id: str | None = None
     similar_document_name: str | None = None

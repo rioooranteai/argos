@@ -1,1 +1,1 @@
-"""Observability: catatan panggilan AI (DESIGN_GROUP_C.md §7)."""
+"""Observability: AI call records (DESIGN_GROUP_C.md §7)."""

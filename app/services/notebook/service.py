@@ -1,4 +1,4 @@
-"""Use case Notebook: ruang kerja pribadi berisi maks. N sumber dari Library.
+"""Notebook use cases: a private workspace with at most N sources from the Library.
 
 (DESIGN_GROUP_A.md §6.2–6.5)
 """
@@ -56,11 +56,11 @@ class NotebookService:
     def get(self, user: CurrentUser, notebook_id: str) -> Notebook:
         notebook = self._repo.get(notebook_id, user.id)
         if notebook is None:
-            raise NotFoundError("Notebook tidak ditemukan.")
+            raise NotFoundError("Notebook not found.")
         return notebook
 
     def open(self, user: CurrentUser, notebook_id: str) -> Notebook:
-        """Seperti `get`, sekaligus mencatat notebook ini sebagai yang terakhir dibuka."""
+        """Like `get`, and also records this notebook as the last opened one."""
         notebook = self.get(user, notebook_id)
         self._repo.mark_opened(notebook_id)
         return notebook
@@ -77,7 +77,7 @@ class NotebookService:
             self._maybe_cancel(user, source)
             self._library_svc.purge_if_unused(source.document_id)
 
-    # ── Sumber ─────────────────────────────────────────────────────────
+    # ── Sources ────────────────────────────────────────────────────────
 
     def sources(self, user: CurrentUser, notebook_id: str) -> list[NotebookSource]:
         self.get(user, notebook_id)
@@ -87,7 +87,7 @@ class NotebookService:
         self, user: CurrentUser, notebook_id: str, document_ids: list[str]
     ) -> list[NotebookSource]:
         self.get(user, notebook_id)
-        for document_id in dict.fromkeys(document_ids):  # buang duplikat, jaga urutan
+        for document_id in dict.fromkeys(document_ids):  # drop duplicates, keep the order
             version_id = self._pinnable_version(document_id)
             self._add(notebook_id, document_id, version_id)
         return self._repo.list_sources(notebook_id)
@@ -95,12 +95,12 @@ class NotebookService:
     async def upload(
         self, user: CurrentUser, notebook_id: str, files: list[UploadFile]
     ) -> tuple[list[UploadFileResult], list[NotebookSource]]:
-        """Upload ke Library lalu langsung pasang ke notebook (dibatasi sisa slot)."""
+        """Upload to the Library and add to the notebook right away (limited to the free slots)."""
         self.get(user, notebook_id)
         remaining = self._max - len(self._repo.list_sources(notebook_id))
         if remaining <= 0:
             raise ValidationError(
-                f"Notebook sudah berisi {self._max} sumber (maksimal).", code="NOTEBOOK_FULL"
+                f"The notebook already has {self._max} sources (the maximum).", code="NOTEBOOK_FULL"
             )
         results = await self._library_svc.upload_documents(user, files, max_files=remaining)
         for r in results:
@@ -108,8 +108,8 @@ class NotebookService:
                 try:
                     self._add(notebook_id, r.document_id, r.version_id)
                 except ValidationError:
-                    # Kalah balapan dengan penambahan lain: dokumen tetap ada di Library.
-                    logger.info("Notebook %s penuh; %s tidak dipasang.", notebook_id, r.document_id)
+                    # Lost the race to another add: the document stays in the Library.
+                    logger.info("Notebook %s is full; %s was not added.", notebook_id, r.document_id)
         return results, self._repo.list_sources(notebook_id)
 
     async def resolve_pending(
@@ -119,10 +119,10 @@ class NotebookService:
         pending_id: str,
         action: Literal["new_version", "separate"],
     ) -> tuple[UploadFileResult, list[NotebookSource]]:
-        """Selesaikan upload yang mirip dokumen Library, lalu pasang hasilnya ke notebook.
+        """Resolve an upload that resembles a Library document, then add the result to the notebook.
 
-        Bila dokumen sudah ada di notebook (pilihan "versi baru"), pin lama dipertahankan;
-        badge "versi baru tersedia" muncul setelah versi baru siap (A §6.3–6.4).
+        If the document is already in the notebook (the "new version" choice), the old pin is kept;
+        the "new version available" badge appears once the new version is ready (A §6.3–6.4).
         """
         self.get(user, notebook_id)
         result = await self._library_svc.resolve_pending(user, pending_id, action)
@@ -130,7 +130,7 @@ class NotebookService:
             try:
                 self._add(notebook_id, result.document_id, result.version_id)
             except ValidationError:
-                logger.info("Notebook %s penuh; %s tidak dipasang.", notebook_id, result.document_id)
+                logger.info("Notebook %s is full; %s was not added.", notebook_id, result.document_id)
         return result, self._repo.list_sources(notebook_id)
 
     def update_source(
@@ -146,7 +146,7 @@ class NotebookService:
             self._repo.set_enabled(notebook_id, document_id, enabled)
         if use_latest_version:
             if not source.latest_version_id:
-                raise ValidationError("Belum ada versi yang siap dipakai.", code="NO_READY_VERSION")
+                raise ValidationError("No version is ready to use yet.", code="NO_READY_VERSION")
             self._repo.set_version(notebook_id, document_id, source.latest_version_id)
         self._repo.touch(notebook_id)
         return self._repo.list_sources(notebook_id)
@@ -169,33 +169,33 @@ class NotebookService:
         for s in self.sources(user, notebook_id):
             if s.document_id == document_id:
                 return s
-        raise NotFoundError("Sumber tidak ada di notebook ini.")
+        raise NotFoundError("This source is not in this notebook.")
 
     def _add(self, notebook_id: str, document_id: str, version_id: str) -> None:
         try:
             self._repo.add_source(notebook_id, document_id, version_id, self._max)
         except SourceLimitReached:
             raise ValidationError(
-                f"Notebook sudah berisi {self._max} sumber (maksimal).", code="NOTEBOOK_FULL"
+                f"The notebook already has {self._max} sources (the maximum).", code="NOTEBOOK_FULL"
             ) from None
 
     def _pinnable_version(self, document_id: str) -> str:
-        """Versi ready terbaru; jika belum ada, versi terbaru yang masih diproses."""
+        """The latest ready version; if there is none, the latest one still being processed."""
         document = self._library.get_document(document_id)
         if document is None or document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan di Library.")
+            raise NotFoundError("Document not found in the Library.")
         if document.latest_version_id:
             return document.latest_version_id
         for v in self._library.list_versions(document_id):
             if v.stage not in FINAL_STAGES:
                 return v.id
         raise ValidationError(
-            "Dokumen ini belum berhasil diproses. Upload ulang file-nya.", code="NO_READY_VERSION"
+            "This document has not been processed successfully. Upload the file again.", code="NO_READY_VERSION"
         )
 
     def _maybe_cancel(self, user: CurrentUser, source: NotebookSource) -> None:
-        """Batalkan pemrosesan bila sumber yang dilepas masih diproses, diunggah user ini,
-        dan tidak dipakai notebook lain (B §9). Dokumen tetap ada di Library."""
+        """Cancel processing when the removed source is still being processed, was uploaded
+        by this user, and no other notebook uses it (B §9). The document stays in the Library."""
         if source.stage in FINAL_STAGES or source.stage == STAGE_READY:
             return
         version = self._library.get_version(source.version_id)
@@ -204,11 +204,11 @@ class NotebookService:
         if self._repo.count_version_pins(source.version_id) > 0:
             return
         self._jobs.request_cancel(source.version_id)
-        logger.info("Pemrosesan versi %s dibatalkan (sumber dilepas).", source.version_id)
+        logger.info("Processing of version %s cancelled (source removed).", source.version_id)
 
 
 def _clean_title(title: str) -> str:
     cleaned = " ".join(title.split())
     if not cleaned:
-        raise ValidationError("Judul notebook tidak boleh kosong.")
+        raise ValidationError("The notebook title cannot be empty.")
     return cleaned[:200]

@@ -11,7 +11,7 @@ Purpose = Literal[
 
 @dataclass
 class LLMCall:
-    """Satu panggilan ke layanan AI. Tidak pernah berisi prompt atau isi dokumen."""
+    """One call to an AI service. Never contains prompts or document content."""
 
     purpose: str
     model: str
@@ -22,5 +22,5 @@ class LLMCall:
     output_tokens: int | None = None
     request_id: str | None = None
     version_id: str | None = None
-    message_id: str | None = None  # UUID pesan user pemicu
+    message_id: str | None = None  # UUID of the triggering user message
     ts: datetime = field(default_factory=lambda: datetime.now(UTC))

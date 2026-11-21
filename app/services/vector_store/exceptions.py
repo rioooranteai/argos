@@ -1,18 +1,18 @@
 class VectorStoreError(Exception):
-    """Base exception untuk semua error vector store."""
+    """Base exception for every vector store error."""
     pass
 
 
 class UnsupportedProviderError(VectorStoreError):
-    """Provider yang diminta tidak tersedia."""
+    """The requested provider is not available."""
     pass
 
 
 class VectorStoreInsertError(VectorStoreError):
-    """Gagal menyimpan data ke vector store."""
+    """Failed to store data in the vector store."""
     pass
 
 
 class VectorStoreSearchError(VectorStoreError):
-    """Gagal melakukan pencarian di vector store."""
+    """Failed to search the vector store."""
     pass

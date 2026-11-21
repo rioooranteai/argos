@@ -1,12 +1,12 @@
-"""Use case Library: upload (idempoten), daftar, detail, ganti nama.
+"""Library use cases: upload (idempotent), list, details, rename.
 
-Pemrosesan dokumen TIDAK terjadi di sini. Upload hanya menyimpan file ke
-folder antrean (``<queue>/<version_id><ext>``) dan mencatat versi berstatus
-``queued``; worker (DESIGN_GROUP_B.md §3) yang memprosesnya.
+Documents are NOT processed here. An upload only stores the file in the queue
+folder (``<queue>/<version_id><ext>``) and records a version with status
+``queued``; the worker (DESIGN_GROUP_B.md §3) processes it.
 
-Upload dokumen baru yang isinya mirip dokumen Library (Tahap 3, A §6.3) tidak
-langsung didaftarkan: file disimpan sebagai *pending* (``<queue>/pending-<id><ext>``)
-sampai user memilih "versi baru" atau "dokumen terpisah".
+A new document whose content resembles a Library document (stage 3, A §6.3) is
+not registered right away: the file is kept as *pending* (``<queue>/pending-<id><ext>``)
+until the user chooses "new version" or "separate document".
 """
 from __future__ import annotations
 
@@ -55,12 +55,12 @@ class _VectorDeleter(Protocol):
 
 
 def queued_file_path(queue_dir: Path, version_id: str, ext: str) -> Path:
-    """Lokasi file asli sebuah versi selama menunggu/diproses worker."""
+    """Where a version's original file lives while it waits for / is processed by the worker."""
     return queue_dir / f"{version_id}{ext}"
 
 
 def pending_file_path(queue_dir: Path, pending_id: str, ext: str) -> Path:
-    """Lokasi file upload yang menunggu keputusan "versi baru / dokumen terpisah"."""
+    """Where an upload waiting for the "new version / separate document" choice lives."""
     return queue_dir / f"pending-{pending_id}{ext}"
 
 
@@ -86,18 +86,18 @@ class LibraryService:
     async def upload_documents(
         self, user: CurrentUser, files: list[UploadFile], max_files: int | None = None
     ) -> list[UploadFileResult]:
-        """Upload satu batch dokumen baru. Hasil dilaporkan per file.
+        """Upload one batch of new documents. Results are reported per file.
 
-        ``max_files`` dipakai pemanggil (mis. notebook) untuk membatasi ke sisa slot.
+        ``max_files`` lets the caller (e.g. a notebook) limit it to the remaining slots.
         """
         limit = self._cfg.UPLOAD_MAX_FILES_PER_BATCH
         if max_files is not None:
             limit = min(limit, max_files)
         if not files:
-            raise ValidationError("Pilih minimal satu file.", code="NO_FILES")
+            raise ValidationError("Choose at least one file.", code="NO_FILES")
         if len(files) > limit:
             raise ValidationError(
-                f"Maksimal {limit} file per upload.", code="TOO_MANY_FILES"
+                f"At most {limit} files per upload.", code="TOO_MANY_FILES"
             )
         self.purge_expired_pending()
 
@@ -106,11 +106,11 @@ class LibraryService:
         batch_limit = self._cfg.UPLOAD_MAX_BATCH_MB * _MB
         batch_bytes = 0
         batch_error = ValidationError(
-            f"Total upload melebihi {self._cfg.UPLOAD_MAX_BATCH_MB} MB.", code="BATCH_TOO_LARGE"
+            f"The upload is larger than {self._cfg.UPLOAD_MAX_BATCH_MB} MB in total.", code="BATCH_TOO_LARGE"
         )
 
         for file in files:
-            filename = PurePath((file.filename or "").replace("\\", "/")).name or "dokumen"
+            filename = PurePath((file.filename or "").replace("\\", "/")).name or "document"
             try:
                 self._check_extension(filename)
                 cap = min(per_file, batch_limit - batch_bytes)
@@ -119,7 +119,7 @@ class LibraryService:
                 try:
                     received = await receive_upload(file, self._queue_dir, cap)
                 except PayloadTooLarge:
-                    # Yang terlewati bisa batas batch (sisa kuota < batas per file).
+                    # The limit hit may be the batch limit (remaining quota < per-file limit).
                     if cap < per_file:
                         raise batch_error from None
                     raise
@@ -141,9 +141,9 @@ class LibraryService:
     ) -> UploadFileResult:
         document = self._repo.get_document(document_id)
         if document is None or document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan.")
+            raise NotFoundError("Document not found.")
 
-        filename = PurePath((file.filename or "").replace("\\", "/")).name or "dokumen"
+        filename = PurePath((file.filename or "").replace("\\", "/")).name or "document"
         self._check_extension(filename)
         received = await receive_upload(file, self._queue_dir, self._cfg.UPLOAD_MAX_FILE_MB * _MB)
         try:
@@ -152,47 +152,47 @@ class LibraryService:
             if existing is not None:
                 if existing.document_id != document_id:
                     raise ConflictError(
-                        "File ini sudah ada di Library sebagai dokumen lain.",
+                        "This file is already in the Library as a different document.",
                         code="FILE_BELONGS_TO_OTHER_DOCUMENT",
                         details={"document_id": existing.document_id},
                     )
                 return self._handle_existing(user, existing, received)
-            # Upload versi eksplisit tidak dicek kemiripannya, tetapi sidiknya disimpan
-            # agar versi ini menjadi pembanding upload berikutnya.
+            # An explicit version upload is not similarity-checked, but its fingerprint is
+            # stored so this version is compared against future uploads.
             sketch = await asyncio.to_thread(self._fingerprint, received)
             return self._create_version(user, document_id, received, page_count, sketch)
         finally:
             received.path.unlink(missing_ok=True)
 
-    # ── Upload yang mirip dokumen Library (Tahap 3, A §6.3) ──────────────
+    # ── Uploads that resemble a Library document (stage 3, A §6.3) ──────
 
     async def resolve_pending(
         self, user: CurrentUser, pending_id: str, action: Literal["new_version", "separate"]
     ) -> UploadFileResult:
-        """Selesaikan upload *pending*: jadikan versi baru dokumen kandidat, atau dokumen terpisah."""
+        """Resolve a *pending* upload: make it a new version of the candidate, or a separate document."""
         self.purge_expired_pending()
         pending = self._repo.get_pending(pending_id)
         if pending is None or pending.user_id != user.id:
             raise NotFoundError(
-                "Upload ini sudah kedaluwarsa atau sudah diproses. Upload ulang file-nya.",
+                "This upload has expired or was already handled. Upload the file again.",
                 code="PENDING_UPLOAD_NOT_FOUND",
             )
         if action == "new_version":
             target = self._repo.get_document(pending.candidate_document_id)
             if target is None or target.status != "active":
                 raise ConflictError(
-                    "Dokumen yang mirip sudah dihapus. Simpan sebagai dokumen terpisah.",
+                    "The similar document was deleted. Save it as a separate document.",
                     code="SIMILAR_DOCUMENT_GONE",
                 )
-        # Klaim: hanya satu request yang bisa menyelesaikan pending ini.
+        # Claim: only one request can resolve this pending upload.
         if not self._repo.delete_pending(pending_id):
             raise NotFoundError(
-                "Upload ini sudah diproses.", code="PENDING_UPLOAD_NOT_FOUND"
+                "This upload was already handled.", code="PENDING_UPLOAD_NOT_FOUND"
             )
         path = pending_file_path(self._queue_dir, pending.id, pending.file_ext)
         if not path.exists():
             raise NotFoundError(
-                "File upload sudah tidak ada. Upload ulang file-nya.", code="PENDING_UPLOAD_NOT_FOUND"
+                "The uploaded file is gone. Upload the file again.", code="PENDING_UPLOAD_NOT_FOUND"
             )
         received = ReceivedFile(
             path=path,
@@ -203,7 +203,7 @@ class LibraryService:
         )
         try:
             existing = self._repo.find_version_by_hash(pending.content_hash)
-            if existing is not None:  # file identik masuk lewat jalur lain sementara menunggu
+            if existing is not None:  # an identical file came in another way while waiting
                 return self._handle_existing(user, existing, received)
             if action == "separate":
                 return self._create_document(user, received, pending.page_count, pending.fingerprint)
@@ -214,14 +214,14 @@ class LibraryService:
             path.unlink(missing_ok=True)
 
     def purge_expired_pending(self) -> int:
-        """Hapus upload *pending* yang tidak diputuskan dalam batas waktu (file + baris)."""
+        """Delete *pending* uploads not resolved in time (file + row)."""
         purged = 0
         for pending in self._repo.list_expired_pending(self._cfg.PENDING_UPLOAD_TTL_MINUTES):
             if self._repo.delete_pending(pending.id):
                 pending_file_path(self._queue_dir, pending.id, pending.file_ext).unlink(missing_ok=True)
                 purged += 1
         if purged:
-            logger.info("%d upload pending kedaluwarsa dihapus.", purged)
+            logger.info("Deleted %d expired pending uploads.", purged)
         return purged
 
     # ── Query ──────────────────────────────────────────────────────────
@@ -234,77 +234,77 @@ class LibraryService:
     def get_document(self, document_id: str) -> tuple[DocumentListItem, list[DocumentVersion]]:
         item = self._repo.get_document_item(document_id)
         if item is None or item.document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan.")
+            raise NotFoundError("Document not found.")
         return item, self._repo.list_versions(document_id)
 
     def get_version(self, version_id: str) -> DocumentVersion:
         version = self._repo.get_version(version_id)
         if version is None:
-            raise NotFoundError("Versi dokumen tidak ditemukan.")
+            raise NotFoundError("Document version not found.")
         return version
 
     def rename_document(self, user: CurrentUser, document_id: str, display_name: str) -> DocumentListItem:
         document = self._repo.get_document(document_id)
         if document is None or document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan.")
+            raise NotFoundError("Document not found.")
         if document.owner_id != user.id and not user.is_admin:
-            raise PermissionDenied("Hanya pengunggah yang dapat mengganti nama dokumen.")
+            raise PermissionDenied("Only the uploader can rename this document.")
         name = " ".join(display_name.split())
         if not name:
-            raise ValidationError("Nama dokumen tidak boleh kosong.")
+            raise ValidationError("The document name cannot be empty.")
         self._repo.rename_document(document_id, name)
         return self._repo.get_document_item(document_id)
 
-    # ── Hapus / arsip (tahap 2, DESIGN_GROUP_A.md §6.6–6.7) ──────────
+    # ── Delete / archive (stage 2, DESIGN_GROUP_A.md §6.6–6.7) ───────
 
     def delete_document(self, user: CurrentUser, document_id: str) -> Literal["deleted", "archived"]:
         document = self._repo.get_document(document_id)
         if document is None or document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan.")
+            raise NotFoundError("Document not found.")
         self._check_can_manage(user, document.owner_id)
 
-        # Notebook milik pemilik sendiri dilepas; notebook orang lain tidak disentuh.
+        # The owner's own notebooks drop the source; other users' notebooks are left alone.
         self._repo.detach_from_owner_notebooks(document_id, document.owner_id)
         if self._repo.count_notebook_uses(document_id) > 0:
             self._repo.archive_document(document_id)
-            logger.info("Dokumen %s diarsipkan (masih dipakai notebook lain).", document_id)
+            logger.info("Document %s archived (still used by another notebook).", document_id)
             return "archived"
 
         self._purge(document_id)
-        logger.info("Dokumen %s dihapus permanen.", document_id)
+        logger.info("Document %s permanently deleted.", document_id)
         return "deleted"
 
     def purge_if_unused(self, document_id: str) -> bool:
-        """Hapus permanen dokumen ARSIP yang sudah tidak dipakai notebook mana pun."""
+        """Permanently delete an ARCHIVED document that no notebook uses any more."""
         document = self._repo.get_document(document_id)
         if document is None or document.status != "archived":
             return False
         if self._repo.count_notebook_uses(document_id) > 0:
             return False
         self._purge(document_id)
-        logger.info("Dokumen arsip %s dihapus permanen (tidak dipakai lagi).", document_id)
+        logger.info("Archived document %s permanently deleted (no longer used).", document_id)
         return True
 
     def delete_version(self, user: CurrentUser, document_id: str, version_id: str) -> None:
         document = self._repo.get_document(document_id)
         if document is None or document.status != "active":
-            raise NotFoundError("Dokumen tidak ditemukan.")
+            raise NotFoundError("Document not found.")
         self._check_can_manage(user, document.owner_id)
 
         versions = self._repo.list_versions(document_id)
         version = next((v for v in versions if v.id == version_id), None)
         if version is None:
-            raise NotFoundError("Versi dokumen tidak ditemukan.")
+            raise NotFoundError("Document version not found.")
         if len(versions) == 1:
             raise ConflictError(
-                "Ini satu-satunya versi. Hapus dokumennya jika tidak dipakai lagi.",
+                "This is the only version. Delete the document if it is no longer needed.",
                 code="ONLY_VERSION",
             )
         pins = self._repo.count_version_pins(version_id)
         if pins:
             raise ConflictError(
-                f"Versi {version.version_no} masih dipakai di {pins} notebook. "
-                "Minta pemakainya beralih ke versi lain dulu.",
+                f"Version {version.version_no} is still used in {pins} notebook(s). "
+                "Ask its users to switch to another version first.",
                 code="VERSION_IN_USE",
                 details={"notebooks": pins},
             )
@@ -314,12 +314,12 @@ class LibraryService:
         try:
             self._repo.delete_version(document_id, version_id)
         except sqlite3.IntegrityError:
-            # Ada notebook yang mem-pin versi ini di antara pengecekan dan penghapusan.
+            # A notebook pinned this version between the check and the delete.
             raise ConflictError(
-                f"Versi {version.version_no} baru saja dipakai di notebook.", code="VERSION_IN_USE"
+                f"Version {version.version_no} was just added to a notebook.", code="VERSION_IN_USE"
             ) from None
         self._remove_version_data(version)
-        logger.info("Versi %s (v%s) dokumen %s dihapus.", version_id, version.version_no, document_id)
+        logger.info("Version %s (v%s) of document %s deleted.", version_id, version.version_no, document_id)
 
     def _purge(self, document_id: str) -> None:
         versions = self._repo.list_versions(document_id)
@@ -331,10 +331,10 @@ class LibraryService:
             self._repo.delete_document(document_id)
         except sqlite3.IntegrityError:
             raise ConflictError(
-                "Dokumen baru saja dipakai di notebook lain. Coba lagi.", code="DOCUMENT_IN_USE"
+                "The document was just added to another notebook. Try again.", code="DOCUMENT_IN_USE"
             ) from None
-        # Database dulu, baru vektor & file: vektor yatim tidak pernah terbaca chat
-        # (versinya sudah tidak ada), sedangkan kebalikannya merusak versi yang masih ada.
+        # Database first, then vectors & files: orphan vectors are never read by chat
+        # (their version no longer exists), while the reverse would break a live version.
         for v in versions:
             self._remove_version_data(v)
 
@@ -343,7 +343,7 @@ class LibraryService:
             try:
                 self._vectors.delete_version(version.id)
             except Exception:
-                logger.exception("Vektor versi %s gagal dihapus (tidak terlihat oleh chat).", version.id)
+                logger.exception("Failed to delete vectors of version %s (they are invisible to chat).", version.id)
         queued_file_path(self._queue_dir, version.id, version.file_ext).unlink(missing_ok=True)
 
     def _check_can_manage(self, user: CurrentUser, owner_id: str) -> None:
@@ -354,7 +354,7 @@ class LibraryService:
             if owner is None or not owner.is_active:
                 return
         raise PermissionDenied(
-            "Hanya pengunggah dokumen yang bisa menghapusnya.", code="NOT_DOCUMENT_OWNER"
+            "Only the document's uploader can delete it.", code="NOT_DOCUMENT_OWNER"
         )
 
     # ── Internal ───────────────────────────────────────────────────────
@@ -363,13 +363,13 @@ class LibraryService:
         ext = PurePath(filename).suffix.lower()
         if ext not in self._cfg.UPLOAD_ALLOWED_EXTENSIONS:
             allowed = ", ".join(e.lstrip(".").upper() for e in self._cfg.UPLOAD_ALLOWED_EXTENSIONS)
-            raise ValidationError(f"Format tidak didukung. Gunakan {allowed}.", code="UNSUPPORTED_FILE_TYPE")
+            raise ValidationError(f"Unsupported format. Use {allowed}.", code="UNSUPPORTED_FILE_TYPE")
 
     def _validate_pages(self, received: ReceivedFile) -> int | None:
         pages = count_pages(received.path, received.ext)
         if pages is not None and pages > self._cfg.UPLOAD_MAX_PAGES:
             raise ValidationError(
-                f"Dokumen {pages} halaman melebihi batas {self._cfg.UPLOAD_MAX_PAGES} halaman.",
+                f"The document has {pages} pages, over the {self._cfg.UPLOAD_MAX_PAGES}-page limit.",
                 code="TOO_MANY_PAGES",
             )
         return pages
@@ -387,7 +387,7 @@ class LibraryService:
                 return self._hold_pending(user, received, page_count, sketch, similar)
             return self._create_document(user, received, page_count, sketch)
         finally:
-            received.path.unlink(missing_ok=True)  # no-op bila file sudah dipindah
+            received.path.unlink(missing_ok=True)  # no-op when the file was already moved
 
     def _create_document(
         self, user: CurrentUser, received: ReceivedFile, page_count: int | None, sketch: bytes | None
@@ -400,10 +400,10 @@ class LibraryService:
             owner_id=user.id,
             version=new,
         )
-        if version is None:  # upload identik lain menang lebih dulu
+        if version is None:  # another identical upload won first
             return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
         self._move_to_queue(received, version)
-        logger.info("Dokumen baru %s (versi %s) masuk antrean", version.document_id, version.id)
+        logger.info("New document %s (version %s) queued", version.document_id, version.id)
         return self._result(received, "queued", version)
 
     def _create_version(
@@ -416,10 +416,10 @@ class LibraryService:
     ) -> UploadFileResult:
         new = self._new_version(user, received, page_count, sketch)
         version = self._repo.create_next_version(document_id, new)
-        if version is None:  # kalah balapan dengan upload identik
+        if version is None:  # lost the race to an identical upload
             return self._handle_existing(user, self._repo.find_version_by_hash(received.sha256), received)
         self._move_to_queue(received, version)
-        logger.info("Versi baru v%s untuk dokumen %s (%s)", version.version_no, document_id, version.id)
+        logger.info("New version v%s for document %s (%s)", version.version_no, document_id, version.id)
         return self._result(received, "queued", version)
 
     def _fingerprint(self, received: ReceivedFile) -> bytes | None:
@@ -459,7 +459,7 @@ class LibraryService:
             self._repo.delete_pending(pending.id)
             raise
         logger.info(
-            "Upload %r mirip dokumen %s (skor %.3f); menunggu keputusan user.",
+            "Upload %r resembles document %s (score %.3f); waiting for the user's choice.",
             received.original_filename, similar.document_id, similar.score,
         )
         return UploadFileResult(
@@ -474,15 +474,15 @@ class LibraryService:
     def _handle_existing(
         self, user: CurrentUser, existing: DocumentVersion | None, received: ReceivedFile
     ) -> UploadFileResult:
-        if existing is None:  # sangat jarang: versi terhapus di antara dua query
-            raise ConflictError("Upload bertabrakan dengan proses lain. Coba lagi.", retryable=True)
+        if existing is None:  # very rare: the version was deleted between two queries
+            raise ConflictError("The upload collided with another operation. Try again.", retryable=True)
         if existing.stage in RECLAIMABLE_STAGES:
-            # Upload ulang file yang sebelumnya gagal/dibatalkan → proses ulang.
+            # Re-upload of a file that previously failed/was cancelled → process it again.
             self._move_to_queue(received, existing)
             version = self._repo.requeue_version(existing.id, user.id)
-            logger.info("Versi %s (%s) diproses ulang", version.id, existing.stage)
+            logger.info("Reprocessing version %s (%s)", version.id, existing.stage)
             return self._result(received, "queued", version)
-        # Sudah ready atau sedang diproses → pakai yang ada, tanpa biaya.
+        # Already ready or being processed → reuse it, at no cost.
         return self._result(received, "existing", existing)
 
     def _new_version(

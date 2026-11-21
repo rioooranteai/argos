@@ -15,10 +15,10 @@ _MAX_TITLE_CHARS = 60
 _FALLBACK_TITLE = "New chat"
 
 _TITLE_SYSTEM_PROMPT = (
-    "Anda generator judul ringkas untuk thread chat. "
-    "Berdasarkan pesan pertama user, hasilkan judul maksimal 5 kata, "
-    "dalam Bahasa Indonesia, tanpa tanda kutip, tanpa titik di akhir, "
-    "tanpa emoji. Judul deskriptif — bukan greeting, bukan pertanyaan ulang."
+    "You write short titles for chat threads. "
+    "From the user's first message, write a title of at most 5 words, "
+    "in the same language as that message, with no quotes, no trailing period "
+    "and no emoji. The title is descriptive — not a greeting, not the question repeated."
 )
 
 
@@ -132,7 +132,7 @@ class ConversationService:
         return msg
 
     def mark_failed(self, message_id: str, error_code: str) -> None:
-        """Pesan user tidak mendapat jawaban (DESIGN_GROUP_C.md §4)."""
+        """A user message got no answer (DESIGN_GROUP_C.md §4)."""
         self._repo.set_message_status(message_id, "failed", error_code)
 
     def prepare_retry(
@@ -142,22 +142,22 @@ class ConversationService:
             message_id: str,
             source_snapshot: list[str],
     ) -> Message:
-        """Validasi & buka kembali pesan user `failed` untuk dijalankan ulang.
+        """Validate & reopen a `failed` user message so it can run again.
 
-        Hanya pesan terakhir di percakapan yang boleh dikirim ulang, agar jawabannya
-        tidak muncul setelah tanya-jawab yang lebih baru.
+        Only the last message in the conversation may be resent, so its answer
+        cannot appear after a newer question and answer.
         """
         if self._repo.get_conversation(conversation_id, user_id) is None:
-            raise NotFoundError("Percakapan tidak ditemukan.")
+            raise NotFoundError("Conversation not found.")
         msg = self._repo.get_message(message_id)
         if msg is None or msg.conversation_id != conversation_id or msg.role != "user":
-            raise NotFoundError("Pesan tidak ditemukan.", code="MESSAGE_NOT_FOUND")
+            raise NotFoundError("Message not found.", code="MESSAGE_NOT_FOUND")
         if msg.status != "failed":
-            raise ConflictError("Pesan ini tidak gagal, jadi tidak perlu dikirim ulang.",
+            raise ConflictError("This message did not fail, so there is nothing to resend.",
                                 code="MESSAGE_NOT_FAILED")
         latest = self._repo.list_messages(conversation_id)[-1]
         if latest.id != msg.id:
-            raise ConflictError("Hanya pesan terakhir yang bisa dikirim ulang.",
+            raise ConflictError("Only the last message can be resent.",
                                 code="MESSAGE_NOT_LATEST")
         self._repo.set_message_status(message_id, "ok", None, source_snapshot=source_snapshot)
         self._repo.touch(conversation_id)
@@ -170,7 +170,7 @@ class ConversationService:
     def get_messages_for_engine(
             self, conversation_id: str, user_id: str
     ) -> list[Message] | None:
-        """Riwayat untuk chat engine: hanya pesan `ok` (pesan gagal tidak masuk LLM).
+        """History for the chat engine: `ok` messages only (failed ones never reach the LLM).
 
         Returns None if conversation is not owned by user.
         """
@@ -193,9 +193,9 @@ class ConversationService:
             return
 
         prompt = (
-            "Pesan pertama user:\n"
+            "The user's first message:\n"
             f"\"{first_user_message.strip()}\"\n\n"
-            "Buat judul thread (maks 5 kata, Bahasa Indonesia, tanpa tanda kutip)."
+            "Write the thread title (max 5 words, same language as the message, no quotes)."
         )
 
         try:

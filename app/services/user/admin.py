@@ -1,4 +1,4 @@
-"""Pengelolaan user oleh admin (DESIGN_GROUP_A.md §4, tahap 2)."""
+"""User management by the admin (DESIGN_GROUP_A.md §4, stage 2)."""
 from __future__ import annotations
 
 import logging
@@ -30,18 +30,18 @@ class AdminService:
     def set_active(self, admin: CurrentUser, user_id: str, active: bool) -> DeactivationResult:
         target = self._users.get(user_id)
         if target is None:
-            raise NotFoundError("User tidak ditemukan.")
+            raise NotFoundError("User not found.")
         if target.id == admin.id or is_admin(target.email):
-            raise ValidationError("Admin tidak bisa dinonaktifkan.", code="CANNOT_DEACTIVATE_ADMIN")
+            raise ValidationError("The admin cannot be deactivated.", code="CANNOT_DEACTIVATE_ADMIN")
 
         self._users.set_active(user_id, active)
         transferred = 0
         if not active:
-            # Dokumen tetap bisa dikelola (dihapus/diarsipkan) oleh admin.
+            # The documents can still be managed (deleted/archived) by the admin.
             transferred = self._library.transfer_ownership(user_id, admin.id)
             logger.info(
-                "User %s dinonaktifkan oleh %s; %d dokumen dialihkan.", target.email, admin.email, transferred
+                "User %s deactivated by %s; %d document(s) transferred.", target.email, admin.email, transferred
             )
         else:
-            logger.info("User %s diaktifkan kembali oleh %s.", target.email, admin.email)
+            logger.info("User %s reactivated by %s.", target.email, admin.email)
         return DeactivationResult(user=self._users.get(user_id), documents_transferred=transferred)

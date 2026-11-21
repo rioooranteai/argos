@@ -23,11 +23,11 @@ class VectorStoreFactory:
     ) -> BaseVectorStoreProvider:
         if provider not in cls._providers:
             raise UnsupportedProviderError(
-                f"Provider '{provider}' tidak tersedia. "
-                f"Pilihan yang valid: {cls.available_providers()}"
+                f"Provider '{provider}' is not available. "
+                f"Valid choices: {cls.available_providers()}"
             )
 
-        logger.info(f"Membuat VectorStore provider: '{provider}'")
+        logger.info(f"Creating VectorStore provider: '{provider}'")
         return cls._providers[provider](embedder=embedder, **kwargs)
 
     @classmethod
@@ -36,6 +36,6 @@ class VectorStoreFactory:
 
     @classmethod
     def register(cls, name: str, provider_class: type[BaseVectorStoreProvider]) -> None:
-        """Daftarkan provider baru secara dinamis."""
+        """Register a new provider at runtime."""
         cls._providers[name] = provider_class
-        logger.info(f"Provider '{name}' berhasil didaftarkan.")
+        logger.info(f"Provider '{name}' registered.")

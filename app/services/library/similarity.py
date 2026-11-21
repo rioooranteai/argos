@@ -1,13 +1,13 @@
-"""Sidik teks dokumen untuk saran "mirip dengan dokumen Library" (DESIGN_GROUP_A.md §6.3).
+"""Document text fingerprints for the "similar to a Library document" suggestion (DESIGN_GROUP_A.md §6.3).
 
-Metode (dikalibrasi pada data/eval_corpus, lihat IMPLEMENTATION_PLAN_AB.md §4 Tahap 3):
-  - teks diambil dari text layer PDF (pypdfium2, tanpa Docling) atau file MD apa adanya;
-  - huruf kecil, setiap angka → "#", agar perubahan harga (inti versi baru sebuah
-    price list) tidak menurunkan skor;
-  - shingle 5 kata → sketsa bottom-k (k nilai hash 64-bit terkecil);
-  - skor = estimasi Jaccard dari dua sketsa.
+Method (calibrated on data/eval_corpus, see IMPLEMENTATION_PLAN_AB.md §4 stage 3):
+  - text comes from the PDF text layer (pypdfium2, no Docling) or the MD file as is;
+  - lowercased, every digit → "#", so price changes (the point of a new price-list
+    version) do not lower the score;
+  - 5-word shingles → a bottom-k sketch (the k smallest 64-bit hash values);
+  - score = the Jaccard estimate of two sketches.
 
-Hanya saran: hasilnya tidak pernah memindahkan dokumen tanpa konfirmasi user.
+Only a suggestion: it never moves a document without the user's confirmation.
 """
 from __future__ import annotations
 
@@ -35,12 +35,12 @@ class SimilarDocument:
 
 
 def extract_text(path: Path, ext: str) -> str:
-    """Teks mentah dokumen. String kosong bila tidak bisa dibaca (mis. PDF hasil scan)."""
+    """The raw document text. An empty string when it cannot be read (e.g. a scanned PDF)."""
     try:
         if ext == ".md":
             return path.read_text(encoding="utf-8", errors="ignore")
         if ext == ".pdf":
-            import pypdfium2 as pdfium  # dependensi Docling, sudah terpasang
+            import pypdfium2 as pdfium  # a Docling dependency, already installed
 
             pdf = pdfium.PdfDocument(str(path))
             try:
@@ -56,8 +56,8 @@ def extract_text(path: Path, ext: str) -> str:
                 return "\n".join(parts)
             finally:
                 pdf.close()
-    except Exception:  # hanya untuk saran: gagal → tanpa saran
-        logger.info("Teks untuk sidik kemiripan tidak bisa dibaca (%s).", path.name, exc_info=True)
+    except Exception:  # only for the suggestion: failure → no suggestion
+        logger.info("Could not read the text for the similarity fingerprint (%s).", path.name, exc_info=True)
     return ""
 
 
@@ -71,8 +71,8 @@ def _shingle_hashes(text: str) -> set[int]:
 
 
 def fingerprint(text: str, min_shingles: int) -> bytes | None:
-    """Sketsa bottom-k (k × 8 byte, urut naik). None bila teks terlalu sedikit untuk
-    dibandingkan dengan andal."""
+    """A bottom-k sketch (k × 8 bytes, ascending). None when there is too little text
+    to compare reliably."""
     hashes = _shingle_hashes(text)
     if len(hashes) < min_shingles:
         return None
@@ -84,7 +84,7 @@ def _decode(sketch: bytes) -> list[int]:
 
 
 def similarity(a: bytes, b: bytes) -> float:
-    """Estimasi Jaccard dua sketsa bottom-k (eksak bila kedua himpunan ≤ k)."""
+    """Jaccard estimate of two bottom-k sketches (exact when both sets are ≤ k)."""
     sa, sb = _decode(a), _decode(b)
     if not sa or not sb:
         return 0.0
@@ -100,7 +100,7 @@ def most_similar(
     candidates: list[tuple[str, str, bytes]],
     threshold: float,
 ) -> SimilarDocument | None:
-    """Kandidat (document_id, nama, sketsa) dengan skor tertinggi ≥ ``threshold``."""
+    """The candidate (document_id, name, sketch) with the highest score ≥ ``threshold``."""
     best: SimilarDocument | None = None
     for document_id, name, other in candidates:
         score = similarity(sketch, other)

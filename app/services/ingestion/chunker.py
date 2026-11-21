@@ -1,9 +1,9 @@
-"""Bagian dokumen, unit ekstraksi, dan chunk vector (DESIGN_GROUP_A.md §3, B §7).
+"""Document sections, extraction units and vector chunks (DESIGN_GROUP_A.md §3, B §7).
 
-Alur:
-    elemen Docling → build_sections()      bagian per heading + section_hash isi-saja
-                   → build_units()         bagian kecil digabung → unit ekstraksi
-                   → build_index_chunks()  satu chunk per elemen untuk vector store
+Flow:
+    Docling elements → build_sections()      sections per heading + content-only section_hash
+                     → build_units()         small sections merged → extraction units
+                     → build_index_chunks()  one chunk per element for the vector store
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def image_hash(image_bytes: bytes) -> str:
 
 def _element_fingerprint(el: DocumentElement) -> str:
     if el.element_type == ElementType.FIGURE:
-        # Deskripsi Vision tidak deterministik → identitas gambar = hash byte-nya.
+        # Vision descriptions are not deterministic → an image's identity = the hash of its bytes.
         return "img:" + (el.metadata.get("image_hash") or "")
     return _normalize(el.content)
 
@@ -54,10 +54,10 @@ def _headings(el: DocumentElement) -> list[str]:
 
 
 def build_sections(elements: list[DocumentElement]) -> list[Section]:
-    """Kelompokkan elemen berurutan dengan heading yang sama menjadi satu bagian.
+    """Group consecutive elements with the same heading into one section.
 
-    Gambar dari Docling datang di akhir (bukan urutan baca), sehingga ditempatkan
-    ke bagian terakhir yang dimulai pada atau sebelum halaman gambar tersebut.
+    Docling returns images at the end (not in reading order), so each one goes into
+    the last section that starts on or before the image's page.
     """
     for el in elements:
         if el.element_type == ElementType.FIGURE and el.image_bytes:
@@ -80,7 +80,7 @@ def build_sections(elements: list[DocumentElement]) -> list[Section]:
             if els[0].page_number <= fig.page_number:
                 target = els
         if target is None:
-            groups.append(([], [fig]))  # dokumen tanpa teks (mis. hanya gambar)
+            groups.append(([], [fig]))  # a document without text (e.g. images only)
         else:
             target.append(fig)
 
@@ -89,7 +89,7 @@ def build_sections(elements: list[DocumentElement]) -> list[Section]:
     for ord_, (heads, els) in enumerate(groups):
         heading = heads[-1] if heads else ""
         h = _section_hash(heading, els)
-        # Dua bagian dengan isi identik (mis. footer berulang): bedakan agar PK unik.
+        # Two sections with identical content (e.g. a repeated footer): tell them apart so the PK is unique.
         if h in seen:
             seen[h] += 1
             h = hashlib.sha256(f"{h}:{seen[h]}".encode()).hexdigest()
@@ -114,10 +114,10 @@ def build_units(
     min_section_tokens: int,
     max_unit_tokens: int,
 ) -> list[ExtractionUnit]:
-    """Gabungkan bagian kecil dengan tetangganya (heading induk sama) sampai batas token.
+    """Merge small sections with their neighbours (same parent heading) up to the token limit.
 
-    Bagian yang lebih besar dari ``max_unit_tokens`` dipecah per elemen menjadi
-    beberapa unit; semua pecahan tetap membawa ``section_hash`` bagian aslinya.
+    A section larger than ``max_unit_tokens`` is split per element into several
+    units; every piece keeps the ``section_hash`` of its original section.
     """
     units: list[list[Section]] = []
     current: list[Section] = []
@@ -143,8 +143,8 @@ def build_units(
     result = []
     for group in units:
         labels = {f"S{i + 1}": s.section_hash for i, s in enumerate(group)}
-        # Hash isi unit (bukan hanya section_hash) agar pecahan bagian besar
-        # mendapat kunci cache yang berbeda.
+        # Hash the unit content (not just section_hash) so the pieces of a large
+        # section get different cache keys.
         unit_hash = hashlib.sha256(
             "|".join(f"{s.section_hash}:{_normalize(s.text)}" for s in group).encode()
         ).hexdigest()
@@ -191,14 +191,14 @@ def _part(section: Section, elements: list[DocumentElement]) -> Section:
 def build_index_chunks(
     sections: list[Section], document_id: str, version_id: str, display_name: str
 ) -> list[IndexChunk]:
-    """Satu chunk per elemen non-kosong. ID = hash(version_id + isi): unik antar versi."""
+    """One chunk per non-empty element. ID = hash(version_id + content): unique across versions."""
     chunks: list[IndexChunk] = []
     seen: set[str] = set()
     for section in sections:
         for el in section.elements:
             if not el.content or not el.content.strip():
                 continue
-            text = f"[Dokumen: {display_name}]\n{el.content.strip()}"
+            text = f"[Document: {display_name}]\n{el.content.strip()}"
             chunk_id = hashlib.sha256(f"{version_id}\x1f{text}".encode()).hexdigest()[:32]
             if chunk_id in seen:
                 continue

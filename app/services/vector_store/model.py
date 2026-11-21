@@ -6,7 +6,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class SearchHit:
-    """Hasil pencarian vector, bebas dari format respons provider (Chroma, dll.)."""
+    """A vector search result, independent of the provider's response format (Chroma, etc.)."""
 
     id: str
     text: str
@@ -16,7 +16,7 @@ class SearchHit:
 
 @dataclass(frozen=True)
 class AddChunksResult:
-    """Hasil penyimpanan chunk: ID yang tersimpan dan berapa yang vektornya dipakai ulang."""
+    """Result of storing chunks: the stored IDs and how many reused their vectors."""
 
     ids: list[str]
     reused: int = 0

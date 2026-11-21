@@ -1,9 +1,9 @@
-"""Docling di subprocess yang bisa dihentikan paksa (DESIGN_GROUP_B.md §4).
+"""Docling in a subprocess that can be force-stopped (DESIGN_GROUP_B.md §4).
 
-Thread Python tidak bisa di-kill: PDF bermasalah yang membuat Docling hang akan
-mengunci worker selamanya. Karena itu Docling berjalan di satu subprocess yang
-hidup terus (model tetap ter-load) dan dipakai bergantian. Jika melewati batas
-waktu, subprocess di-kill lalu dibuat ulang pada pemakaian berikutnya.
+A Python thread cannot be killed: a bad PDF that makes Docling hang would lock
+the worker forever. So Docling runs in one long-lived subprocess (the models stay
+loaded) that is used in turn. When it goes over the time limit, the subprocess is
+killed and recreated on the next use.
 """
 from __future__ import annotations
 
@@ -20,16 +20,16 @@ from app.services.ingestion.model import DocumentElement
 logger = logging.getLogger(__name__)
 
 DEFAULT_LOADER = "app.services.ingestion.providers.loaders.docling_loader:DoclingLoader"
-_SPAWN = multiprocessing.get_context("spawn")  # sama di Windows & Linux
+_SPAWN = multiprocessing.get_context("spawn")  # same on Windows & Linux
 
 
 class ParserUnavailable(IngestionError):
-    """Subprocess parser mati, gagal start, atau dihentikan karena timeout.
-    Bersifat sementara: job boleh dicoba lagi."""
+    """The parser subprocess died, failed to start, or was stopped after a timeout.
+    Temporary: the job may be retried."""
 
 
 class ParserTimeout(ParserUnavailable):
-    """Parsing melewati batas waktu; subprocess sudah di-kill."""
+    """Parsing went over the time limit; the subprocess was killed."""
 
 
 def _load_factory(spec: str) -> Any:
@@ -38,10 +38,10 @@ def _load_factory(spec: str) -> Any:
 
 
 def _serve(conn: Connection, loader_spec: str) -> None:
-    """Loop di dalam subprocess: terima path, kirim balik elemen dokumen."""
+    """Loop inside the subprocess: receive a path, send back the document elements."""
     try:
         loader = _load_factory(loader_spec)()
-    except Exception as exc:  # noqa: BLE001 — di subprocess: error dikirim ke proses induk, yang mencatatnya
+    except Exception as exc:  # noqa: BLE001 — in the subprocess: the error is sent to the parent process, which logs it
         conn.send(("fatal", f"{type(exc).__name__}: {exc}"))
         return
     conn.send(("ready", None))
@@ -54,7 +54,7 @@ def _serve(conn: Connection, loader_spec: str) -> None:
             return
         try:
             conn.send(("ok", loader.load(path)))
-        except Exception as exc:  # noqa: BLE001 — sama: dicatat oleh proses induk
+        except Exception as exc:  # noqa: BLE001 — same: logged by the parent process
             conn.send(("error", f"{type(exc).__name__}: {exc}"))
 
 
@@ -64,14 +64,14 @@ class DoclingProcess:
         self._start_timeout = start_timeout
         self._process: multiprocessing.process.BaseProcess | None = None
         self._conn: Connection | None = None
-        self._lock = asyncio.Lock()  # satu dokumen dalam satu waktu (DOCLING_CONCURRENCY=1)
+        self._lock = asyncio.Lock()  # one document at a time (DOCLING_CONCURRENCY=1)
 
     @property
     def is_alive(self) -> bool:
         return self._process is not None and self._process.is_alive()
 
     async def start(self) -> None:
-        """Mulai subprocess lebih awal (memuat model) agar upload pertama tidak lambat."""
+        """Start the subprocess early (loading the models) so the first upload is not slow."""
         async with self._lock:
             await self._ensure_started()
 
@@ -82,14 +82,14 @@ class DoclingProcess:
             self._conn.send(path)
             ready = await asyncio.to_thread(self._conn.poll, timeout)
             if not ready:
-                logger.warning("Docling melewati batas %.0f dtk untuk %s; subprocess di-kill.", timeout, path)
+                logger.warning("Docling went over the %.0f s limit for %s; subprocess killed.", timeout, path)
                 self._kill()
-                raise ParserTimeout(f"Parsing melewati batas {timeout:.0f} detik.")
+                raise ParserTimeout(f"Parsing went over the {timeout:.0f}-second limit.")
             try:
                 kind, payload = self._conn.recv()
             except (EOFError, OSError):
                 self._kill()
-                raise ParserUnavailable("Subprocess Docling berhenti tiba-tiba.") from None
+                raise ParserUnavailable("The Docling subprocess stopped unexpectedly.") from None
             if kind == "error":
                 raise DocumentLoadError(path, payload)
             return payload
@@ -118,21 +118,21 @@ class DoclingProcess:
         process.start()
         child.close()
         self._process, self._conn = process, parent
-        logger.info("Subprocess Docling dimulai (pid %s), memuat model...", process.pid)
+        logger.info("Docling subprocess started (pid %s), loading models...", process.pid)
 
         ready = await asyncio.to_thread(parent.poll, self._start_timeout)
         if not ready:
             self._kill()
-            raise ParserUnavailable("Subprocess Docling tidak siap dalam batas waktu.")
+            raise ParserUnavailable("The Docling subprocess was not ready in time.")
         try:
             kind, payload = parent.recv()
         except (EOFError, OSError):
             self._kill()
-            raise ParserUnavailable("Subprocess Docling gagal start.") from None
+            raise ParserUnavailable("The Docling subprocess failed to start.") from None
         if kind != "ready":
             self._kill()
-            raise ParserUnavailable(f"Subprocess Docling gagal memuat model: {payload}")
-        logger.info("Subprocess Docling siap.")
+            raise ParserUnavailable(f"The Docling subprocess failed to load the models: {payload}")
+        logger.info("Docling subprocess ready.")
 
     def _kill(self) -> None:
         if self._process is not None and self._process.is_alive():

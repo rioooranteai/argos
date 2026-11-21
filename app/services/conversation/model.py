@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 @dataclass
 class Conversation:
-    """Satu thread percakapan (entry di sidebar UI)."""
+    """One conversation thread (an entry in the UI sidebar)."""
 
     id: str
     user_id: str
@@ -18,19 +18,19 @@ class Conversation:
 
 @dataclass
 class Message:
-    """Satu pesan (user atau assistant) dalam sebuah thread."""
+    """One message (user or assistant) in a thread."""
 
     id: str  # UUID
     conversation_id: str
     role: str  # 'user' | 'assistant'
     content: str
     created_at: datetime
-    source_snapshot: list[str] | None = None  # version_id aktif saat pesan dikirim
+    source_snapshot: list[str] | None = None  # active version_ids when the message was sent
     citations: list[dict] = field(default_factory=list)
-    # DESIGN_GROUP_C.md §4: pesan user tanpa jawaban → `failed` + kode error.
+    # DESIGN_GROUP_C.md §4: a user message with no answer → `failed` + error code.
     status: str = "ok"  # 'ok' | 'failed'
     error_code: str | None = None
-    trace: dict | None = None  # hanya pesan assistant (§7.4)
+    trace: dict | None = None  # assistant messages only (§7.4)
 
 
 class ConversationOut(BaseModel):

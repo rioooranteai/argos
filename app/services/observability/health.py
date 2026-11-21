@@ -1,9 +1,9 @@
-"""Pemeriksaan kesiapan sistem untuk ``/health/ready`` (DESIGN_GROUP_C.md §6).
+"""System readiness checks for ``/health/ready`` (DESIGN_GROUP_C.md §6).
 
-Status per cek: ``ok`` / ``degraded`` / ``fail`` (``unknown`` untuk OpenAI yang
-belum pernah dipanggil). Keseluruhan ``fail`` (HTTP 503) hanya bila ada cek yang
-``fail``. Tidak ada cek yang memanggil OpenAI: status OpenAI diambil dari
-panggilan nyata terakhir (``LLMCallRecorder``). Pesan exception hanya ke log.
+Status per check: ``ok`` / ``degraded`` / ``fail`` (``unknown`` for OpenAI when it has
+not been called yet). The overall status is ``fail`` (HTTP 503) only when some check is
+``fail``. No check calls OpenAI: the OpenAI status comes from the latest real
+call (``LLMCallRecorder``). Exception messages only go to the log.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from app.services.observability.llm_recorder import LLMCallRecorder
 
 logger = logging.getLogger(__name__)
 
-# Panggilan OpenAI gagal yang lebih tua dari ini tidak lagi membuat status degraded.
+# Failed OpenAI calls older than this no longer make the status degraded.
 OPENAI_FAILURE_WINDOW_SECONDS = 300
 
 
@@ -70,7 +70,7 @@ class HealthChecker:
         try:
             return check()
         except Exception:
-            logger.exception("Health check '%s' gagal.", name)
+            logger.exception("Health check '%s' failed.", name)
             return {"status": "fail"}
 
     def _database(self) -> dict[str, Any]:
@@ -87,7 +87,7 @@ class HealthChecker:
             return {"status": "fail", "reason": "not_running"}
         since = self.worker.seconds_since_tick()
         active = self.worker.active_jobs
-        # Saat semua slot memproses job, loop memang tidak berputar.
+        # While every slot is processing a job, the loop does not spin.
         stalled = active == 0 and (since is None or since > 3 * self.worker_poll_seconds + 5)
         out: dict[str, Any] = {"status": "fail" if stalled else "ok", "active_jobs": active}
         if since is not None:
@@ -97,7 +97,7 @@ class HealthChecker:
         return out
 
     def _docling(self) -> dict[str, Any]:
-        # Subprocess dibuat ulang saat dibutuhkan, jadi mati ≠ gagal.
+        # The subprocess is recreated when needed, so dead ≠ failed.
         if self.docling.is_alive:
             return {"status": "ok"}
         return {"status": "degraded", "reason": "not_started"}
@@ -105,7 +105,7 @@ class HealthChecker:
     def _config(self) -> dict[str, Any]:
         missing = self.missing_config()
         if missing:
-            return {"status": "fail", "missing": missing}  # nama field saja, tanpa nilai
+            return {"status": "fail", "missing": missing}  # field names only, no values
         return {"status": "ok"}
 
     def _openai(self) -> dict[str, Any]:

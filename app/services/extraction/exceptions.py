@@ -1,13 +1,13 @@
 class ExtractionError(Exception):
-    """Base exception untuk semua error extraction."""
+    """Base exception for every extraction error."""
     pass
 
 
 class UnsupportedProviderError(ExtractionError):
-    """Provider yang diminta tidak tersedia."""
+    """The requested provider is not available."""
     pass
 
 
 class ExtractionAgentError(ExtractionError):
-    """Gagal saat menjalankan agent ekstraksi."""
+    """Failed while running the extraction agent."""
     pass

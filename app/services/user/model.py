@@ -6,7 +6,7 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class User:
-    id: str  # UUID (ID akun Google ada di kolom users.google_sub, hanya untuk login)
+    id: str  # UUID (the Google account ID is in users.google_sub, used only for sign-in)
     email: str
     name: str | None
     picture: str | None
@@ -17,7 +17,7 @@ class User:
 
 @dataclass(frozen=True)
 class CurrentUser:
-    """User yang sedang login, hasil verifikasi JWT + cek database."""
+    """The signed-in user, from JWT verification + a database check."""
 
     id: str
     email: str

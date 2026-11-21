@@ -19,7 +19,7 @@ class ElementType(str, Enum):
 
 
 class DocumentElement(BaseModel):
-    """Satu elemen hasil parsing (teks/tabel/gambar), dalam urutan dokumen."""
+    """One parsed element (text/table/image), in document order."""
 
     element_type: ElementType
     content: str
@@ -31,10 +31,10 @@ class DocumentElement(BaseModel):
 
 @dataclass
 class Section:
-    """Bagian dokumen per heading (DESIGN_GROUP_A.md §3).
+    """A document section per heading (DESIGN_GROUP_A.md §3).
 
-    ``section_hash`` dihitung dari ISI saja (teks + hash gambar), tanpa nomor
-    halaman atau posisi — bagian yang bergeser halaman tetap dikenali.
+    ``section_hash`` is computed from the CONTENT only (text + image hashes), without page
+    numbers or positions — a section that moves to another page is still recognised.
     """
 
     section_hash: str
@@ -51,7 +51,7 @@ class Section:
 
 @dataclass
 class ExtractionUnit:
-    """Satu panggilan LLM ekstraksi: satu atau beberapa bagian (DESIGN_GROUP_B.md §7)."""
+    """One extraction LLM call: one or more sections (DESIGN_GROUP_B.md §7)."""
 
     unit_hash: str
     sections: list[Section]
@@ -60,14 +60,14 @@ class ExtractionUnit:
     def prompt_text(self) -> str:
         blocks = []
         for label, section in zip(self.labels, self.sections, strict=True):
-            heading = section.heading or "(tanpa judul)"
+            heading = section.heading or "(untitled)"
             blocks.append(f"[{label}] {heading}\n{section.text}")
         return "\n\n".join(blocks)
 
 
 @dataclass(frozen=True)
 class IndexChunk:
-    """Satu potongan teks untuk vector store."""
+    """One piece of text for the vector store."""
 
     chunk_id: str
     text: str
