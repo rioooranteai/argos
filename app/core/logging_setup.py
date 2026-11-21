@@ -2,8 +2,8 @@
 
 ``json`` format: one JSON object per line, with the fields
 ``ts, level, logger, msg, request_id`` + any context fields that are set
-(``user_id, notebook_id, version_id, stage, message_id``) + ``duration_ms`` when
-passed through ``extra``. Exceptions go into the ``exc`` field.
+(``user_id, session_id, notebook_id, version_id, stage, message_id``) + ``duration_ms`` when
+passed through ``extra`` + ``trace_id`` when an OpenTelemetry span is active. Exceptions go into the ``exc`` field.
 
 ``text`` format is for reading in a terminal during local development: aligned
 columns (local time, level, short component name, message), context fields at the
@@ -23,8 +23,9 @@ from typing import TextIO
 
 from app.core import log_context
 from app.core.request_context import get_request_id
+from app.core.telemetry.spans import current_trace_id
 
-_EXTRA_FIELDS = ("duration_ms",)
+_EXTRA_FIELDS = ("duration_ms", "trace_id")
 
 
 class ContextFilter(logging.Filter):
@@ -33,6 +34,8 @@ class ContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = get_request_id() or "-"
         record.log_context = log_context.current()
+        # The OpenTelemetry trace this line belongs to (open it in Langfuse by this ID).
+        record.trace_id = current_trace_id()
         return True
 
 

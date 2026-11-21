@@ -12,6 +12,7 @@ from app.core.config import app_config, infra, secrets, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.core.observability.recorder import recorder as llm_recorder
+from app.core.telemetry import setup as telemetry
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.engines.document_engine.pipeline import DocumentPipeline
@@ -82,6 +83,7 @@ async def lifespan(app: FastAPI):
 
     # --- Fail fast: required config & data folders ---
     validate_required_config()
+    telemetry.configure()  # OpenTelemetry → Langfuse; a no-op without keys (core/telemetry/config.py)
     infra.DATA_DIR.mkdir(parents=True, exist_ok=True)
     infra.upload_queue_dir.mkdir(parents=True, exist_ok=True)
 
@@ -213,3 +215,4 @@ async def lifespan(app: FastAPI):
     await asyncio.gather(warm_up, return_exceptions=True)
     await docling.stop()
     llm_recorder.close()  # write the remaining llm_calls records
+    telemetry.shutdown()  # flush the spans still queued

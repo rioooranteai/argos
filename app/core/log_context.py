@@ -1,7 +1,7 @@
 """Log context per request / per job (DESIGN_GROUP_C.md §7.2).
 
-Known fields: ``user_id``, ``notebook_id``, ``version_id``, ``stage``,
-``message_id``. Their values go into every log line (see ``logging_setup``) and
+Known fields: ``user_id``, ``session_id`` (the conversation), ``notebook_id``,
+``version_id``, ``stage``, ``message_id``. Their values go into every log line (see ``logging_setup``) and
 into the ``llm_calls`` records.
 
 Two ways to set them:
@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
 
-FIELDS = ("user_id", "notebook_id", "version_id", "stage", "message_id")
+FIELDS = ("user_id", "session_id", "notebook_id", "version_id", "stage", "message_id")
 
 _log_context: ContextVar[dict[str, Any] | None] = ContextVar("log_context", default=None)
 
