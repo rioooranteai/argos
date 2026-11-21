@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.api.dependencies import get_chat_engine
 from app.core.errors import UpstreamError, UpstreamTimeout
 from app.engines.chat_engine.outcome import ChatResult, NodeIssue
 from tests.test_notebook_api import BOB, _publish, _setup_notebook, env  # noqa: F401 (fixture)
@@ -37,7 +36,7 @@ def chat(env):  # noqa: F811
     nb, up = _setup_notebook(client)
     _publish(db, up["results"][0]["version_id"])
     engine = ScriptedEngine([])
-    client.app.dependency_overrides[get_chat_engine] = lambda: engine
+    client.app.state.chat_engine = engine
     return client, db, engine, nb["id"], state
 
 

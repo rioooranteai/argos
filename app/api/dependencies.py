@@ -5,7 +5,7 @@ from app.core.errors import AuthenticationError, PermissionDenied
 from app.core.rate_limit import limiter
 from app.core.security import is_admin
 from app.core.session import decode_session_token, session_token_from
-from app.engines.chat_engine.engine import ChatEngine
+from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.services.conversation.service import ConversationService
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
@@ -88,8 +88,8 @@ def get_library_service(request: Request) -> LibraryService:
     return request.app.state.library_service
 
 
-def get_chat_engine(request: Request) -> ChatEngine:
-    return request.app.state.chat_engine
+def get_chat_orchestrator(request: Request) -> ChatOrchestrator:
+    return request.app.state.chat_orchestrator
 
 
 def get_nl2sql_service(request: Request) -> NL2SQLService:

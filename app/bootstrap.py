@@ -12,6 +12,7 @@ from app.core.config import app_config, infra, secrets, validate_required_config
 from app.core.database import DB_PATH, db
 from app.core.migrations import run_migrations
 from app.engines.chat_engine.engine import ChatEngine
+from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.engines.document_engine.pipeline import DocumentPipeline
 from app.engines.document_engine.worker import DocumentWorker
 from app.tools.document_parser.base import BaseDocumentParser
@@ -184,6 +185,11 @@ async def lifespan(app: FastAPI):
         nl2sql_svc=app.state.nl2sql_service,
         vector_store=app.state.vector_store,
         total_timeout=app_config.CHAT_TOTAL_TIMEOUT,
+    )
+    app.state.chat_orchestrator = ChatOrchestrator(
+        notebooks=app.state.notebook_service,
+        conversations=app.state.conversation_service,
+        engine=app.state.chat_engine,
     )
 
     app.state.health_checker = HealthChecker(

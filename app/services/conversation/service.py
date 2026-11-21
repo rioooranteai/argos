@@ -74,6 +74,15 @@ class ConversationService:
         msgs = self._repo.list_messages(conversation_id)
         return ConversationWithMessages(conversation=conv, messages=msgs)
 
+    def get_in_notebook(
+            self, conversation_id: str, user_id: str, notebook_id: str
+    ) -> ConversationWithMessages:
+        """The conversation with its messages, if it belongs to this user's notebook."""
+        bundle = self.get_with_messages(conversation_id, user_id)
+        if bundle is None or bundle.conversation.notebook_id != notebook_id:
+            raise NotFoundError("Conversation not found.")
+        return bundle
+
     def list_for_notebook(self, user_id: str, notebook_id: str, limit: int = 100) -> list[Conversation]:
         return self._repo.list_conversations(user_id, limit=limit, notebook_id=notebook_id)
 

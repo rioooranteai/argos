@@ -11,8 +11,9 @@ from fastapi.testclient import TestClient
 from app.api.routers.notebooks import router
 from app.core.config import AppConfig
 from app.core.database import Database
+from app.engines.chat_engine.orchestrator import ChatOrchestrator
 from app.api.dependencies import (
-    get_chat_engine,
+    get_chat_orchestrator,
     get_conversation_service,
     get_current_user,
     get_notebook_service,
@@ -81,7 +82,12 @@ def env(tmp_path):
     app.include_router(router)
     app.dependency_overrides[get_notebook_service] = lambda: nb_svc
     app.dependency_overrides[get_conversation_service] = lambda: conv_svc
-    app.dependency_overrides[get_chat_engine] = lambda: engine
+    # The orchestrator uses the real services and a fake engine; tests swap the engine
+    # through app.state.chat_engine (see tests/test_failed_messages.py).
+    app.state.chat_engine = engine
+    app.dependency_overrides[get_chat_orchestrator] = lambda: ChatOrchestrator(
+        nb_svc, conv_svc, app.state.chat_engine
+    )
     state = {"user": ALICE}
     app.dependency_overrides[get_current_user] = lambda: state["user"]
     return TestClient(app), db, engine, state
