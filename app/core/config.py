@@ -92,7 +92,7 @@ class Infra(BaseSettings):
 class AppConfig:
     """Application constants. Change them here (in code), not through the environment."""
 
-    # ── Provider & model ─────────────────────────────────────────────
+    # ── Tool providers (app/tools/factory.py picks the implementation) ──
     LLM_PROVIDER: str = "openai"
     EMBEDDING_PROVIDER: str = "openai"
     VECTOR_STORE_PROVIDER: str = "chroma"
@@ -101,6 +101,8 @@ class AppConfig:
     EXTRACTION_PROVIDER: str = "pydantic_ai"
     STT_PROVIDER: str = "openai"
     TTS_PROVIDER: str = "openai"
+
+    # ── Models ───────────────────────────────────────────────────────
     OPENAI_LLM_MODEL: str = "gpt-5.4"
     OPENAI_VLM_MODEL: str = "gpt-5-mini"
     OPENAI_VOICE_MODEL: str = "gpt-4o-mini-tts"
