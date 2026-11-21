@@ -177,7 +177,7 @@ class AppConfig:
     STT_MAX_MB: int = 25
 
     # ── Logging & observability (DESIGN_GROUP_C.md §7) ───────────────
-    LOG_FORMAT: str = "json"          # "json" | "text" (text is easier to read in local dev)
+    LOG_FORMAT: str = "auto"          # "auto" (text in a terminal, json otherwise) | "json" | "text"
     LOG_PROMPTS: bool = False         # True: LLM prompts & responses are logged at DEBUG
     LLM_CALLS_RETENTION_DAYS: int = 90
 

@@ -111,3 +111,70 @@ def test_text_formatter_appends_context():
     with log_context.scoped(user_id="u-2"):
         logger.warning("teks")
     assert cap.lines[0].endswith("teks user_id=u-2")
+
+
+def _record(name: str, msg: str, args=(), level=logging.INFO, exc_info=None) -> logging.LogRecord:
+    record = logging.LogRecord(name, level, __file__, 1, msg, args, exc_info)
+    record.request_id = "-"
+    record.log_context = {}
+    return record
+
+
+def test_text_formatter_aligns_columns_without_color():
+    line = TextFormatter().format(_record("app.engines.document_engine.worker", "Document worker running (2 slots)."))
+    time, rest = line[:8], line[8:]
+    assert time.count(":") == 2
+    assert rest == "  INFO   worker      Document worker running (2 slots)."
+    assert "\033[" not in line
+
+
+def test_text_formatter_short_level_and_unknown_component():
+    line = TextFormatter().format(_record("some.other.module", "careful", level=logging.WARNING))
+    assert "  WARN   module      careful" in line
+
+
+def test_text_formatter_access_line():
+    record = _record("uvicorn.access", '%s - "%s %s HTTP/%s" %d', ("127.0.0.1:56756", "GET", "/login", "1.1", 200))
+    record.request_id = "43fb178816c7"
+    line = TextFormatter().format(record)
+    assert "  http        GET    /login" in line
+    assert line.rstrip().endswith("200  127.0.0.1  43fb178816c7")
+
+
+def test_text_formatter_colors_and_exception_indent():
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        import sys
+        record = _record("app.core.errors", "failed", level=logging.ERROR, exc_info=sys.exc_info())
+    line = TextFormatter(color=True).format(record)
+    assert "\033[31mERROR" in line
+    assert "    │ [0mValueError: boom" in line
+
+
+def test_auto_format_is_json_when_not_a_terminal(monkeypatch):
+    import io
+    import sys
+
+    from app.core import logging_setup
+
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    root = logging.getLogger()
+    saved = list(root.handlers), root.level
+    try:
+        logging_setup.configure_logging("auto")
+        assert isinstance(root.handlers[0].formatter, JsonFormatter)
+    finally:
+        root.handlers[:] = saved[0]
+        root.setLevel(saved[1])
+
+
+def test_no_color_env_disables_color(monkeypatch):
+    from app.core import logging_setup
+
+    class Tty:
+        def isatty(self):
+            return True
+
+    monkeypatch.setenv("NO_COLOR", "1")
+    assert logging_setup._use_color(Tty()) is False
