@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import quote
 
+from authlib.integrations.base_client.errors import OAuthError
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import RedirectResponse
 
@@ -48,7 +49,15 @@ async def google_callback(
 ):
     if (blocked := _login_rate_limited(request)) is not None:
         return blocked
-    token = await oauth.google.authorize_access_token(request)
+    try:
+        token = await oauth.google.authorize_access_token(request)
+    except OAuthError as exc:
+        # Not a server bug: the user cancelled, Google blocked the app (e.g. consent screen in
+        # "Testing" and the account is not a test user), or the state no longer matches
+        # (Back button, two tabs, expired sign-in session). Send them back to the login page.
+        code = "GOOGLE_ACCESS_DENIED" if exc.error == "access_denied" else "GOOGLE_SIGN_IN_FAILED"
+        logger.info("Google sign-in did not complete (%s: %s)", exc.error, exc.description or "-")
+        return _login_error(code)
     google_user = token["userinfo"]
 
     try:
