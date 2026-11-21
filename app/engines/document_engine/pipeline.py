@@ -16,12 +16,15 @@ text are copied from the same document's latest `ready` version (no re-embedding
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 from collections.abc import Callable
 from pathlib import Path
 
 from app.core.concurrency import AILimits
 from app.core.config import AppConfig
+from app.core.telemetry import spans
+from app.core.telemetry.context import bind_trace
 from app.engines.document_engine.jobs import JobCancelled, JobContext, PermanentJobError
 from app.services.extraction.ports import BaseFeatureRepository
 from app.services.extraction.service import ExtractionService, ExtractionStats
@@ -65,12 +68,15 @@ class DocumentPipeline:
         return queued_file_path(self._queue_dir, version.id, version.file_ext)
 
     async def process(self, version: DocumentVersion, ctx: JobContext) -> None:
+        """Process one version; each stage is a span under the worker's document.process
+        trace (DESIGN_GROUP_F.md §2)."""
         path = self.source_path(version)
         if not path.exists():
             raise PermanentJobError("The source file was not found. Upload this document again.")
         document = await asyncio.to_thread(self._library.get_document, version.document_id)
         if document is None:
             raise JobCancelled()
+        bind_trace(document=document.display_name)
 
         # Leftovers from a previous attempt (e.g. a crash midway) are cleaned up first.
         await self.cleanup(version.id)
@@ -79,17 +85,26 @@ class DocumentPipeline:
         await ctx.stage("parsing")
         pages = version.page_count or 10
         timeout = self._cfg.DOCLING_TIMEOUT_BASE + self._cfg.DOCLING_TIMEOUT_PER_PAGE * pages
-        elements = await self._parser.parse(str(path), timeout)
-        sections = build_sections(elements)
-        if not any(s.text.strip() for s in sections) and not any(
-            e.element_type == ElementType.FIGURE for e in elements
-        ):
-            raise PermanentJobError("The document contains no readable text.")
+        with spans.span("parsing") as span:
+            spans.set_input(span, {"file": version.original_filename, "pages": version.page_count,
+                                   "timeout_s": timeout})
+            elements = await self._parser.parse(str(path), timeout)
+            sections = build_sections(elements)
+            figures = sum(1 for e in elements if e.element_type == ElementType.FIGURE)
+            spans.set_metadata(span, elements=len(elements), sections=len(sections), figures=figures)
+            spans.set_output(span, [s.heading for s in sections])
+            if not any(s.text.strip() for s in sections) and not figures:
+                raise PermanentJobError("The document contains no readable text.")
         await ctx.check_cancelled()
 
         # ── 2. Vision ──────────────────────────────────────────────────
         await ctx.stage("vision", total=len(figures_in(sections)))
-        outcome = await self._describer.describe_all(sections, on_progress=ctx.progress)
+        with spans.span("vision") as span:
+            outcome = await self._describer.describe_all(sections, on_progress=ctx.progress)
+            spans.set_metadata(span, images=outcome.total, from_cache=outcome.from_cache,
+                               failed=outcome.failed)
+            if outcome.failed:
+                spans.set_warning(span, f"{outcome.failed} image(s) could not be read")
         if outcome.failed:
             await ctx.add_vision_failed(outcome.failed)
         await ctx.check_cancelled()
@@ -101,12 +116,14 @@ class DocumentPipeline:
         batches = [chunks[i : i + size] for i in range(0, len(chunks), size)]
         await ctx.stage("indexing", total=len(batches))
         chunks_reused = 0
-        for i, batch in enumerate(batches, start=1):
-            async with self._limits.embedding:
-                added = await asyncio.to_thread(self._vectors.add_chunks, batch, reuse)
-            chunks_reused += added.reused
-            await ctx.progress(i)
-            await ctx.check_cancelled()
+        with spans.span("indexing") as span:
+            for i, batch in enumerate(batches, start=1):
+                async with self._limits.embedding:
+                    added = await asyncio.to_thread(self._vectors.add_chunks, batch, reuse)
+                chunks_reused += added.reused
+                await ctx.progress(i)
+                await ctx.check_cancelled()
+            spans.set_metadata(span, chunks=len(chunks), batches=len(batches), reused=chunks_reused)
 
         # ── 4. Extraction ──────────────────────────────────────────────
         units = build_units(
@@ -117,9 +134,13 @@ class DocumentPipeline:
         )
         await ctx.stage("extracting", total=len(units))
         extraction_stats = ExtractionStats()
-        rows = await self._extraction.extract_units(
-            units, on_progress=ctx.progress, stats=extraction_stats
-        )
+        with spans.span("extracting") as span:
+            rows = await self._extraction.extract_units(
+                units, on_progress=ctx.progress, stats=extraction_stats
+            )
+            spans.set_metadata(span, units=extraction_stats.units, from_cache=extraction_stats.cached,
+                               features=len(rows))
+            spans.set_output(span, [dataclasses.asdict(r) for r in rows])
         await ctx.check_cancelled()
 
         # ── 5. Atomic publish ──────────────────────────────────────────
@@ -131,12 +152,15 @@ class DocumentPipeline:
             "images": outcome.total,
             "images_cached": outcome.from_cache,
         }
-        published = await asyncio.to_thread(
-            self._features.publish_version,
-            version.document_id, version.id, sections, rows, reuse_stats,
-        )
+        with spans.span("publish") as span:
+            published = await asyncio.to_thread(
+                self._features.publish_version,
+                version.document_id, version.id, sections, rows, reuse_stats,
+            )
+            spans.set_metadata(span, published=published, sections=len(sections), features=len(rows))
         if not published:
             raise JobCancelled()
+        bind_trace(sections=len(sections), features=len(rows), **{f"reuse_{k}": v for k, v in reuse_stats.items()})
         logger.info(
             "Version %s ready: %d sections, %d features, %d Vision failures | reused: "
             "chunks %d/%d, units %d/%d, images %d/%d",

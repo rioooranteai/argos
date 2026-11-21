@@ -17,6 +17,8 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from app.core import log_context
+from app.core.telemetry import spans
+from app.core.telemetry.context import bind_trace, trace_attributes, trace_scope
 from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, classify
 from app.services.library.model import DocumentVersion
@@ -111,12 +113,36 @@ class DocumentWorker:
         # Every log line & llm_calls record during this job carries version_id (+ stage).
         self._active_jobs += 1
         try:
-            with log_context.scoped(version_id=job.id, stage="queued"):
-                await self._run_job_in_context(job)
+            with log_context.scoped(version_id=job.id, stage="queued", user_id=job.uploaded_by):
+                await self._run_traced(job)
         finally:
             self._active_jobs -= 1
 
-    async def _run_job_in_context(self, job: DocumentVersion) -> None:
+    async def _run_traced(self, job: DocumentVersion) -> None:
+        """One trace per processing attempt: document.process → parsing / vision / indexing /
+        extracting / publish (DESIGN_GROUP_F.md §2). The user is the uploader."""
+        with trace_scope(), spans.span("document.process", spans.CHAIN) as root:
+            spans.set_attributes(root, **{"langfuse.trace.name": "document.process"})
+            bind_trace(
+                tags=["retry"] if job.attempts > 1 else [],
+                document_id=job.document_id, attempt=job.attempts, version_no=job.version_no,
+                file=job.original_filename, pages=job.page_count, size_bytes=job.size_bytes,
+            )
+            spans.set_input(root, {"file": job.original_filename, "attempt": job.attempts})
+            try:
+                outcome = await self._run_job_in_context(job)
+                spans.set_output(root, outcome)
+                if outcome["result"] == "cancelled":
+                    bind_trace(tags=["cancelled"])
+                    spans.set_warning(root, "CANCELLED")
+                elif outcome["result"] != "ready":
+                    bind_trace(tags=[outcome["result"]])
+                    spans.set_error(root, outcome["code"], outcome["message"])
+            finally:
+                spans.set_attributes(root, **trace_attributes())
+
+    async def _run_job_in_context(self, job: DocumentVersion) -> dict:
+        """Process the job and settle its state; returns the outcome (for the trace)."""
         ctx = JobContext(job, self._jobs, self._cfg.VERSION_LEASE_MINUTES)
         logger.info("Processing version %s (attempt %d).", job.id, job.attempts)
         try:
@@ -131,6 +157,7 @@ class DocumentWorker:
             await asyncio.to_thread(self._jobs.mark_cancelled, job.id)
             self._remove_source(job)
             logger.info("Version %s cancelled.", job.id)
+            return {"result": "cancelled"}
         except Exception as exc:
             retryable, message = classify(exc)
             await self._safe_cleanup(job.id)
@@ -142,12 +169,15 @@ class DocumentWorker:
                     "Version %s failed (attempt %d), retrying in %d minutes.",
                     job.id, job.attempts, delay, exc_info=exc,
                 )
+                return {"result": "retry_scheduled", "code": _error_code(exc), "message": message,
+                        "will_retry_in_minutes": delay}
             else:
                 await asyncio.to_thread(self._jobs.mark_failed, job.id, message)
                 self._remove_source(job)
                 logger.error("Version %s failed permanently: %s", job.id, message, exc_info=exc)
-        else:
-            self._remove_source(job)
+                return {"result": "failed", "code": _error_code(exc), "message": message}
+        self._remove_source(job)
+        return {"result": "ready"}
 
     async def _safe_cleanup(self, version_id: str) -> None:
         try:
@@ -162,3 +192,8 @@ class DocumentWorker:
             self._source_path(job).unlink(missing_ok=True)
         except OSError:
             logger.warning("Could not delete the queue file of version %s.", job.id, exc_info=True)
+
+
+def _error_code(exc: BaseException) -> str:
+    """Stable code for the trace: the ArgosError/SQL code when there is one, else the type."""
+    return getattr(exc, "code", None) or type(exc).__name__
