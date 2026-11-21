@@ -47,7 +47,7 @@ _STOP = object()
 _sink: ContextVar[list[LLMCall] | None] = ContextVar("llm_call_sink", default=None)
 
 
-def _report_usage(span: spans.Span, purpose: str, model: str, handle: "_CallHandle") -> None:
+def _report_usage(span: spans.Span, purpose: str, model: str, handle: _CallHandle) -> None:
     """Token usage and cost on the generation span (Langfuse usage_details / cost_details)."""
     usage: dict[str, int] = {}
     if handle.input_tokens is not None:

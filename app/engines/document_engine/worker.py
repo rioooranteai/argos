@@ -17,9 +17,9 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from app.core import log_context
+from app.core.config import AppConfig
 from app.core.telemetry import spans
 from app.core.telemetry.context import bind_trace, trace_attributes, trace_scope
-from app.core.config import AppConfig
 from app.engines.document_engine.jobs import JobCancelled, JobContext, classify
 from app.services.library.model import DocumentVersion
 from app.services.library.ports import BaseJobRepository

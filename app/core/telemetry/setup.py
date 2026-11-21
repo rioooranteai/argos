@@ -15,7 +15,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-from app.core.telemetry.config import TelemetryConfig, TelemetrySecrets, telemetry_config, telemetry_secrets
+from app.core.telemetry.config import (
+    TelemetryConfig,
+    TelemetrySecrets,
+    telemetry_config,
+    telemetry_secrets,
+)
 from app.core.telemetry.context import ContextSpanProcessor
 
 logger = logging.getLogger(__name__)

@@ -14,9 +14,9 @@ import logging
 from dataclasses import dataclass
 
 from app.core import log_context
+from app.core.errors import ArgosError, InternalError, ValidationError
 from app.core.telemetry import spans
 from app.core.telemetry.context import bind_trace, trace_attributes, trace_scope
-from app.core.errors import ArgosError, InternalError, ValidationError
 from app.engines.chat_engine.engine import ChatEngine
 from app.engines.chat_engine.outcome import ChatResult
 from app.services.conversation.model import Message
