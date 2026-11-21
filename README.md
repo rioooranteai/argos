@@ -277,6 +277,59 @@ in Docker or when redirected to a file, JSON lines. Both carry the request ID an
 `config.py`; set `NO_COLOR=1` to turn colours off. Every OpenAI call is recorded in the `llm_calls` table (model, tokens, latency,
 status — never prompts or document content) and kept for 90 days.
 
+### Observability (OpenTelemetry → Langfuse)
+
+Argos emits traces with **OpenTelemetry** and sends them over OTLP/HTTP; Langfuse is only the
+destination, so another OTLP backend works the same way. Tracing is **off** until keys are set.
+
+**Turn it on**
+
+1. Create a project in [Langfuse](https://langfuse.com) (Cloud or self-hosted) and copy its keys
+   into `.env`:
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-…
+   LANGFUSE_SECRET_KEY=sk-lf-…
+   ```
+2. Check the endpoint in `app/core/telemetry/config.py` (its own settings, separate from the app
+   config):
+
+   | Langfuse | `OTLP_ENDPOINT` |
+   |---|---|
+   | Cloud EU (default) | `https://cloud.langfuse.com/api/public/otel` |
+   | Cloud US | `https://us.cloud.langfuse.com/api/public/otel` |
+   | Self-hosted (≥ 3.22) | `http://localhost:3000/api/public/otel` |
+
+3. Restart Argos. The startup log says `Telemetry enabled (otlp → …)`, and `/health/ready` shows
+   the same under `telemetry`. To look at spans locally without Langfuse, set
+   `EXPORTER = "console"` (spans are printed to stdout); `EXPORTER = "none"` turns tracing off.
+
+**What you see in Langfuse**
+
+- **`chat.message`** — one trace per chat message (and per resend); session = the conversation,
+  user = the signed-in user. Children: `routing` (output `{route, reasoning}`, with the `router`
+  LLM call), `sql` (`nl2sql` call + `sql.execute` with the SQL and rows), `vector_search` (the
+  retrieved chunks), `synthesis` (`synthesizer` call), and `title` for a new conversation.
+  The router's decision is also a trace tag — `route:sql`, `route:vector`, `route:both`,
+  `route:none`, `route:fallback` — so you can filter chats by route. `degraded` / `retry` tags
+  and ERROR spans with the error code show what went wrong.
+- **`document.process`** — one trace per processing attempt of a document version; user = the
+  uploader. Children: `parsing`, `vision`, `indexing`, `extracting`, `publish`, with every
+  Vision, embedding and extraction call under them. The outcome is `ready`, `retry_scheduled`
+  (with the retry delay), `failed` or `cancelled`.
+- Every AI call is a *generation* with model, token usage and — when its price is set — cost.
+- Log lines carry `trace_id`, and so does the trace stored with each answer ("Show AI process").
+
+**Content and privacy** — with `CAPTURE_CONTENT = True` (the default) traces include prompts,
+answers, SQL, retrieved document chunks, extracted rows and image descriptions, cut to
+`MAX_CONTENT_CHARS` per field. With Langfuse Cloud this content is stored on Langfuse's servers.
+Images, audio, files, cookies, tokens and API keys are never sent. Set `CAPTURE_CONTENT = False`
+to keep only metadata (timings, models, tokens, routes, errors).
+
+**Cost** — Langfuse does not price OpenTelemetry data on its own, so Argos sends the cost
+itself. Fill in `MODEL_PRICES_USD_PER_1M_TOKENS` (and, if you want, `STT_PRICE_USD_PER_MINUTE`
+and `TTS_PRICE_USD_PER_1M_CHARS`) in `app/core/telemetry/config.py` with the prices you pay;
+models without a price report token usage only.
+
 ### Docker commands
 
 | Command | Description |
@@ -343,7 +396,7 @@ bootstrap ─► api ─► engines (orchestrators) ─► services (features) �
 | `app/services/<feature>/` | One feature each (library, notebook, conversation, nl2sql, ingestion, extraction, user, voice): entities (`model.py`), repository contracts (`ports.py`) and use cases (`service.py`) |
 | `app/tools/<tool>/` | External tools behind a contract: `base.py` (abstract class + its types) and the implementations — `llm`, `embedding`, `vector_store`, `document_parser`, `vision`, `extraction`, `speech`, and `storage/sqlite` (implements the services' ports) |
 | `app/tools/factory.py` | The only place that picks a concrete tool, from the `*_PROVIDER` constants in `config.py` |
-| `app/core/` | Shared kernel: config, errors, logging, request context, AI call recorder, database, security, session, middleware |
+| `app/core/` | Shared kernel: config, errors, logging, request context, AI call recorder, telemetry (`telemetry/`: OpenTelemetry with its own config), database, security, session, middleware |
 
 Rules:
 

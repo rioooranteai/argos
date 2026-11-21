@@ -46,6 +46,9 @@ class HealthChecker:
     recorder: LLMCallRecorder
     missing_config: Callable[[], list[str]]
     worker_poll_seconds: float
+    # "enabled (otlp → …)" / "disabled (…)" from core/telemetry/setup.status(). Informational:
+    # telemetry being off never makes the app unready.
+    telemetry: Callable[[], str] = lambda: "disabled (not configured)"
 
     def ready(self) -> dict[str, Any]:
         checks = {
@@ -55,6 +58,7 @@ class HealthChecker:
             "docling": self._guard("docling", self._docling),
             "config": self._guard("config", self._config),
             "openai": self._guard("openai", self._openai),
+            "telemetry": self._guard("telemetry", self._telemetry),
         }
         statuses = {c["status"] for c in checks.values()}
         overall = "fail" if "fail" in statuses else "degraded" if "degraded" in statuses else "ok"
@@ -107,6 +111,10 @@ class HealthChecker:
         if missing:
             return {"status": "fail", "missing": missing}  # field names only, no values
         return {"status": "ok"}
+
+    def _telemetry(self) -> dict[str, Any]:
+        # Never calls Langfuse: only reports how telemetry was configured at startup.
+        return {"status": "ok", "detail": self.telemetry()}
 
     def _openai(self) -> dict[str, Any]:
         last = self.recorder.last_calls()

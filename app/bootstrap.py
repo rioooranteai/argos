@@ -202,6 +202,7 @@ async def lifespan(app: FastAPI):
         recorder=llm_recorder,
         missing_config=secrets.missing_required,
         worker_poll_seconds=app_config.WORKER_POLL_SECONDS,
+        telemetry=telemetry.status,
     )
 
     warm_up = asyncio.create_task(_warm_up_docling(docling))
