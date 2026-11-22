@@ -32,6 +32,7 @@ uploads/
 documents/temp/
 *.pdf
 !docs/*.pdf
+!eval/**/*.pdf
 
 # LOGS
 *.log

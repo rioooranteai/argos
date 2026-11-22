@@ -1,0 +1,2328 @@
+{
+  "_readme": [
+    "Ground truth untuk evaluasi ArgosAI: 10 dokumen di eval/pdf-files/ (maks. 10 sumber per notebook).",
+    "products : untuk skor ekstraksi. match = semua token harus muncul di (brand_name + product_name), lowercase alfanumerik.",
+    "price    : nilai yang dianggap benar; null = harga memang tidak ada. Field hilang = harga tidak dinilai.",
+    "currency : kode yang dianggap benar (null boleh).",
+    "complete : true = daftar products lengkap, jadi precision bisa dihitung; false = sampel (recall saja).",
+    "expect_no_price: true = dokumen tidak memuat harga produk; baris ekstraksi yang punya price = halusinasi.",
+    "facts    : fakta terverifikasi untuk pertanyaan uji. evidence = kutipan teks dari PDF (dicek otomatis ada di halaman `page`).",
+    "cross_document: fakta yang jawabannya butuh dua dokumen atau lebih (uses = id fakta).",
+    "unanswerable: pertanyaan yang jawabannya tidak ada di dokumen mana pun; jawaban benar = mengakui data tidak tersedia, tanpa mengarang.",
+    "Dokumen lama (13 PDF) dicadangkan di eval/ground_truth_lama.json."
+  ],
+  "documents": [
+    {
+      "file": "id_cimb_riplay_mc_gold.pdf",
+      "url": "https://www.cimbniaga.co.id/content/dam/cimb/kartu-kredit/Mastercard_Gold_RIPLAY_UMUM_v160926.pdf",
+      "publisher": "PT Bank CIMB Niaga Tbk",
+      "lang": "id",
+      "pages": 2,
+      "difficulty": "easy",
+      "kind": "RIPLAY kartu kredit, layout 2 kolom",
+      "complete": true,
+      "products": [
+        {
+          "match": [
+            "gold"
+          ],
+          "price": [
+            0,
+            null
+          ],
+          "currency": [
+            "IDR",
+            null
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "cimb_gold_annual_fee",
+          "about": "iuran tahunan CIMB Mastercard Gold",
+          "value": "bebas iuran tahunan (kartu utama & tambahan)",
+          "page": 1,
+          "evidence": "Bebas Iuran Tahunan untuk Kartu Utama dan Kartu Tambahan"
+        },
+        {
+          "id": "cimb_gold_limit",
+          "about": "rentang limit kredit CIMB Mastercard Gold",
+          "value": "Rp 2 juta – Rp 150 juta",
+          "page": 1,
+          "evidence": "Rp 2 juta - Rp 150 juta"
+        },
+        {
+          "id": "cimb_gold_min_income",
+          "about": "penghasilan minimum CIMB Mastercard Gold",
+          "value": "Rp 3 juta/bulan (Rp 36 juta/tahun)",
+          "page": 1,
+          "evidence": "Minimum Rp 3 juta per bulan / Rp 36 juta per tahun"
+        },
+        {
+          "id": "cimb_gold_points",
+          "about": "poin per transaksi CIMB Mastercard Gold",
+          "value": "25 Poin Xtra per kelipatan Rp50.000",
+          "page": 1,
+          "evidence": "Setiap transaksi ritel kelipatan Rp50.000 mendapatkan 25 Poin Xtra"
+        }
+      ]
+    },
+    {
+      "file": "id_mega_riplay_gold.pdf",
+      "url": "https://cdn.bankmega.com/prod.mega.cms.media/filer_public/f4/e5/f4e5208f-c286-4b7e-a9e9-c8aa4147ade6/riplay_mega_gold_card.pdf",
+      "publisher": "PT Bank Mega Tbk",
+      "lang": "id",
+      "pages": 3,
+      "difficulty": "easy",
+      "kind": "RIPLAY kartu kredit, teks padat",
+      "complete": true,
+      "products": [
+        {
+          "match": [
+            "gold"
+          ],
+          "price": [
+            450000,
+            0,
+            null
+          ],
+          "currency": [
+            "IDR",
+            null
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "mega_gold_annual_fee",
+          "about": "iuran tahunan kartu utama Mega Gold Card",
+          "value": "Rp 450.000",
+          "page": 2,
+          "evidence": "Iuran Tahunan Keanggotaan Kartu Utama : Rp. 450 Ribu"
+        },
+        {
+          "id": "mega_gold_supp_fee",
+          "about": "iuran tahunan kartu tambahan Mega Gold Card",
+          "value": "Rp 250.000",
+          "page": 2,
+          "evidence": "Kartu Tambahan : Rp. 250 Ribu"
+        },
+        {
+          "id": "mega_gold_interest",
+          "about": "bunga pembelanjaan Mega Gold Card",
+          "value": "1,75% per bulan / 21% per tahun",
+          "page": 2,
+          "evidence": "Bunga Pembelanjaan : 1.75% (per bulan) / 21% (per"
+        },
+        {
+          "id": "mega_gold_min_limit",
+          "about": "limit minimum Mega Gold Card",
+          "value": "Rp 2.000.000",
+          "page": 1,
+          "evidence": "Minimum Limit = Rp 2.000.000"
+        }
+      ]
+    },
+    {
+      "file": "id_icbc_creditcard.pdf",
+      "url": "https://v.icbc.com.cn/userfiles/resources/icbc/haiwai/indonesia/download/2024/creditcardicbc.pdf",
+      "publisher": "PT Bank ICBC Indonesia",
+      "lang": "id+en",
+      "pages": 2,
+      "difficulty": "easy",
+      "kind": "RIPLAY bilingual, tabel biaya (urutan teks tercampur; dicek dari gambar halaman)",
+      "complete": true,
+      "products": [
+        {
+          "match": [
+            "platinum"
+          ],
+          "price": [
+            600000,
+            null
+          ],
+          "currency": [
+            "IDR",
+            null
+          ]
+        },
+        {
+          "match": [
+            "gold"
+          ],
+          "price": [
+            100000,
+            null
+          ],
+          "currency": [
+            "IDR",
+            null
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "icbc_annual_fee",
+          "about": "iuran tahunan kartu kredit ICBC",
+          "value": "Platinum IDR 600.000; Gold IDR 100.000",
+          "page": 1,
+          "evidence": "Platinum = IDR 600.000"
+        },
+        {
+          "id": "icbc_interest",
+          "about": "suku bunga kartu kredit ICBC",
+          "value": "1,75%",
+          "page": 1,
+          "evidence": "1.75%"
+        },
+        {
+          "id": "icbc_limit",
+          "about": "limit kartu ICBC Platinum dan Gold",
+          "value": "Platinum ≥ 50 juta; Gold ≤ 50 juta",
+          "page": 1,
+          "evidence": "Visa/UP Platinum = ≥ 50 Mio"
+        },
+        {
+          "id": "icbc_supp_fee",
+          "about": "iuran kartu tambahan ICBC",
+          "value": "gratis",
+          "page": 1,
+          "evidence": "Gratis / Free",
+          "note": "tabel; pasangan label-nilai dicek dari gambar halaman 1"
+        }
+      ]
+    },
+    {
+      "file": "id_bank_mega_publikasi_des2025.pdf",
+      "url": "https://cdn.bankmega.com/prod.mega.cms.media/filer_public/2b/1e/2b1ea5d3-a120-40ca-9605-f5988ce786b3/publikasi_triwulanan_31-desember_2025-d.pdf",
+      "publisher": "PT Bank Mega Tbk",
+      "lang": "id",
+      "pages": 16,
+      "difficulty": "medium",
+      "kind": "laporan keuangan publikasi (individual), tabel padat, dalam jutaan rupiah",
+      "complete": true,
+      "expect_no_price": true,
+      "products": [],
+      "facts": [
+        {
+          "id": "mega_total_assets",
+          "about": "total aset Bank Mega 31 Des 2025",
+          "value": "Rp 140.828.044 juta (≈ Rp140,8 T)",
+          "page": 1,
+          "evidence": "TOTAL ASET 140.828.044 134.915.494"
+        },
+        {
+          "id": "mega_net_income",
+          "about": "laba bersih Bank Mega 2025",
+          "value": "Rp 3.364.735 juta (2024: Rp 2.631.054 juta)",
+          "page": 3,
+          "evidence": "TOTAL LABA (RUGI) BERSIH TAHUN BERJALAN 3.364.735 2.631.054"
+        },
+        {
+          "id": "mega_eps",
+          "about": "laba bersih per saham Bank Mega 2025",
+          "value": "Rp 286,58",
+          "page": 4,
+          "evidence": "LABA BERSIH PER SAHAM (dalam satuan rupiah) 286,58 224,09"
+        },
+        {
+          "id": "mega_car",
+          "about": "KPMM / CAR Bank Mega 2025",
+          "value": "30,49% (2024: 25,77%)",
+          "page": 12,
+          "evidence": "Kewajiban Penyediaan Modal Minimum (KPMM) 30,49% 25,77%"
+        },
+        {
+          "id": "mega_npl_gross",
+          "about": "NPL gross Bank Mega 2025",
+          "value": "1,65%",
+          "page": 12,
+          "evidence": "NPL gross 1,65% 1,69%"
+        },
+        {
+          "id": "mega_roa",
+          "about": "ROA Bank Mega 2025",
+          "value": "3,10%",
+          "page": 12,
+          "evidence": "Return on Asset (ROA) 3,10% 2,56%"
+        },
+        {
+          "id": "mega_roe",
+          "about": "ROE Bank Mega 2025",
+          "value": "15,54%",
+          "page": 12,
+          "evidence": "Return on Equity (ROE) 15,54% 13,62%"
+        },
+        {
+          "id": "mega_nim",
+          "about": "NIM Bank Mega 2025",
+          "value": "4,18%",
+          "page": 12,
+          "evidence": "Net Interest Margin (NIM) 4,18% 4,64%"
+        },
+        {
+          "id": "mega_ldr",
+          "about": "LDR Bank Mega 2025",
+          "value": "64,48%",
+          "page": 12,
+          "evidence": "Loan to Deposit Ratio (LDR) 64,48% 70,34%"
+        }
+      ]
+    },
+    {
+      "file": "id_cimb_niaga_publikasi_des2025.pdf",
+      "url": "https://investor.cimbniaga.co.id/misc/QR/2025/Published-Dec-2025-ID.pdf",
+      "publisher": "PT Bank CIMB Niaga Tbk",
+      "lang": "id",
+      "pages": 1,
+      "difficulty": "hard",
+      "kind": "laporan keuangan publikasi format koran: 1 halaman raksasa, kolom Bank & Konsolidasian, sebagian teks rusak encoding",
+      "complete": true,
+      "expect_no_price": true,
+      "products": [],
+      "column_order": "Bank CIMB Niaga 2025, Bank 2024, Konsolidasian 2025, Konsolidasian 2024 (dicek dari gambar halaman)",
+      "facts": [
+        {
+          "id": "cimb_total_assets",
+          "about": "total aset CIMB Niaga konsolidasian 31 Des 2025",
+          "value": "Rp 372.698.893 juta (≈ Rp372,7 T); bank saja Rp 362.153.188 juta",
+          "page": 1,
+          "evidence": "TOTAL ASET 362.153.188 350.527.470 372.698.893 360.220.510"
+        },
+        {
+          "id": "cimb_net_income",
+          "about": "laba bersih CIMB Niaga 2025",
+          "value": "konsolidasian Rp 6.935.385 juta; bank saja Rp 6.778.889 juta",
+          "page": 1,
+          "evidence": "TOTAL LABA (RUGI) BERSIH TAHUN BERJALAN 6.778.889 6.525.666 6.935.385 6.898.934"
+        },
+        {
+          "id": "cimb_car",
+          "about": "KPMM / CAR CIMB Niaga 2025",
+          "value": "konsolidasian 24,83%; bank saja 24,54%",
+          "page": 1,
+          "evidence": "Kewajiban Penyediaan Modal Minimum (KPMM) 24,83% 23,34%"
+        },
+        {
+          "id": "cimb_roa",
+          "about": "ROA CIMB Niaga konsolidasian 2025",
+          "value": "2,43%",
+          "page": 1,
+          "evidence": "Return on Asset (ROA) 2,43% 2,53%"
+        },
+        {
+          "id": "cimb_ldr",
+          "about": "LDR CIMB Niaga konsolidasian 2025",
+          "value": "86,81%",
+          "page": 1,
+          "evidence": "86,81% 86,28%"
+        },
+        {
+          "id": "cimb_uus_assets",
+          "about": "total aset unit usaha syariah CIMB Niaga",
+          "value": "Rp 70.224.032 juta (BUKAN total aset bank)",
+          "page": 1,
+          "evidence": "TOTAL ASET 70.224.032 67.503.107",
+          "note": "jebakan: angka unit syariah, jangan tertukar dengan total aset bank"
+        }
+      ]
+    },
+    {
+      "file": "en_lenovo_t14_gen5_intel.pdf",
+      "url": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14_Gen_5_Intel/ThinkPad_T14_Gen_5_Intel_Spec.PDF",
+      "publisher": "Lenovo (PSREF)",
+      "lang": "en",
+      "pages": 11,
+      "difficulty": "medium",
+      "kind": "spec sheet tanpa harga",
+      "complete": false,
+      "expect_no_price": true,
+      "products": [
+        {
+          "match": [
+            "t14",
+            "gen",
+            "5"
+          ],
+          "exclude": [
+            "t14s"
+          ],
+          "price": [
+            null
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "t14_max_memory",
+          "about": "max memory ThinkPad T14 Gen 5",
+          "value": "up to 64GB DDR5-5600",
+          "page": 3,
+          "evidence": "Up to 64GB DDR5-5600"
+        },
+        {
+          "id": "t14_battery",
+          "about": "battery options ThinkPad T14 Gen 5",
+          "value": "39.3Wh or 52.5Wh",
+          "page": 4,
+          "evidence": "52.5Wh Rechargeable Li-ion Battery"
+        },
+        {
+          "id": "t14_weight",
+          "about": "weight ThinkPad T14 Gen 5",
+          "value": "starting at 1.31 kg (2.89 lbs)",
+          "page": 6,
+          "evidence": "Starting at 1.31 kg (2.89 lbs)"
+        },
+        {
+          "id": "t14_thunderbolt",
+          "about": "Thunderbolt ports ThinkPad T14 Gen 5",
+          "value": "2x Thunderbolt 4",
+          "page": 1,
+          "evidence": "2x Thunderbolt 4"
+        }
+      ]
+    },
+    {
+      "file": "en_hp_probook4_g1i.pdf",
+      "url": "https://h20195.www2.hp.com/v2/getpdf.aspx/c09121789.pdf",
+      "publisher": "HP Inc.",
+      "lang": "en",
+      "pages": 5,
+      "difficulty": "easy",
+      "kind": "datasheet marketing tanpa harga",
+      "complete": false,
+      "expect_no_price": true,
+      "products": [
+        {
+          "match": [
+            "probook",
+            "4",
+            "g1i"
+          ],
+          "price": [
+            null
+          ]
+        }
+      ],
+      "facts": [
+        {
+          "id": "probook_cpu",
+          "about": "processors HP ProBook 4 G1i",
+          "value": "Intel Core Ultra 5 / Core Ultra 7",
+          "page": 3,
+          "evidence": "Intel® Core™ Ultra 7 processor"
+        },
+        {
+          "id": "probook_max_memory",
+          "about": "max memory HP ProBook 4 G1i",
+          "value": "32 GB DDR5-5600",
+          "page": 3,
+          "evidence": "32 GB DDR5-5600 MT/s"
+        },
+        {
+          "id": "probook_battery",
+          "about": "battery HP ProBook 4 G1i",
+          "value": "56 Wh or 48 Wh, 3-cell",
+          "page": 4,
+          "evidence": "HP Long Life 3-cell, 56 Wh Li-ion polymer"
+        },
+        {
+          "id": "probook_weight",
+          "about": "weight HP ProBook 4 G1i",
+          "value": "starting at 1.39 kg (3.09 lb)",
+          "page": 4,
+          "evidence": "Starting at 3.09 lb; Starting at 1.39 kg;"
+        }
+      ]
+    },
+    {
+      "file": "en_hp_q4_fy2025_earnings.pdf",
+      "url": "https://s203.q4cdn.com/918857832/files/doc_financials/2025/q4/Q425_HP-Inc-Earnings-Press-Release.pdf",
+      "publisher": "HP Inc.",
+      "lang": "en",
+      "pages": 21,
+      "difficulty": "medium",
+      "kind": "earnings press release, published 2025-11-25, tables",
+      "complete": true,
+      "expect_no_price": true,
+      "products": [],
+      "facts": [
+        {
+          "id": "hp_fy25_revenue",
+          "about": "HP fiscal 2025 net revenue",
+          "value": "$55.3 billion, +3.2% YoY",
+          "page": 1,
+          "evidence": "Fiscal 2025 net revenue of $55.3 billion, up 3.2%"
+        },
+        {
+          "id": "hp_q4_revenue",
+          "about": "HP Q4 FY2025 net revenue",
+          "value": "$14.6 billion, +4.2% YoY",
+          "page": 1,
+          "evidence": "Fourth quarter net revenue of $14.6 billion, up 4.2%"
+        },
+        {
+          "id": "hp_ps_revenue",
+          "about": "HP Personal Systems Q4 FY2025 revenue",
+          "value": "$10.4 billion, +8% YoY, 5.8% operating margin",
+          "page": 3,
+          "evidence": "Personal Systems net revenue was $10.4 billion, up 8% year over year"
+        },
+        {
+          "id": "hp_printing_revenue",
+          "about": "HP Printing Q4 FY2025 revenue",
+          "value": "$4.3 billion, -4% YoY, 18.9% operating margin",
+          "page": 3,
+          "evidence": "Printing net revenue was $4.3 billion, down 4% year over year"
+        },
+        {
+          "id": "hp_fy25_eps",
+          "about": "HP fiscal 2025 GAAP diluted EPS",
+          "value": "$2.65 (non-GAAP $3.12)",
+          "page": 1,
+          "evidence": "Fiscal 2025 GAAP diluted net earnings per share (\"EPS\") of $2.65"
+        },
+        {
+          "id": "hp_dividend",
+          "about": "HP quarterly dividend",
+          "value": "$0.30 per share",
+          "page": 1,
+          "evidence": "HP Inc. increases quarterly dividend to $0.30 per share"
+        },
+        {
+          "id": "hp_fy26_fcf",
+          "about": "HP fiscal 2026 free cash flow outlook",
+          "value": "$2.8 – $3.0 billion",
+          "page": 4,
+          "evidence": "free cash flow in the range of $2.8 to $3.0 billion"
+        }
+      ]
+    },
+    {
+      "file": "en_lenovo_fy2526_q3_presentation.pdf",
+      "url": "https://investor.lenovo.com/en/financial/results/presentation_2526_q3.pdf",
+      "publisher": "Lenovo Group",
+      "lang": "en",
+      "pages": 31,
+      "difficulty": "medium",
+      "kind": "earnings slides (2026-02-12), charts and images",
+      "complete": true,
+      "expect_no_price": true,
+      "products": [],
+      "facts": [
+        {
+          "id": "lenovo_q3_revenue",
+          "about": "Lenovo Q3 FY25/26 revenue",
+          "value": "$22.2 billion, record, +18% YoY",
+          "page": 5,
+          "evidence": "Revenue: $22.2 billion, record high, +18% YoY"
+        },
+        {
+          "id": "lenovo_q3_adj_ni",
+          "about": "Lenovo Q3 FY25/26 adjusted net income",
+          "value": "$589 million, +36% YoY",
+          "page": 5,
+          "evidence": "Adjusted net income*: $589 million, +36% YoY"
+        },
+        {
+          "id": "lenovo_q3_ai_mix",
+          "about": "Lenovo AI-related revenue share Q3 FY25/26",
+          "value": "32% of group revenue, +72% YoY",
+          "page": 5,
+          "evidence": "AI related revenue 32% of group total, +72% YoY"
+        },
+        {
+          "id": "lenovo_q3_idg",
+          "about": "Lenovo IDG Q3 FY25/26 revenue",
+          "value": "$15.8 billion, +14% YoY, operating margin 7.3%",
+          "page": 6,
+          "evidence": "Revenue $15.8 billion, +14% YoY"
+        },
+        {
+          "id": "lenovo_pc_share_2025",
+          "about": "Lenovo 2025 full-year PC market share",
+          "value": "24.9% (all-time high, source IDC)",
+          "page": 6,
+          "evidence": "2025 full year market share 24.9%, all time high"
+        },
+        {
+          "id": "lenovo_q3_isg",
+          "about": "Lenovo ISG Q3 FY25/26 revenue",
+          "value": "$5.2 billion, +31% YoY",
+          "page": 7,
+          "evidence": "Revenue $5.2 billion, +31% YoY"
+        },
+        {
+          "id": "lenovo_q3_ssg",
+          "about": "Lenovo SSG Q3 FY25/26 revenue",
+          "value": "$2.7 billion, +18% YoY, operating margin 22.5%",
+          "page": 8,
+          "evidence": "Revenue $2.7 billion, +18% YoY"
+        }
+      ]
+    },
+    {
+      "file": "en_lenovo_q2_fy2526_infographic.pdf",
+      "url": "https://news.lenovo.com/wp-content/uploads/2025/11/Q2-FY25-26-Earnings-Infographic.pdf",
+      "publisher": "Lenovo Group",
+      "lang": "en",
+      "pages": 1,
+      "difficulty": "hard",
+      "kind": "infographic: numbers spread over charts and graphics",
+      "complete": true,
+      "expect_no_price": true,
+      "products": [],
+      "facts": [
+        {
+          "id": "lenovo_q2_revenue",
+          "about": "Lenovo Q2 FY25/26 revenue",
+          "value": "$20.5 billion, all-time high, +15% YoY (from $17.9B)",
+          "page": 1,
+          "evidence": "$20.5B Revenue (USD)"
+        },
+        {
+          "id": "lenovo_q2_adj_ni",
+          "about": "Lenovo Q2 FY25/26 adjusted net income",
+          "value": "$512 million, +25% YoY (from $409M)",
+          "page": 1,
+          "evidence": "$512M Adjusted Net Income"
+        },
+        {
+          "id": "lenovo_q2_eps",
+          "about": "Lenovo Q2 FY25/26 basic EPS",
+          "value": "2.77 US cents",
+          "page": 1,
+          "evidence": "Cents 2.77 per share Basic Earnings"
+        },
+        {
+          "id": "lenovo_q2_ai_mix",
+          "about": "Lenovo AI-related revenue share Q2 FY25/26",
+          "value": "30% (from 17%, +13 pts)",
+          "page": 1,
+          "evidence": "AI-related +13pts"
+        },
+        {
+          "id": "lenovo_q2_ai_pc",
+          "about": "Lenovo position in Windows AI PC market Q2",
+          "value": "#1, >31% share",
+          "page": 1,
+          "evidence": "#1 in global Windows AI PC market >31% Share"
+        }
+      ]
+    }
+  ],
+  "cross_document": [
+    {
+      "id": "x_lenovo_vs_hp_quarter_revenue",
+      "about": "Lenovo Q3 FY25/26 revenue vs HP Q4 FY2025 revenue",
+      "value": "Lenovo $22.2B (quarter to Dec 2025) vs HP $14.6B (quarter to Oct 2025); periods differ",
+      "uses": [
+        "lenovo_q3_revenue",
+        "hp_q4_revenue"
+      ]
+    },
+    {
+      "id": "x_lenovo_revenue_trend",
+      "about": "Lenovo revenue Q2 → Q3 FY25/26",
+      "value": "$20.5B → $22.2B",
+      "uses": [
+        "lenovo_q2_revenue",
+        "lenovo_q3_revenue"
+      ]
+    },
+    {
+      "id": "x_lenovo_ai_mix_trend",
+      "about": "Lenovo AI-related revenue share Q2 → Q3",
+      "value": "30% → 32%",
+      "uses": [
+        "lenovo_q2_ai_mix",
+        "lenovo_q3_ai_mix"
+      ]
+    },
+    {
+      "id": "x_laptop_weight",
+      "about": "lighter laptop: ThinkPad T14 Gen 5 vs HP ProBook 4 G1i",
+      "value": "ThinkPad T14 Gen 5 (1.31 kg vs 1.39 kg)",
+      "uses": [
+        "t14_weight",
+        "probook_weight"
+      ]
+    },
+    {
+      "id": "x_laptop_memory",
+      "about": "more max memory: ThinkPad T14 Gen 5 vs HP ProBook 4 G1i",
+      "value": "ThinkPad T14 Gen 5 (64GB vs 32GB)",
+      "uses": [
+        "t14_max_memory",
+        "probook_max_memory"
+      ]
+    },
+    {
+      "id": "x_gold_card_fee",
+      "about": "annual fee Gold cards: CIMB vs Mega vs ICBC",
+      "value": "CIMB free; ICBC Rp100.000; Mega Rp450.000",
+      "uses": [
+        "cimb_gold_annual_fee",
+        "mega_gold_annual_fee",
+        "icbc_annual_fee"
+      ]
+    },
+    {
+      "id": "x_bank_net_income",
+      "about": "laba bersih 2025 CIMB Niaga vs Bank Mega",
+      "value": "CIMB Niaga Rp6,94 T (konsolidasian) vs Bank Mega Rp3,36 T",
+      "uses": [
+        "cimb_net_income",
+        "mega_net_income"
+      ]
+    },
+    {
+      "id": "x_bank_car",
+      "about": "CAR/KPMM 2025 lebih tinggi: CIMB Niaga vs Bank Mega",
+      "value": "Bank Mega 30,49% vs CIMB Niaga 24,83%",
+      "uses": [
+        "cimb_car",
+        "mega_car"
+      ]
+    }
+  ],
+  "unanswerable": [
+    {
+      "id": "u_t14_price",
+      "about": "harga ThinkPad T14 Gen 5",
+      "reason": "spec sheet tidak memuat harga",
+      "docs": [
+        "en_lenovo_t14_gen5_intel.pdf"
+      ]
+    },
+    {
+      "id": "u_probook_price",
+      "about": "harga HP ProBook 4 G1i",
+      "reason": "datasheet tidak memuat harga",
+      "docs": [
+        "en_hp_probook4_g1i.pdf"
+      ]
+    },
+    {
+      "id": "u_dell_share",
+      "about": "market share PC Dell 2025",
+      "reason": "tidak ada dokumen Dell di set ini",
+      "docs": []
+    },
+    {
+      "id": "u_bca_profit",
+      "about": "laba bersih BCA 2025",
+      "reason": "tidak ada dokumen BCA di set ini",
+      "docs": []
+    }
+  ],
+  "extraction": {
+    "_readme": [
+      "Notebook B (eval/extraction-files/, 10 documents): per-field reference for extraction F1 and the reference DB for SQL.",
+      "Entity level: extracted rows of the same product (one per section) are merged before scoring.",
+      "Field lists = accepted values (normalised: lowercase alphanumeric; prices ±0.5%). null in a list = the field may be empty.",
+      "advantages/disadvantages: points = key facts the document states; judged by an LLM (covers ≥1 point, no contradiction).",
+      "points [] and optional false = the document states none; any prediction is a false positive.",
+      "brand: required wherever the document writes the brand in its text (all documents except the Kia price list, whose brand is only in the logo)."
+    ],
+    "documents": [
+      {
+        "file": "id_kia_pricelist_jakarta.pdf",
+        "lang": "id",
+        "kind": "price table, brand only in the logo",
+        "products": [
+          {
+            "match": [
+              "sonet",
+              "premiere"
+            ],
+            "exclude": [],
+            "name": "Sonet Premiere iVT",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "premiere"
+            ],
+            "price": [
+              343000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "sonet",
+              "dynamic"
+            ],
+            "exclude": [],
+            "name": "Sonet Dynamic iVT",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "dynamic"
+            ],
+            "price": [
+              318000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "sonet",
+              "smart",
+              "ivt"
+            ],
+            "exclude": [],
+            "name": "Sonet Smart iVT",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "smart",
+              "ivt"
+            ],
+            "price": [
+              300500000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "sonet",
+              "smart",
+              "mt"
+            ],
+            "exclude": [],
+            "name": "Sonet Smart M/T",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "smart",
+              "mt"
+            ],
+            "price": [
+              276800000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "sonet",
+              "active"
+            ],
+            "exclude": [],
+            "name": "Sonet Active M/T",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "active"
+            ],
+            "price": [
+              236600000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "sonet",
+              "standard"
+            ],
+            "exclude": [],
+            "name": "Sonet Standard M/T",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "sonet",
+              "standard"
+            ],
+            "price": [
+              225600000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "seltos",
+              "gt",
+              "line"
+            ],
+            "exclude": [],
+            "name": "Seltos GT Line",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "seltos",
+              "gt",
+              "line"
+            ],
+            "price": [
+              445500000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "seltos",
+              "exp"
+            ],
+            "exclude": [],
+            "name": "Seltos EXP",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "seltos",
+              "exp"
+            ],
+            "price": [
+              406000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "seltos",
+              "ex"
+            ],
+            "exclude": [
+              "exp"
+            ],
+            "name": "Seltos EX",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "seltos",
+              "ex"
+            ],
+            "price": [
+              363500000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "seltos",
+              "e"
+            ],
+            "exclude": [
+              "ex",
+              "exp",
+              "gt"
+            ],
+            "name": "Seltos E",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "seltos",
+              "e"
+            ],
+            "price": [
+              336500000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "carens",
+              "14t"
+            ],
+            "exclude": [],
+            "name": "Carens 1.4T - Premiere (6 seats)",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "carens",
+              "14t"
+            ],
+            "price": [
+              456000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "carens",
+              "15mpi"
+            ],
+            "exclude": [],
+            "name": "Carens 1.5MPI - Premiere (7 seats)",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "carens",
+              "15mpi"
+            ],
+            "price": [
+              396000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "carnival",
+              "premiere"
+            ],
+            "exclude": [],
+            "name": "Grand Carnival CRDi - Premiere",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "carnival",
+              "premiere"
+            ],
+            "price": [
+              928000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "carnival",
+              "dynamic"
+            ],
+            "exclude": [],
+            "name": "Grand Carnival CRDi - Dynamic",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "carnival",
+              "dynamic"
+            ],
+            "price": [
+              828000000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "big",
+              "up"
+            ],
+            "exclude": [],
+            "name": "BIG UP Pick Up - Standard (Non AC)",
+            "brand": [
+              "kia",
+              null
+            ],
+            "product_must_contain": [
+              "big",
+              "up"
+            ],
+            "price": [
+              211700000
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://www.kia.com/content/dam/kwcms/id/en/pdf/NEW_Pricelist_November_Jakarta.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_cimb_riplay_mc_gold.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "gold"
+            ],
+            "exclude": [],
+            "name": "Mastercard Gold",
+            "brand": [
+              "cimbniaga",
+              "cimb",
+              "bankcimbniaga",
+              "ptbankcimbniagatbk"
+            ],
+            "product_must_contain": [
+              "gold"
+            ],
+            "price": [
+              0,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "free annual fee for main and supplementary cards",
+                "25 Poin Xtra per Rp50,000 retail transaction",
+                "fixed installments up to 24 months",
+                "credit limit Rp2–150 million"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://www.cimbniaga.co.id/content/dam/cimb/kartu-kredit/Mastercard_Gold_RIPLAY_UMUM_v160926.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_cimb_riplay_mc_platinum.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "platinum"
+            ],
+            "exclude": [],
+            "name": "Mastercard Platinum",
+            "brand": [
+              "cimbniaga",
+              "cimb",
+              "bankcimbniaga",
+              "ptbankcimbniagatbk"
+            ],
+            "product_must_contain": [
+              "platinum"
+            ],
+            "price": [
+              0,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "free annual fee for main and supplementary cards",
+                "cashback up to 1% on retail transactions",
+                "25 Poin Xtra per Rp50,000",
+                "domestic airport lounge access",
+                "travel and purchase insurance",
+                "credit limit Rp5–300 million"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://www.cimbniaga.co.id/content/dam/cimb/kartu-kredit/Mastercard_Platinum_RIPLAY_UMUM_v160926.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_cimb_riplay_mc_world.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "world"
+            ],
+            "exclude": [],
+            "name": "Mastercard World",
+            "brand": [
+              "cimbniaga",
+              "cimb",
+              "bankcimbniaga",
+              "ptbankcimbniagatbk"
+            ],
+            "product_must_contain": [
+              "world"
+            ],
+            "price": [
+              0,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "free annual fee while a CIMB Preferred/Private customer",
+                "up to 300 Poin Xtra per Rp50,000",
+                "points convertible to airline miles",
+                "travel and purchase insurance",
+                "50% golf green fee discount",
+                "domestic airport lounge access",
+                "credit limit Rp50 million – Rp1 billion"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://www.cimbniaga.co.id/content/dam/cimb/kartu-kredit/Mastercard_World_RIPLAY_UMUM_v160926.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_cimb_riplay_octo.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "octo"
+            ],
+            "exclude": [],
+            "name": "Mastercard OCTO Card",
+            "brand": [
+              "cimbniaga",
+              "cimb",
+              "bankcimbniaga",
+              "ptbankcimbniagatbk"
+            ],
+            "product_must_contain": [
+              "octo"
+            ],
+            "price": [
+              0,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "digital card with free annual fee",
+                "10% cashback on online transactions (max Rp100,000 per bill)",
+                "0% installment for 3 months",
+                "25 Poin Xtra per Rp50,000",
+                "credit limit Rp2–50 million"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://www.cimbniaga.co.id/content/dam/cimb/kartu-kredit/Mastercard_OCTO_Card_RIPLAY_UMUM_v160926.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_mega_riplay_gold.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "gold"
+            ],
+            "exclude": [],
+            "name": "Mega Gold Card (VISA Gold)",
+            "brand": [
+              "bankmega",
+              "mega",
+              "ptbankmegatbk"
+            ],
+            "product_must_contain": [
+              "gold"
+            ],
+            "price": [
+              450000,
+              0,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "MPC points: 10 points per Rp10,000 spent",
+                "benefits at CT Corp merchants",
+                "discounts at online merchants",
+                "minimum limit Rp2,000,000",
+                "installments with special interest"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://cdn.bankmega.com/prod.mega.cms.media/filer_public/f4/e5/f4e5208f-c286-4b7e-a9e9-c8aa4147ade6/riplay_mega_gold_card.pdf",
+        "complete": true
+      },
+      {
+        "file": "id_icbc_creditcard.pdf",
+        "lang": "id",
+        "products": [
+          {
+            "match": [
+              "platinum"
+            ],
+            "exclude": [],
+            "name": "Platinum (Visa / UnionPay)",
+            "brand": [
+              "icbc",
+              "bankicbcindonesia",
+              "ptbankicbcindonesia"
+            ],
+            "product_must_contain": [
+              "platinum"
+            ],
+            "price": [
+              600000,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "Red Trans: transfer up to 40% of the card limit to a savings account",
+                "1 reward point per IDR 5,000",
+                "installments with flexible periods",
+                "free supplementary card annual fee",
+                "free bill payment admin via ICBC & BCA",
+                "card limit ≥ IDR 50 million"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          },
+          {
+            "match": [
+              "gold"
+            ],
+            "exclude": [],
+            "name": "Gold (Visa / UnionPay)",
+            "brand": [
+              "icbc",
+              "bankicbcindonesia",
+              "ptbankicbcindonesia"
+            ],
+            "product_must_contain": [
+              "gold"
+            ],
+            "price": [
+              100000,
+              null
+            ],
+            "currency": [
+              "IDR",
+              null
+            ],
+            "advantages": {
+              "points": [
+                "Red Trans: transfer up to 40% of the card limit to a savings account",
+                "1 reward point per IDR 5,000",
+                "installments with flexible periods",
+                "free supplementary card annual fee",
+                "free bill payment admin via ICBC & BCA",
+                "card limit ≤ IDR 50 million"
+              ],
+              "optional": false
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": false
+            }
+          }
+        ],
+        "url": "https://v.icbc.com.cn/userfiles/resources/icbc/haiwai/indonesia/download/2024/creditcardicbc.pdf",
+        "complete": true
+      },
+      {
+        "file": "en_lenovo_t14_gen5_intel.pdf",
+        "lang": "en",
+        "products": [
+          {
+            "match": [
+              "t14",
+              "gen",
+              "5"
+            ],
+            "exclude": [
+              "t14s"
+            ],
+            "name": "ThinkPad T14 Gen 5 (Intel)",
+            "brand": [
+              "lenovo"
+            ],
+            "product_must_contain": [
+              "t14",
+              "5"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [
+                "up to 64GB DDR5-5600 memory",
+                "2x Thunderbolt 4",
+                "52.5Wh battery with Rapid Charge",
+                "supports up to 4 independent displays",
+                "starting weight 1.31 kg"
+              ],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          }
+        ],
+        "url": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14_Gen_5_Intel/ThinkPad_T14_Gen_5_Intel_Spec.PDF",
+        "complete": true
+      },
+      {
+        "file": "en_lenovo_t14s_gen5.pdf",
+        "lang": "en",
+        "products": [
+          {
+            "match": [
+              "t14s",
+              "gen",
+              "5"
+            ],
+            "exclude": [
+              "2in1"
+            ],
+            "name": "ThinkPad T14s Gen 5",
+            "brand": [
+              "lenovo"
+            ],
+            "product_must_contain": [
+              "t14s",
+              "5"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [
+                "2x Thunderbolt 4",
+                "58Wh battery with Rapid Charge",
+                "up to 32GB memory",
+                "starting weight 1.24 kg",
+                "supports up to 4 independent displays"
+              ],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [
+                "memory is soldered and not upgradable"
+              ],
+              "optional": true
+            }
+          }
+        ],
+        "url": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14s_Gen_5/ThinkPad_T14s_Gen_5_Spec.pdf",
+        "complete": true
+      },
+      {
+        "file": "en_hp_probook4_g1i.pdf",
+        "lang": "en",
+        "products": [
+          {
+            "match": [
+              "probook",
+              "4",
+              "g1i"
+            ],
+            "exclude": [],
+            "name": "ProBook 4 G1i",
+            "brand": [
+              "hp",
+              "hpinc"
+            ],
+            "product_must_contain": [
+              "probook",
+              "g1i"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [
+                "Intel Core Ultra 5/7 processor with NPU",
+                "up to 32GB DDR5-5600 upgradeable memory",
+                "14-inch 16:10 display (WUXGA or WQXGA)",
+                "56Wh battery, fast charging 50% in 30 minutes",
+                "starting weight 1.39 kg"
+              ],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [
+                "battery is not replaceable by the customer"
+              ],
+              "optional": true
+            }
+          }
+        ],
+        "url": "https://h20195.www2.hp.com/v2/getpdf.aspx/c09121789.pdf",
+        "complete": true
+      }
+    ]
+  },
+  "validation": {
+    "_readme": [
+      "Held-out set (eval/validation-files/): documents whose extraction output was never looked at while the",
+      "extraction prompt was changed. The reference lists a SAMPLE of products (complete=false), so recall and",
+      "field accuracy are measured; rows for products outside the sample are reported, not counted as errors."
+    ],
+    "documents": [
+      {
+        "file": "en_lenovo_t14s_2in1_gen1.pdf",
+        "url": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14s_2_in_1_Gen_1/ThinkPad_T14s_2_in_1_Gen_1_Spec.pdf",
+        "lang": "en",
+        "kind": "spec sheet tanpa harga",
+        "complete": false,
+        "products": [
+          {
+            "match": [
+              "t14s",
+              "2",
+              "1"
+            ],
+            "exclude": [],
+            "name": "t14s 2 1",
+            "brand": [
+              "lenovo"
+            ],
+            "product_must_contain": [
+              "t14s",
+              "2",
+              "1"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          }
+        ]
+      },
+      {
+        "file": "en_datavideo_msrp_2017.pdf",
+        "url": "http://resource.datavideo.com/dv_brochures/05_09_2017_Datavideo_MSRP_Price_List.pdf",
+        "lang": "en",
+        "kind": "price list 21 hal., banyak gambar produk",
+        "complete": false,
+        "products": [
+          {
+            "match": [
+              "kmu100"
+            ],
+            "exclude": [
+              "kmu100c"
+            ],
+            "name": "kmu100",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "kmu100"
+            ],
+            "price": [
+              4995
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "rmc185"
+            ],
+            "exclude": [],
+            "name": "rmc185",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "rmc185"
+            ],
+            "price": [
+              949
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "kmu100c"
+            ],
+            "exclude": [],
+            "name": "kmu100c",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "kmu100c"
+            ],
+            "price": [
+              5899
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "se500hd"
+            ],
+            "exclude": [],
+            "name": "se500hd",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "se500hd"
+            ],
+            "price": [
+              1099
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "hs1500t"
+            ],
+            "exclude": [],
+            "name": "hs1500t",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "hs1500t"
+            ],
+            "price": [
+              4499
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "bc80"
+            ],
+            "exclude": [],
+            "name": "bc80",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "bc80"
+            ],
+            "price": [
+              1599
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "bc200"
+            ],
+            "exclude": [],
+            "name": "bc200",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "bc200"
+            ],
+            "price": [
+              2199
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "ptc150"
+            ],
+            "exclude": [
+              "ptc150t",
+              "ptc150w"
+            ],
+            "name": "ptc150",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "ptc150"
+            ],
+            "price": [
+              2499
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "hs2200"
+            ],
+            "exclude": [],
+            "name": "hs2200",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "hs2200"
+            ],
+            "price": [
+              5499
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "rmc400"
+            ],
+            "exclude": [],
+            "name": "rmc400",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "rmc400"
+            ],
+            "price": [
+              499
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "sh1"
+            ],
+            "exclude": [
+              "sh10"
+            ],
+            "name": "sh1",
+            "brand": [
+              "datavideo"
+            ],
+            "product_must_contain": [
+              "sh1"
+            ],
+            "price": [
+              75
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          }
+        ]
+      },
+      {
+        "file": "en_cisco_price_list_reseller.pdf",
+        "url": "https://andovercg.com/datasheets/cisco%20price%20list.pdf",
+        "lang": "en",
+        "kind": "price list 43 hal., ~1.967 baris produk",
+        "complete": false,
+        "products": [
+          {
+            "match": [
+              "airpcm352"
+            ],
+            "exclude": [
+              "airpcm35240"
+            ],
+            "name": "airpcm352",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "airpcm352"
+            ],
+            "price": [
+              199,
+              159.2
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "cvpn3kupgsw35k9"
+            ],
+            "exclude": [],
+            "name": "cvpn3kupgsw35k9",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "cvpn3kupgsw35k9"
+            ],
+            "price": [
+              4000,
+              3247.06
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "wsx6516gbic"
+            ],
+            "exclude": [],
+            "name": "wsx6516gbic",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "wsx6516gbic"
+            ],
+            "price": [
+              24995,
+              20584.12
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "wsx5201r"
+            ],
+            "exclude": [],
+            "name": "wsx5201r",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "wsx5201r"
+            ],
+            "price": [
+              9995,
+              8466.35
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "wsc4912g"
+            ],
+            "exclude": [],
+            "name": "wsc4912g",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "wsc4912g"
+            ],
+            "price": [
+              9995,
+              7996
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "nmcompr"
+            ],
+            "exclude": [],
+            "name": "nmcompr",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "nmcompr"
+            ],
+            "price": [
+              1500,
+              1164.71
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "nm8bst"
+            ],
+            "exclude": [],
+            "name": "nm8bst",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "nm8bst"
+            ],
+            "price": [
+              1600,
+              1242.35
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "vic2brinte"
+            ],
+            "exclude": [],
+            "name": "vic2brinte",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "vic2brinte"
+            ],
+            "price": [
+              1400,
+              1087.06
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "pix515rbun"
+            ],
+            "exclude": [],
+            "name": "pix515rbun",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "pix515rbun"
+            ],
+            "price": [
+              5000,
+              3941.18
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "pixfo"
+            ],
+            "exclude": [],
+            "name": "pixfo",
+            "brand": [
+              "cisco"
+            ],
+            "product_must_contain": [
+              "pixfo"
+            ],
+            "price": [
+              200,
+              176.47
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
