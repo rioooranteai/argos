@@ -1,5 +1,5 @@
-# LOCK FILE — do not edit by hand. Regenerate with: python lock.py
-# PyTorch is not listed here: install.py / Dockerfile install it (CPU or CUDA).
+# LOCK FILE — do not edit by hand. Regenerate with: python tools/lock.py
+# PyTorch is not listed here: see requirements-torch.txt (installed as the CPU or CUDA build).
 accelerate==1.13.0
 annotated-doc==0.0.4
 annotated-types==0.7.0

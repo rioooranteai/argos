@@ -1,6 +1,6 @@
 # DIRECT dependencies imported by the code in app/.
-# requirements.txt is the lock file generated from this file: python lock.py
-# PyTorch is NOT listed: install.py / Dockerfile install it for CPU or CUDA.
+# requirements.txt is the lock file generated from this file: python tools/lock.py
+# PyTorch is NOT listed: requirements-torch.txt (installed as the CPU or CUDA build).
 
 # Web / API
 fastapi==0.119.1

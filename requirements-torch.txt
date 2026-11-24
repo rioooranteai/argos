@@ -1,0 +1,5 @@
+# PyTorch pins (used by Docling). Installed apart from requirements.txt, as the CPU or the CUDA
+# build: by tools/install.py and the Dockerfile. tools/lock.py resolves the lock against them.
+# Change the PyTorch version only here.
+torch==2.8.0
+torchvision==0.23.0

@@ -19,11 +19,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # PyTorch variant: "cpu" (default, smaller image) or "cu129" (NVIDIA GPU)
 ARG TORCH_INDEX=cpu
 
-COPY requirements.txt .
+COPY requirements-torch.txt requirements.txt ./
 
 # PyTorch first for the chosen variant, then the other Python libraries
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 \
+    pip install --no-cache-dir -r requirements-torch.txt \
         --index-url https://download.pytorch.org/whl/${TORCH_INDEX} && \
     pip install --no-cache-dir -r requirements.txt
 

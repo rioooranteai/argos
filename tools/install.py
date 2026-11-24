@@ -1,14 +1,15 @@
 """
 ArgosAI dependency installer with automatic GPU detection.
 
-Usage (run it with the python of your venv/project):
-    python install.py              # auto: detect an NVIDIA GPU
-    python install.py --device cpu # force the CPU build
-    python install.py --device cuda
+Usage (run it with the python of your venv/project, from the project root):
+    python tools/install.py              # auto: detect an NVIDIA GPU
+    python tools/install.py --device cpu # force the CPU build
+    python tools/install.py --device cuda
 
 What it does:
   1. Checks for an NVIDIA GPU (via `nvidia-smi`).
-  2. Installs the CUDA build of PyTorch (with a GPU) or the CPU build.
+  2. Installs the CUDA build of PyTorch (with a GPU) or the CPU build, at the versions in
+     requirements-torch.txt.
   3. Installs the remaining dependencies from requirements.txt.
   4. Verifies: shows whether torch can see the GPU.
 """
@@ -22,11 +23,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-TORCH_VERSION = "2.8.0"
-TORCHVISION_VERSION = "0.23.0"
-CUDA_TAG = "cu129"  # needs an NVIDIA driver that supports CUDA 12.9 (>= 576.x)
+ROOT = Path(__file__).resolve().parent.parent
+TORCH_REQUIREMENTS = ROOT / "requirements-torch.txt"  # the PyTorch pins: change versions there
+# Must match TORCH_INDEX in docker-compose.gpu.yml. Needs an NVIDIA driver for CUDA 12.9 (>= 576.x).
+CUDA_TAG = "cu129"
 INDEX_BASE = "https://download.pytorch.org/whl"
-ROOT = Path(__file__).resolve().parent
 
 
 def detect_nvidia_gpu() -> str | None:
@@ -85,13 +86,13 @@ def main() -> int:
 
     pip("install", "--upgrade", "pip")
 
-    torch_pkgs = [f"torch=={TORCH_VERSION}", f"torchvision=={TORCHVISION_VERSION}"]
+    torch_req = str(TORCH_REQUIREMENTS)
     if platform.system() == "Darwin":
         # macOS: the regular PyPI wheel (already includes MPS / Apple Silicon support)
-        pip("install", *torch_pkgs)
+        pip("install", "-r", torch_req)
     else:
         tag = CUDA_TAG if device == "cuda" else "cpu"
-        pip("install", *torch_pkgs, "--index-url", f"{INDEX_BASE}/{tag}")
+        pip("install", "-r", torch_req, "--index-url", f"{INDEX_BASE}/{tag}")
 
     pip("install", "-r", str(ROOT / "requirements.txt"))
 
@@ -109,7 +110,7 @@ def main() -> int:
     if device == "cuda" and check.returncode == 3:
         print("WARNING: CUDA PyTorch is installed but the GPU is not visible "
               "(the NVIDIA driver may be too old). The app still runs on CPU. "
-              "Update the driver, or run: python install.py --device cpu")
+              "Update the driver, or run: python tools/install.py --device cpu")
 
     print("\nDone. Start the app:  python -m uvicorn app.main:app --reload")
     print("The Docling device is set by the DOCLING_DEVICE environment variable (auto/cuda/cpu), default 'auto'.")

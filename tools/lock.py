@@ -1,11 +1,12 @@
 """
 Regenerate requirements.txt (the lock file) from requirements.in.
 
-Needs uv: https://docs.astral.sh/uv/   ->   python lock.py
+Needs uv: https://docs.astral.sh/uv/   ->   python tools/lock.py
 
 - The lock is cross-platform (--universal), so it is the same on Windows/Linux/Mac.
-- Resolved against torch==2.8.0, but torch/torchvision/triton/nvidia-* are dropped
-  from the result because install.py / Dockerfile install them separately (CPU or CUDA).
+- Resolved against the PyTorch pins in requirements-torch.txt, but torch/torchvision/triton/
+  nvidia-* are dropped from the result: tools/install.py and the Dockerfile install PyTorch
+  separately (CPU or CUDA build).
 """
 
 from __future__ import annotations
@@ -17,12 +18,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-TORCH_PINS = "torch==2.8.0\ntorchvision==0.23.0\n"
+ROOT = Path(__file__).resolve().parent.parent
+TORCH_REQUIREMENTS = ROOT / "requirements-torch.txt"
 EXCLUDE = re.compile(r"^(torch|torchvision|triton|nvidia-[\w-]+)==", re.IGNORECASE)
 HEADER = (
-    "# LOCK FILE — do not edit by hand. Regenerate with: python lock.py\n"
-    "# PyTorch is not listed here: install.py / Dockerfile install it (CPU or CUDA).\n"
+    "# LOCK FILE — do not edit by hand. Regenerate with: python tools/lock.py\n"
+    "# PyTorch is not listed here: see requirements-torch.txt (installed as the CPU or CUDA build).\n"
 )
 
 
@@ -33,13 +34,11 @@ def main() -> int:
         return 1
 
     with tempfile.TemporaryDirectory() as tmp:
-        torch_c = Path(tmp) / "torch.txt"
         raw = Path(tmp) / "lock.txt"
-        torch_c.write_text(TORCH_PINS, encoding="utf-8")
         cmd = [
             uv, "pip", "compile", str(ROOT / "requirements.in"),
             "--universal", "--python-version", "3.11",
-            "-c", str(torch_c), "-o", str(raw),
+            "-c", str(TORCH_REQUIREMENTS), "-o", str(raw),
             "--no-annotate", "--no-header", "-q",
         ]
         # Keep the tested versions when they still satisfy requirements.in
