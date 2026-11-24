@@ -1,5 +1,5 @@
 # DIRECT dependencies imported by the code in app/.
-# requirements.txt is the lock file generated from this file: python tools/lock.py
+# requirements.txt is the lock file generated from this file: python devtools/lock.py
 # PyTorch is NOT listed: requirements-torch.txt (installed as the CPU or CUDA build).
 
 # Web / API

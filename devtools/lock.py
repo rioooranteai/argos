@@ -1,11 +1,11 @@
 """
 Regenerate requirements.txt (the lock file) from requirements.in.
 
-Needs uv: https://docs.astral.sh/uv/   ->   python tools/lock.py
+Needs uv: https://docs.astral.sh/uv/   ->   python devtools/lock.py
 
 - The lock is cross-platform (--universal), so it is the same on Windows/Linux/Mac.
 - Resolved against the PyTorch pins in requirements-torch.txt, but torch/torchvision/triton/
-  nvidia-* are dropped from the result: tools/install.py and the Dockerfile install PyTorch
+  nvidia-* are dropped from the result: devtools/install.py and the Dockerfile install PyTorch
   separately (CPU or CUDA build).
 """
 
@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TORCH_REQUIREMENTS = ROOT / "requirements-torch.txt"
 EXCLUDE = re.compile(r"^(torch|torchvision|triton|nvidia-[\w-]+)==", re.IGNORECASE)
 HEADER = (
-    "# LOCK FILE — do not edit by hand. Regenerate with: python tools/lock.py\n"
+    "# LOCK FILE — do not edit by hand. Regenerate with: python devtools/lock.py\n"
     "# PyTorch is not listed here: see requirements-torch.txt (installed as the CPU or CUDA build).\n"
 )
 

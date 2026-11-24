@@ -2,9 +2,9 @@
 ArgosAI dependency installer with automatic GPU detection.
 
 Usage (run it with the python of your venv/project, from the project root):
-    python tools/install.py              # auto: detect an NVIDIA GPU
-    python tools/install.py --device cpu # force the CPU build
-    python tools/install.py --device cuda
+    python devtools/install.py              # auto: detect an NVIDIA GPU
+    python devtools/install.py --device cpu # force the CPU build
+    python devtools/install.py --device cuda
 
 What it does:
   1. Checks for an NVIDIA GPU (via `nvidia-smi`).
@@ -110,7 +110,7 @@ def main() -> int:
     if device == "cuda" and check.returncode == 3:
         print("WARNING: CUDA PyTorch is installed but the GPU is not visible "
               "(the NVIDIA driver may be too old). The app still runs on CPU. "
-              "Update the driver, or run: python tools/install.py --device cpu")
+              "Update the driver, or run: python devtools/install.py --device cpu")
 
     print("\nDone. Start the app:  python -m uvicorn app.main:app --reload")
     print("The Docling device is set by the DOCLING_DEVICE environment variable (auto/cuda/cpu), default 'auto'.")

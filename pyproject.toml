@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 authors = [{ name = "rioooranteai" }]
 # Dependencies are not listed here. One source of truth:
 #   requirements.in        direct dependencies (edit this)
-#   requirements.txt       the lock file generated from it: python tools/lock.py
+#   requirements.txt       the lock file generated from it: python devtools/lock.py
 #   requirements-torch.txt the PyTorch pins (installed separately as the CPU or CUDA build)
 dependencies = []
 
