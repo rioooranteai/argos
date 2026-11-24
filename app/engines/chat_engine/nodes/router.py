@@ -26,14 +26,16 @@ def _record_decision(result: dict) -> None:
 @traced_node(
     "routing", spans.CHAIN,
     inputs=lambda state: state["user_input"],
-    outputs=lambda result: {"route": result["route"], "reasoning": result.get("router_reasoning")},
+    outputs=lambda result: {"route": result["route"], "reasoning": result.get("router_reasoning"),
+                            "standalone_question": result.get("standalone_question")},
     error_is_warning=True,  # a failed router falls back to `both`; the chat still answers
     after=_record_decision,
 )
 async def router_node(state: dict, llm: BaseLLM) -> dict:
-    # One message, fixed block order: HISTORY → INSTRUCTIONS → QUESTION → CURRENT_DATE.
+    # One message, fixed block order: HISTORY → SOURCES → INSTRUCTIONS → QUESTION → CURRENT_DATE.
     prompt = build_prompt(
         history=state.get("messages", []),
+        sources=state.get("sources") or [],
         instructions=_ROUTER_INSTRUCTIONS,
         question=state["user_input"],
     )
@@ -49,9 +51,14 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
 
         if route not in ("sql", "vector", "both", "none"):
             route = "vector"
+        # Only a follow-up gets a rewrite; on the first message the question is already complete.
+        standalone = parsed.get("standalone_question")
+        if not isinstance(standalone, str) or not standalone.strip() or len(state.get("messages", [])) <= 1:
+            standalone = None
 
         trace = NodeTrace(node="router", status="ok", duration_ms=clock.ms())
-        return {"route": route, "router_reasoning": reasoning, "node_traces": [trace]}
+        return {"route": route, "router_reasoning": reasoning,
+                "standalone_question": standalone and standalone.strip(), "node_traces": [trace]}
 
     except Exception:
         logger.exception("[router] Failed to pick a route; using the fallback route.")

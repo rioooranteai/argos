@@ -114,6 +114,7 @@ class ChatEngine:
             "messages": prior,
             "route": "none",
             "router_reasoning": "",
+            "standalone_question": None,
             "sql_result": None,
             "vector_result": None,
             "final_answer": "",

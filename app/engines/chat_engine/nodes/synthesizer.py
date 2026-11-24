@@ -146,9 +146,10 @@ async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
         state.get("sql_result"), state.get("vector_result"), registry, failed
     )
 
-    # One message, fixed block order: HISTORY → DATA → INSTRUCTIONS → QUESTION → CURRENT_DATE.
+    # One message, fixed block order: HISTORY → SOURCES → DATA → INSTRUCTIONS → QUESTION → CURRENT_DATE.
     prompt = build_prompt(
         history=messages,
+        sources=state.get("sources") or [],
         data=data_context or "No data found.",
         instructions=_SYNTHESIZER_INSTRUCTIONS,
         question=user_input,

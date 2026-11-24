@@ -5,6 +5,7 @@ import logging
 
 from app.core.llm_errors import LLM_ERROR, classify_llm_error
 from app.core.observability.telemetry import spans
+from app.engines.chat_engine.nodes.sql_node import search_question
 from app.engines.chat_engine.nodes.timing import Stopwatch
 from app.engines.chat_engine.nodes.tracing import traced_node
 from app.engines.chat_engine.outcome import NodeTrace
@@ -29,18 +30,18 @@ def _hits(result: dict) -> list[dict] | None:
 
 @traced_node(
     "vector_search", spans.RETRIEVER,
-    inputs=lambda state: {"query": state["user_input"], "version_ids": state.get("active_versions")},
+    inputs=lambda state: {"query": search_question(state), "version_ids": state.get("active_versions")},
     outputs=_hits,
 )
 async def vector_node(state: dict, vector_store: BaseVectorStore) -> dict:
-    user_input = state["user_input"]
+    query = search_question(state)
     version_ids = state.get("active_versions")
     clock = Stopwatch()
 
     try:
         # search() is synchronous (OpenAI embedding HTTP + Chroma query) → run it in a thread.
         hits = await asyncio.to_thread(
-            vector_store.search, user_input, version_ids, DEFAULT_VECTOR_LIMIT
+            vector_store.search, query, version_ids, DEFAULT_VECTOR_LIMIT
         )
     except Exception as e:
         logger.exception("[vector_node] Vector search failed.")

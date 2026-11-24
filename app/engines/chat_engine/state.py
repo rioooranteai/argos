@@ -17,6 +17,9 @@ class ChatState(TypedDict):
     user_input: str
     route: RouteDecision
     router_reasoning: str
+    # The router's self-contained rewrite of a follow-up ("and the Gold one?"), used by the SQL
+    # and vector searches; None when the question already stands on its own.
+    standalone_question: str | None
     sql_result: Any  # NL2SQLResult | None
     # None = the search did not run or FAILED; [] = succeeded with no results.
     vector_result: list[dict[str, Any]] | None
