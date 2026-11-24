@@ -98,12 +98,21 @@ through these stages, which the UI shows as progress:
 `queued → parsing → vision → indexing → extracting → ready` (or `failed` / `cancelled`)
 
 - **Parsing** — Docling reads text, layout and tables in a separate subprocess that is killed
-  and restarted if it hangs.
+  and restarted if it hangs. Its time limit grows with the page surface (a newspaper-sized page
+  counts as several A4 pages).
 - **Vision** — images and charts are described by an OpenAI vision model; one unreadable image
   does not fail the document.
+- **Profile** — an LLM reads the outline and the start of the document and records what it is:
+  type (price list, spec sheet, product terms, financial statement, …), issuer, main products or
+  companies, period, and whether it states customer prices. The profile is the document-level
+  context for extraction, and the router and synthesizer see the profiles of the checked sources.
+  A failed profile does not stop processing.
 - **Indexing** — the content is split into chunks and embedded into ChromaDB.
 - **Extracting** — an LLM agent writes structured rows (`brand_name`, `product_name`,
-  `price`, `price_currency`, `advantages`, `disadvantages`) linked to their source section.
+  `price`, `price_currency`, `advantages`, `disadvantages`) linked to their source section. Every
+  unit carries the document profile, so options and components (processors, operating systems,
+  card networks…) stay attributes of the product, and a recurring annual or subscription fee is
+  the product's price.
 - **Publish** — sections, features and the `ready` status are written in one SQL
   transaction, so chat never sees a half-processed version.
 
@@ -321,7 +330,7 @@ destination, so another OTLP backend works the same way. Tracing is **off** unti
   `route:none`, `route:fallback` — so you can filter chats by route. `degraded` / `retry` tags
   and ERROR spans with the error code show what went wrong.
 - **`document.process`** — one trace per processing attempt of a document version; user = the
-  uploader. Children: `parsing`, `vision`, `indexing`, `extracting`, `publish`, with every
+  uploader. Children: `parsing`, `vision`, `profile`, `indexing`, `extracting`, `publish`, with every
   Vision, embedding and extraction call under them. The outcome is `ready`, `retry_scheduled`
   (with the retry delay), `failed` or `cancelled`.
 - Every AI call is a *generation* with model, token usage and — when its price is set — cost.

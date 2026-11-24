@@ -43,6 +43,10 @@ class BaseLibraryRepository(ABC):
     def get_version(self, version_id: str) -> DocumentVersion | None: ...
 
     @abstractmethod
+    def save_profile(self, version_id: str, profile_json: str) -> None:
+        """Store (or replace) the document profile of a version."""
+
+    @abstractmethod
     def list_versions(self, document_id: str) -> list[DocumentVersion]:
         """All versions of a document, newest first."""
 

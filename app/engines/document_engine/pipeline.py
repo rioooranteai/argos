@@ -1,6 +1,9 @@
 """The processing pipeline for one document version (DESIGN_GROUP_A.md §7, DESIGN_GROUP_B.md §3).
 
-    parsing → vision → indexing → extracting → publish (one SQL transaction)
+    parsing → vision → profile → indexing → extracting → publish (one SQL transaction)
+
+The profile (what the document is: type, issuer, subjects, period) is the document-level
+context every extraction unit receives; it is also stored for the chat (router, synthesizer).
 
 Safe write order (Chroma and SQLite cannot share a transaction):
   1. this version's vectors are written to Chroma — not visible yet, because chat
@@ -29,6 +32,7 @@ from app.engines.document_engine.jobs import JobCancelled, JobContext, Permanent
 from app.services.extraction.ports import BaseFeatureRepository
 from app.services.extraction.service import ExtractionService, ExtractionStats
 from app.services.ingestion.chunker import build_index_chunks, build_sections, build_units
+from app.services.ingestion.profile import DocumentProfiler
 from app.services.ingestion.service import FigureDescriber, figures_in
 from app.services.library.model import STAGE_READY, DocumentVersion, LibraryDocument
 from app.services.library.ports import BaseLibraryRepository
@@ -44,6 +48,7 @@ class DocumentPipeline:
         self,
         parser: BaseDocumentParser,
         describer: FigureDescriber,
+        profiler: DocumentProfiler,
         vector_store: BaseVectorStore,
         extraction: ExtractionService,
         features: BaseFeatureRepository,
@@ -55,6 +60,7 @@ class DocumentPipeline:
     ) -> None:
         self._parser = parser
         self._describer = describer
+        self._profiler = profiler
         self._vectors = vector_store
         self._extraction = extraction
         self._features = features
@@ -112,6 +118,17 @@ class DocumentPipeline:
             await ctx.add_vision_failed(outcome.failed)
         await ctx.check_cancelled()
 
+        # ── 2b. Document profile (after vision: logos and charts are text by now) ──
+        with spans.span("profile") as span:
+            profile = await self._profiler.profile(document.display_name, sections)
+            if profile is None:
+                spans.set_warning(span, "profile could not be built; extracting without document context")
+            else:
+                spans.set_output(span, profile.model_dump())
+                await asyncio.to_thread(self._library.save_profile, version.id, profile.model_dump_json())
+        document_context = profile.as_context() if profile else f"Title: {document.display_name}"
+        await ctx.check_cancelled()
+
         # ── 3. Indexing (embedding + Chroma) ───────────────────────────
         chunks = build_index_chunks(sections, version.document_id, version.id, document.display_name)
         reuse = await asyncio.to_thread(self._reusable_vectors, document, version)
@@ -139,7 +156,7 @@ class DocumentPipeline:
         extraction_stats = ExtractionStats()
         with spans.span("extracting") as span:
             rows = await self._extraction.extract_units(
-                units, on_progress=ctx.progress, stats=extraction_stats
+                units, document_context, on_progress=ctx.progress, stats=extraction_stats
             )
             spans.set_metadata(span, units=extraction_stats.units, from_cache=extraction_stats.cached,
                                features=len(rows))

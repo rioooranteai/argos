@@ -20,6 +20,7 @@ from app.engines.document_engine.worker import DocumentWorker
 from app.services.conversation.service import ConversationService
 from app.services.extraction.service import ExtractionService
 from app.services.health.checker import HealthChecker
+from app.services.ingestion.profile import DocumentProfiler
 from app.services.ingestion.service import FigureDescriber
 from app.services.library.service import LibraryService
 from app.services.nl2sql.service import NL2SQLService
@@ -135,6 +136,7 @@ async def lifespan(app: FastAPI):
             model_name=app_config.OPENAI_VLM_MODEL,
             semaphore=limits.vision,
         ),
+        profiler=DocumentProfiler(build_llm("profile"), max_chars=app_config.PROFILE_MAX_CHARS),
         vector_store=app.state.vector_store,
         extraction=ExtractionService(
             provider=build_extractor(),

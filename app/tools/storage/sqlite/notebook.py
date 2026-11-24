@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 
@@ -158,10 +159,11 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
             rows = conn.execute(
                 """
                 SELECT v.id AS version_id, d.id AS document_id, d.display_name,
-                       v.version_no, v.uploaded_at
+                       v.version_no, v.uploaded_at, p.profile
                 FROM notebook_sources ns
                 JOIN document_versions v ON v.id = ns.version_id
                 JOIN library_documents d ON d.id = ns.document_id
+                LEFT JOIN document_profiles p ON p.version_id = v.id
                 WHERE ns.notebook_id = ? AND ns.enabled = 1 AND v.stage = 'ready'
                 ORDER BY ns.added_at, ns.rowid
                 """,
@@ -174,6 +176,7 @@ class SQLiteNotebookRepository(BaseNotebookRepository):
                 display_name=r["display_name"],
                 version_no=r["version_no"],
                 uploaded_at=_ts(r["uploaded_at"]),
+                profile=json.loads(r["profile"]) if r["profile"] else None,
             )
             for r in rows
         ]

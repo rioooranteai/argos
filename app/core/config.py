@@ -121,6 +121,7 @@ class AppConfig:
         "title": "none",
         "nl2sql": "none",
         "extraction": "none",
+        "profile": "low",
         "chat": "low",
         "llm": "low",
         "vision": "low",
@@ -173,7 +174,7 @@ class AppConfig:
 
     # ── Worker ───────────────────────────────────────────────────────
     # Bump when the ingestion prompts/chunker/models change (A §5 `pipeline_version`).
-    PIPELINE_VERSION: str = "1"
+    PIPELINE_VERSION: str = "2"  # 2: document profile + document context for extraction
     DOC_WORKERS: int = 2
     VERSION_LEASE_MINUTES: int = 10
     DOC_MAX_ATTEMPTS: int = 3
@@ -191,6 +192,7 @@ class AppConfig:
     LLM_TIMEOUT_NL2SQL: int = 20
     LLM_TIMEOUT_CHAT: int = 60
     LLM_TIMEOUT_TITLE: int = 10
+    LLM_TIMEOUT_PROFILE: int = 60
     SQL_EXEC_TIMEOUT: int = 5
     EMBED_TIMEOUT: int = 30
     EMBED_BATCH_SIZE: int = 100
@@ -200,6 +202,8 @@ class AppConfig:
     CHAT_TOTAL_TIMEOUT: int = 90
 
     # ── Extraction ───────────────────────────────────────────────────
+    # Document profile: how much of the document (from the start) the profiler reads.
+    PROFILE_MAX_CHARS: int = 12000
     EXTRACTION_MIN_SECTION_TOKENS: int = 300
     EXTRACTION_MAX_UNIT_TOKENS: int = 4000
 

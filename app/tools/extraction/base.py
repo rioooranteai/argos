@@ -10,22 +10,23 @@ class CompetitorFeature(BaseModel):
     brand_name: str | None = Field(
         default=None,
         description=(
-            "The manufacturer or brand that owns the product, "
-            "as explicitly written in the text. "
-            "Exclude the model name. Null if not determinable."
+            "The company that makes, issues or provides the product, as written in the text "
+            "or as the document's issuer. Never the model name, a payment network or a partner. "
+            "Null if not determinable."
         ),
     )
     product_name: str = Field(
         description=(
-            "The specific product or service variant name, "
-            "excluding the brand prefix. "
-            "Use the most specific name available from the text."
+            "The specific product or service variant name, excluding the brand prefix: "
+            "model name plus variant (e.g. from a table grouped by model). "
+            "Not a component, option or category word."
         ),
     )
     price: float | None = Field(
         default=None,
         description=(
-            "Numeric value only of a direct user-facing price. "
+            "Numeric value only of the price a customer pays for the product, including a "
+            "recurring annual/membership/subscription fee (0 if stated as free). "
             "No currency symbols. Null if not mentioned."
         ),
     )

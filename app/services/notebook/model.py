@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -58,3 +58,6 @@ class ActiveSource:
     display_name: str
     version_no: int
     uploaded_at: datetime
+    # The version's document profile (app/services/ingestion/profile.py) as a dict; None when
+    # the version was processed before profiles existed or the profile could not be built.
+    profile: dict | None = field(default=None, compare=False)

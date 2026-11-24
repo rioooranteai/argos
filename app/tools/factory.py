@@ -33,6 +33,7 @@ _OPENAI_LLM_PROFILES = {
     "router": (app_config.OPENAI_ROUTER_MODEL, app_config.LLM_TIMEOUT_ROUTER, 1, "router"),
     "title": (app_config.OPENAI_TITLE_MODEL, app_config.LLM_TIMEOUT_TITLE, 0, "title"),
     "nl2sql": (app_config.OPENAI_EXTRACTION_MODEL, app_config.LLM_TIMEOUT_NL2SQL, 1, "nl2sql"),
+    "profile": (app_config.OPENAI_LLM_MODEL, app_config.LLM_TIMEOUT_PROFILE, 1, "profile"),
 }
 
 
@@ -41,7 +42,7 @@ def _unknown(tool: str, provider: str) -> ValueError:
 
 
 def build_llm(profile: str = "llm", temperature: float = 0.0) -> BaseLLM:
-    """An LLM for one use (``chat``, ``router``, ``title``, ``nl2sql``, ``llm``)."""
+    """An LLM for one use (``chat``, ``router``, ``title``, ``nl2sql``, ``profile``, ``llm``)."""
     provider = app_config.LLM_PROVIDER.lower()
     if provider == "openai":
         if profile not in _OPENAI_LLM_PROFILES:

@@ -8,6 +8,7 @@ so a retry only pays for the units that did not finish.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -47,6 +48,7 @@ class ExtractionService:
     async def extract_units(
         self,
         units: list[ExtractionUnit],
+        document_context: str,
         on_progress: Callable[[int], Awaitable[None]] | None = None,
         stats: ExtractionStats | None = None,
     ) -> list[FeatureRow]:
@@ -58,7 +60,7 @@ class ExtractionService:
 
         async def one(i: int, unit: ExtractionUnit) -> None:
             nonlocal done
-            results[i], from_cache = await self._extract_unit(unit)
+            results[i], from_cache = await self._extract_unit(unit, document_context)
             async with lock:
                 done += 1
                 stats.cached += from_cache
@@ -75,23 +77,30 @@ class ExtractionService:
                 raise outcome
         return [row for rows in results for row in rows]
 
-    async def _extract_unit(self, unit: ExtractionUnit) -> tuple[list[FeatureRow], bool]:
-        """Return (feature rows, taken from the cache?)."""
+    async def _extract_unit(self, unit: ExtractionUnit, document_context: str) -> tuple[list[FeatureRow], bool]:
+        """Return (feature rows, taken from the cache?).
+
+        The same sections in another document context can mean other products, so the cache key
+        covers the unit and the context.
+        """
+        cache_key = hashlib.sha256(f"{unit.unit_hash}\n{document_context}".encode()).hexdigest()
         cached = await asyncio.to_thread(
-            self._cache.get_extraction, unit.unit_hash, self._pipeline_version
+            self._cache.get_extraction, cache_key, self._pipeline_version
         )
         if cached is not None:
             return [FeatureRow(**row) for row in json.loads(cached)], True
 
         async with self._semaphore:
-            features = await asyncio.wait_for(
-                self._provider.extract(unit.prompt_text()), timeout=self._timeout
+            text = (
+                f"<<DOCUMENT>>\n{document_context}\n<</DOCUMENT>>\n\n"
+                f"<<SECTIONS>>\n{unit.prompt_text()}\n<</SECTIONS>>"
             )
+            features = await asyncio.wait_for(self._provider.extract(text), timeout=self._timeout)
 
         rows = self._to_rows(unit, features)
         await asyncio.to_thread(
             self._cache.put_extraction,
-            unit.unit_hash,
+            cache_key,
             self._pipeline_version,
             json.dumps([asdict(r) for r in rows], ensure_ascii=False),
         )

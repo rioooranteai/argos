@@ -144,6 +144,14 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
             ).fetchone()
         return self._to_version(row) if row else None
 
+    def save_profile(self, version_id: str, profile_json: str) -> None:
+        with self._db.get_connection() as conn:
+            conn.execute(
+                "INSERT INTO document_profiles (version_id, profile) VALUES (?, ?) "
+                "ON CONFLICT(version_id) DO UPDATE SET profile = excluded.profile, created_at = CURRENT_TIMESTAMP",
+                (version_id, profile_json),
+            )
+
     def list_versions(self, document_id: str) -> list[DocumentVersion]:
         with self._db.get_connection() as conn:
             rows = conn.execute(

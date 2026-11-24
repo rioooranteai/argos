@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 Purpose = Literal[
-    "router", "nl2sql", "synthesizer", "title", "vision", "extraction", "embedding", "stt", "tts"
+    "router", "nl2sql", "synthesizer", "title", "vision", "extraction", "profile", "embedding", "stt", "tts"
 ]
 
 

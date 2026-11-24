@@ -379,6 +379,16 @@ MIGRATIONS.append((7, """
     ALTER TABLE notebooks ADD COLUMN last_opened_at TIMESTAMP;
 """))
 
+# v8: a short profile per document version (type, issuer, subjects, period), built during
+# processing and given to the extractor, router and synthesizer as document context.
+MIGRATIONS.append((8, """
+    CREATE TABLE document_profiles (
+        version_id  TEXT PRIMARY KEY REFERENCES document_versions(id) ON DELETE CASCADE,
+        profile     TEXT NOT NULL,          -- JSON (DocumentProfile)
+        created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+"""))
+
 
 def run_migrations(conn: sqlite3.Connection, migrations: list[tuple[int, Migration]] | None = None) -> None:
     """Apply pending migrations. Safe to call on every startup."""
