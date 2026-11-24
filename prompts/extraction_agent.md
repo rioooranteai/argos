@@ -57,13 +57,23 @@ brand_name: the manufacturer, publisher, developer, or brand that owns
 
 product_name: the specific product or service variant name, EXCLUDING
   the brand.
-  - Strip the brand prefix. Write only the model and variant.
+  - Build it from the general to the specific, as the text writes it:
+    product line or sub-brand, then model, then variant. Strip only the
+    brand (the company); keep the product line.
     Example: from "Samsung Galaxy S25 Ultra" →
              brand_name: "Samsung", product_name: "Galaxy S25 Ultra"
     Example: from "Spotify Premium Individual" →
              brand_name: "Spotify", product_name: "Premium Individual"
     Example: from "Nike Air Max 90 Black/White" →
              brand_name: "Nike", product_name: "Air Max 90 Black/White"
+  - When a row, table cell or list item gives only the model or the
+    variant, take the product line (and model) from the nearest heading,
+    table title, column header or group label above it, or from the
+    document context.
+    Example: under the heading "Aurora", the rows "A1 Basic" and
+    "A1 Plus" → product_name: "Aurora A1 Basic", "Aurora A1 Plus"
+  - Copy every part as written: do not translate, expand, abbreviate or
+    reorder words.
   - If only the product family is named with no variant, use the family
     name without brand.
     Example: brand_name: "Honda", product_name: "BR-V"
@@ -216,10 +226,11 @@ Rule 24: In a document about one product or product family (a spec
          positive facts into the main product's advantages. Extract the
          main product itself (once per named model or variant), even
          when it has no price.
-Rule 25: In a price list or table where a model or product-line name is
-         a group heading above its variant rows, every variant's
-         product_name is the model name plus the variant name. The
-         model name is never the brand.
+Rule 25: In a price list, table or catalogue where a product line,
+         series or model name is a heading or group label above its
+         rows, every row's product_name starts with that name, followed
+         by the row's own model or variant. The product line or model
+         name is never the brand.
 Rule 26: brand_name is the company that makes, issues or provides the
          product (manufacturer, bank, service provider). When the
          sections do not name it, use the issuer from the document
