@@ -1672,11 +1672,12 @@
       }
     ]
   },
-  "validation": {
+  "tuning": {
     "_readme": [
-      "Held-out set (eval/validation-files/): documents whose extraction output was never looked at while the",
-      "extraction prompt was changed. The reference lists a SAMPLE of products (complete=false), so recall and",
-      "field accuracy are measured; rows for products outside the sample are reported, not counted as errors."
+      "Tuning set (eval/tuning-files/): former held-out documents. Their extraction output was inspected",
+      "while the extraction prompt was changed, so they no longer measure generalisation.",
+      "Sample reference (complete=false): recall and field accuracy; other products are reported only.",
+      "code: the product's model/part number (scored against model_code; also identifies the product)."
     ],
     "documents": [
       {
@@ -1753,7 +1754,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "kmu100"
           },
           {
             "match": [
@@ -1780,7 +1782,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "rmc185"
           },
           {
             "match": [
@@ -1807,7 +1810,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "kmu100c"
           },
           {
             "match": [
@@ -1834,7 +1838,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "se500hd"
           },
           {
             "match": [
@@ -1861,7 +1866,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "hs1500t"
           },
           {
             "match": [
@@ -1888,7 +1894,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "bc80"
           },
           {
             "match": [
@@ -1915,7 +1922,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "bc200"
           },
           {
             "match": [
@@ -1945,7 +1953,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "ptc150"
           },
           {
             "match": [
@@ -1972,7 +1981,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "hs2200"
           },
           {
             "match": [
@@ -1999,7 +2009,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "rmc400"
           },
           {
             "match": [
@@ -2028,7 +2039,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "sh1"
           }
         ]
       },
@@ -2067,7 +2079,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "airpcm352"
           },
           {
             "match": [
@@ -2095,7 +2108,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "cvpn3kupgsw35k9"
           },
           {
             "match": [
@@ -2123,7 +2137,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "wsx6516gbic"
           },
           {
             "match": [
@@ -2151,7 +2166,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "wsx5201r"
           },
           {
             "match": [
@@ -2179,7 +2195,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "wsc4912g"
           },
           {
             "match": [
@@ -2207,7 +2224,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "nmcompr"
           },
           {
             "match": [
@@ -2235,7 +2253,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "nm8bst"
           },
           {
             "match": [
@@ -2263,7 +2282,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "vic2brinte"
           },
           {
             "match": [
@@ -2291,7 +2311,8 @@
             "disadvantages": {
               "points": [],
               "optional": true
-            }
+            },
+            "code": "pix515rbun"
           },
           {
             "match": [
@@ -2319,7 +2340,1800 @@
             "disadvantages": {
               "points": [],
               "optional": true
+            },
+            "code": "pixfo"
+          }
+        ]
+      }
+    ]
+  },
+  "validation": {
+    "_readme": [
+      "Held-out set (eval/validation-files/), frozen on 2026-11-24 before the extraction prompt was changed:",
+      "public documents of kinds absent from the tuning data. Do not inspect their extraction output while",
+      "tuning; report only the aggregate scores. Samples were taken by a fixed rule (every n-th item).",
+      "en_logitech_b2b_msrp_2024.pdf  pages 1-10 of the Logitech B2B US MSRP price list (June 2024): every 16th item.",
+      "en_gigamon_dir_pricelist_2021.pdf  pages 1-12 of the Gigamon Texas DIR price list (Dec 2021): every 20th item.",
+      "id_biznet_business_pricelist.pdf  Biznet Dedicated & Metronet business price list: complete.",
+      "en_epson_projector_range_guide_2025.pdf  Epson Australia projector range guide (Aug 2025): every 4th model.",
+      "code: model/part number, scored against model_code; for part-number-only items it is the identity."
+    ],
+    "documents": [
+      {
+        "file": "en_logitech_b2b_msrp_2024.pdf",
+        "lang": "en",
+        "kind": "price list with part numbers, USD+CAD",
+        "url": "https://info.logitech.com/rs/201-WGH-889/images/Logitech_B2B_US_MSRP_Price_List.pdf",
+        "complete": false,
+        "products": [
+          {
+            "match": [
+              "rallybar",
+              "graphite"
+            ],
+            "exclude": [
+              "mini",
+              "huddle",
+              "white",
+              "noradio",
+              "kit",
+              "warranty"
+            ],
+            "name": "Rally Bar, Graphite",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "rally",
+              "bar"
+            ],
+            "price": [
+              3999,
+              5399
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "960-001308"
+          },
+          {
+            "match": [
+              "rallybarhuddle"
+            ],
+            "exclude": [
+              "warranty",
+              "tap",
+              "bundle",
+              "kit"
+            ],
+            "name": "Rally Bar Huddle",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "rally",
+              "bar",
+              "huddle"
+            ],
+            "price": [
+              1699,
+              2299
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "960-001485"
+          },
+          {
+            "match": [
+              "sight",
+              "graphite"
+            ],
+            "exclude": [
+              "kit",
+              "rally",
+              "warranty",
+              "white"
+            ],
+            "name": "Sight, Graphite",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "sight"
+            ],
+            "price": [
+              1999,
+              2699
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "960-001510"
+          },
+          {
+            "match": [
+              "groupexpansionmic"
+            ],
+            "exclude": [],
+            "name": "GROUP Expansion Mics",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "expansion",
+              "mic"
+            ],
+            "price": [
+              299.99,
+              239.99,
+              400,
+              320
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "989-000171"
+          },
+          {
+            "match": [
+              "tapwallmount"
+            ],
+            "exclude": [],
+            "name": "Tap Wall Mount",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "tap",
+              "wall",
+              "mount"
+            ],
+            "price": [
+              199.99,
+              269
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "939-001817"
+          },
+          {
+            "match": [
+              "selectfiveyear"
+            ],
+            "exclude": [
+              "enterprise"
+            ],
+            "name": "Select Five Year Plan",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "select",
+              "five",
+              "year"
+            ],
+            "price": [
+              1449,
+              1949
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000196"
+          },
+          {
+            "match": [
+              "selectthreeyearenterprise",
+              "2000"
+            ],
+            "exclude": [],
+            "name": "Select Three Year Enterprise Plan for up to 2000 rooms",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "select",
+              "three",
+              "enterprise",
+              "2000"
+            ],
+            "price": [
+              1738260,
+              2383842
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000309"
+          },
+          {
+            "match": [
+              "syncplustwoyear"
+            ],
+            "exclude": [],
+            "name": "Sync Plus Two Year Plan",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "sync",
+              "plus",
+              "two"
+            ],
+            "price": [
+              89,
+              119
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000201"
+          },
+          {
+            "match": [
+              "oneyear",
+              "warranty",
+              "baseroom"
+            ],
+            "exclude": [],
+            "name": "One year extended warranty for base room solution with Tap",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "warranty"
+            ],
+            "price": [
+              99,
+              129
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000093"
+          },
+          {
+            "match": [
+              "threeyear",
+              "warranty",
+              "huddle",
+              "tapip"
+            ],
+            "exclude": [],
+            "name": "Three year extended warranty for Rally Bar Huddle and Tap IP bundle",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "warranty",
+              "huddle"
+            ],
+            "price": [
+              575,
+              748
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000253"
+          },
+          {
+            "match": [
+              "threeyear",
+              "warranty",
+              "sight",
+              "taa"
+            ],
+            "exclude": [],
+            "name": "Three year extended warranty for Rally Bar + Sight Room Kit (TAA)",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "warranty",
+              "sight"
+            ],
+            "price": [
+              1875,
+              2530
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "994-000349"
+          },
+          {
+            "match": [
+              "c925e"
+            ],
+            "exclude": [],
+            "name": "C925e Webcam",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "c925e"
+            ],
+            "price": [
+              99.99,
+              134
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "960-001075"
+          },
+          {
+            "match": [
+              "zonewireduc"
+            ],
+            "exclude": [
+              "earbuds"
+            ],
+            "name": "Zone Wired UC Headset",
+            "brand": [
+              "logitech"
+            ],
+            "product_must_contain": [
+              "zone",
+              "wired"
+            ],
+            "price": [
+              99.99,
+              130
+            ],
+            "currency": [
+              "USD",
+              "CAD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "981-000876"
+          }
+        ]
+      },
+      {
+        "file": "en_gigamon_dir_pricelist_2021.pdf",
+        "lang": "en",
+        "kind": "part-number-only price list",
+        "url": "https://webobjects2.cdw.com/is/content/CDW/cdw/on-domain-cdw/industries/state-and-local/texas-dir-data-storage-networking-equipment/dir-gigamon-price-list-27-dec-2021.pdf",
+        "complete": false,
+        "products": [
+          {
+            "match": [
+              "sfp501"
+            ],
+            "exclude": [
+              "sfp501cdm",
+              "sfp501pm",
+              "sfp501pmcdm"
+            ],
+            "name": "SFP-501",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "sfp",
+              "copper"
+            ],
+            "price": [
+              195,
+              176.82
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "SFP-501"
+          },
+          {
+            "match": [
+              "prt438cdm"
+            ],
+            "exclude": [],
+            "name": "PRT-438-CDM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "gigaport8x"
+            ],
+            "price": [
+              14995,
+              13596.72
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "PRT-438-CDM"
+          },
+          {
+            "match": [
+              "tap232n"
+            ],
+            "exclude": [
+              "tap232npm"
+            ],
+            "name": "TAP-232N",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "gigatap4sr"
+            ],
+            "price": [
+              19995,
+              18130.47
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "TAP-232N"
+          },
+          {
+            "match": [
+              "prt435pm"
+            ],
+            "exclude": [],
+            "name": "PRT-435-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigaport5x3c"
+            ],
+            "price": [
+              2799,
+              2735.39
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "PRT-435-PM"
+          },
+          {
+            "match": [
+              "tapgv4x45d10pm"
+            ],
+            "exclude": [],
+            "name": "TAP-GV4-X45D10-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigataper"
+            ],
+            "price": [
+              2996,
+              2927.92
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "TAP-GV4-X45D10-PM"
+          },
+          {
+            "match": [
+              "qsf502pm"
+            ],
+            "exclude": [],
+            "name": "QSF-502-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "qsfp"
+            ],
+            "price": [
+              599,
+              585.39
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "QSF-502-PM"
+          },
+          {
+            "match": [
+              "ctlhd0002pmcdm"
+            ],
+            "exclude": [],
+            "name": "CTL-HD0-002-PM-CDM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "controlcard"
+            ],
+            "price": [
+              7200,
+              7036.38
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "CTL-HD0-002-PM-CDM"
+          },
+          {
+            "match": [
+              "glk323pm"
+            ],
+            "exclude": [],
+            "name": "GLK-323-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigalinklr"
+            ],
+            "price": [
+              789,
+              771.07
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "GLK-323-PM"
+          },
+          {
+            "match": [
+              "smthb0gtp250pmcdm"
+            ],
+            "exclude": [],
+            "name": "SMT-HB0-GTP250-PM-CDM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigasmart",
+              "gtp"
+            ],
+            "price": [
+              3999,
+              3908.12
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "SMT-HB0-GTP250-PM-CDM"
+          },
+          {
+            "match": [
+              "smthc0hs1pm"
+            ],
+            "exclude": [
+              "smthc0hs1pmcdm"
+            ],
+            "name": "SMT-HC0-HS1-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "headerstripping"
+            ],
+            "price": [
+              1199,
+              1171.75
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "SMT-HC0-HS1-PM"
+          },
+          {
+            "match": [
+              "smthd0gtpmaxpm"
+            ],
+            "exclude": [],
+            "name": "SMT-HD0-GTPMAX-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigasmart",
+              "gtp"
+            ],
+            "price": [
+              7999,
+              7817.22
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "SMT-HD0-GTPMAX-PM"
+          },
+          {
+            "match": [
+              "smtlbgpmcdm"
+            ],
+            "exclude": [],
+            "name": "SMT-LBG-PM-CDM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "loadbalancing"
+            ],
+            "price": [
+              799,
+              780.84
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "SMT-LBG-PM-CDM"
+          },
+          {
+            "match": [
+              "gvs432pm"
+            ],
+            "exclude": [
+              "gvs432pmcdm"
+            ],
+            "name": "GVS-432-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigavue2404"
+            ],
+            "price": [
+              7699,
+              7524.04
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "GVS-432-PM"
+          },
+          {
+            "match": [
+              "gvshc102pm"
+            ],
+            "exclude": [],
+            "name": "GVS-HC102-PM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigavuehc1"
+            ],
+            "price": [
+              4999,
+              4885.4
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "GVS-HC102-PM"
+          },
+          {
+            "match": [
+              "gvshd8a2pmcdm"
+            ],
+            "exclude": [],
+            "name": "GVS-HD8A2-PM-CDM",
+            "brand": [
+              "gigamon"
+            ],
+            "product_must_contain": [
+              "support",
+              "gigavuehd8"
+            ],
+            "price": [
+              18400,
+              17981.86
+            ],
+            "currency": [
+              "USD"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "GVS-HD8A2-PM-CDM"
+          }
+        ]
+      },
+      {
+        "file": "id_biznet_business_pricelist.pdf",
+        "lang": "id",
+        "kind": "monthly subscription plans per region",
+        "url": "https://www.biznetnetworks.com/custom-upload/Brochure/Biznet%20Business%20Pricelist%20-%20Dedicated%20%26%20Metronet%20D.pdf",
+        "complete": true,
+        "products": [
+          {
+            "match": [
+              "dedicatedinternet"
+            ],
+            "exclude": [],
+            "name": "Dedicated Internet 100Mbps",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "dedicated",
+              "internet"
+            ],
+            "price": [
+              6500000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
             }
+          },
+          {
+            "match": [
+              "metronet5d"
+            ],
+            "exclude": [],
+            "name": "Metronet 5D",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "5d"
+            ],
+            "price": [
+              12500000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet4d"
+            ],
+            "exclude": [],
+            "name": "Metronet 4D",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "4d"
+            ],
+            "price": [
+              6500000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet3d"
+            ],
+            "exclude": [
+              "metronet3ds",
+              "metronet3dw",
+              "metronet3dn"
+            ],
+            "name": "Metronet 3D",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "3d"
+            ],
+            "price": [
+              2700000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet2d"
+            ],
+            "exclude": [
+              "metronet2ds",
+              "metronet2dw",
+              "metronet2dn"
+            ],
+            "name": "Metronet 2D",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "2d"
+            ],
+            "price": [
+              1700000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet1d"
+            ],
+            "exclude": [
+              "metronet1ds",
+              "metronet1dw",
+              "metronet1dn"
+            ],
+            "name": "Metronet 1D",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "1d"
+            ],
+            "price": [
+              1000000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet3ds"
+            ],
+            "exclude": [],
+            "name": "Metronet 3DS",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "3ds"
+            ],
+            "price": [
+              3250000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet2ds"
+            ],
+            "exclude": [],
+            "name": "Metronet 2DS",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "2ds"
+            ],
+            "price": [
+              2000000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet1ds"
+            ],
+            "exclude": [],
+            "name": "Metronet 1DS",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "1ds"
+            ],
+            "price": [
+              1150000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet3dw"
+            ],
+            "exclude": [],
+            "name": "Metronet 3DW",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "3dw"
+            ],
+            "price": [
+              3400000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet2dw"
+            ],
+            "exclude": [],
+            "name": "Metronet 2DW",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "2dw"
+            ],
+            "price": [
+              2100000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet1dw"
+            ],
+            "exclude": [],
+            "name": "Metronet 1DW",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "1dw"
+            ],
+            "price": [
+              1200000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet3dn"
+            ],
+            "exclude": [],
+            "name": "Metronet 3DN",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "3dn"
+            ],
+            "price": [
+              4750000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet2dn"
+            ],
+            "exclude": [],
+            "name": "Metronet 2DN",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "2dn"
+            ],
+            "price": [
+              3250000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          },
+          {
+            "match": [
+              "metronet1dn"
+            ],
+            "exclude": [],
+            "name": "Metronet 1DN",
+            "brand": [
+              "biznet",
+              "ptsupraprimatamanusantara"
+            ],
+            "product_must_contain": [
+              "metronet",
+              "1dn"
+            ],
+            "price": [
+              2000000
+            ],
+            "currency": [
+              "IDR"
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            }
+          }
+        ]
+      },
+      {
+        "file": "en_epson_projector_range_guide_2025.pdf",
+        "lang": "en",
+        "kind": "multi-product spec guide, no prices",
+        "url": "https://www.epson.com.au/brochures/Projector%20range%20guide%20August%202025.pdf",
+        "complete": false,
+        "expect_no_price": true,
+        "products": [
+          {
+            "match": [
+              "ebw55"
+            ],
+            "exclude": [],
+            "name": "EB-W55",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebw55"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB58053"
+          },
+          {
+            "match": [
+              "eb994f"
+            ],
+            "exclude": [],
+            "name": "EB-994F",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "eb994f"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB60053"
+          },
+          {
+            "match": [
+              "eb2250u"
+            ],
+            "exclude": [],
+            "name": "EB-2250U",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "eb2250u"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11H871053"
+          },
+          {
+            "match": [
+              "eb770f"
+            ],
+            "exclude": [
+              "eb770fi"
+            ],
+            "name": "EB-770F",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "eb770f"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA79053"
+          },
+          {
+            "match": [
+              "eb770fi"
+            ],
+            "exclude": [],
+            "name": "EB-770Fi",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "eb770fi"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA78053"
+          },
+          {
+            "match": [
+              "ebl790u"
+            ],
+            "exclude": [],
+            "name": "EB-L790U",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebl790u"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB28053BU"
+          },
+          {
+            "match": [
+              "ebl790su"
+            ],
+            "exclude": [],
+            "name": "EB-L790SU",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebl790su"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB30053BU"
+          },
+          {
+            "match": [
+              "ebpu1008wnl"
+            ],
+            "exclude": [],
+            "name": "EB-PU1008WNL",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebpu1008wnl"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA33953BU"
+          },
+          {
+            "match": [
+              "ebpu2213b"
+            ],
+            "exclude": [],
+            "name": "EB-PU2213B",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebpu2213b"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA68853BU"
+          },
+          {
+            "match": [
+              "ebpq2010b"
+            ],
+            "exclude": [],
+            "name": "EB-PQ2010B",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ebpq2010b"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB02853BU"
+          },
+          {
+            "match": [
+              "ev115"
+            ],
+            "exclude": [],
+            "name": "EV-115",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ev115"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA22153"
+          },
+          {
+            "match": [
+              "ehtw850"
+            ],
+            "exclude": [],
+            "name": "EH-TW850",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ehtw850"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HB61053"
+          },
+          {
+            "match": [
+              "ehtw6250"
+            ],
+            "exclude": [],
+            "name": "EH-TW6250",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ehtw6250"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA73053"
+          },
+          {
+            "match": [
+              "ehls12000b"
+            ],
+            "exclude": [],
+            "name": "EH-LS12000B",
+            "brand": [
+              "epson"
+            ],
+            "product_must_contain": [
+              "ehls12000b"
+            ],
+            "price": [
+              null
+            ],
+            "currency": [
+              null
+            ],
+            "advantages": {
+              "points": [],
+              "optional": true
+            },
+            "disadvantages": {
+              "points": [],
+              "optional": true
+            },
+            "code": "V11HA47053"
           }
         ]
       }
