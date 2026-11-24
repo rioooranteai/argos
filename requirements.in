@@ -9,7 +9,7 @@ python-multipart==0.0.22
 
 # Config
 pydantic==2.12.5
-pydantic-settings==2.13.1
+pydantic-settings==2.16.3
 python-dotenv==1.2.2
 
 # Auth (Google OAuth + JWT + session)
@@ -27,8 +27,8 @@ pydantic-ai-slim[openai]==1.30.1
 tiktoken==0.12.0
 
 # Documents + vector store
-docling==2.82.0
-docling-core==2.70.2
+docling==2.151.1
+docling-core==2.108.0
 chromadb==1.5.5
 
 # NL2SQL guard
