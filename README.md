@@ -109,10 +109,13 @@ through these stages, which the UI shows as progress:
   A failed profile does not stop processing.
 - **Indexing** — the content is split into chunks and embedded into ChromaDB.
 - **Extracting** — an LLM agent writes structured rows (`brand_name`, `product_name`,
-  `price`, `price_currency`, `advantages`, `disadvantages`) linked to their source section. Every
-  unit carries the document profile, so options and components (processors, operating systems,
-  card networks…) stay attributes of the product, and a recurring annual or subscription fee is
-  the product's price.
+  `model_code`, `price`, `price_currency`, `advantages`, `disadvantages`) linked to their source
+  section. `product_name` is the product line plus model and variant, without the brand;
+  `model_code` keeps the model number, part number or SKU as written. Every unit carries the
+  document profile: in a document about one product, its options and components (processors,
+  operating systems, card networks…) stay attributes of that product, while in a price list or
+  catalogue every item with its own price or code — accessories, spares, kits, service plans —
+  is a product. A recurring annual or subscription fee is the product's price.
 - **Publish** — sections, features and the `ready` status are written in one SQL
   transaction, so chat never sees a half-processed version.
 

@@ -214,7 +214,10 @@ class AppConfig:
     # Document profile: how much of the document (from the start) the profiler reads.
     PROFILE_MAX_CHARS: int = 12000
     EXTRACTION_MIN_SECTION_TOKENS: int = 300
-    EXTRACTION_MAX_UNIT_TOKENS: int = 4000
+    # Text per extraction call. A dense price list holds ~1 item per 20 tokens: with 4000-token units
+    # the model stopped early and whole pages had no rows (43-page list: 31/43 priced pages covered,
+    # 42/43 at 1500). Small documents are one unit either way.
+    EXTRACTION_MAX_UNIT_TOKENS: int = 1500
 
     # ── Voice ────────────────────────────────────────────────────────
     STT_MAX_MB: int = 25
