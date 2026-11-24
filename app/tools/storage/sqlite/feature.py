@@ -43,13 +43,13 @@ class SQLiteFeatureRepository(BaseFeatureRepository):
                 """
                 INSERT INTO features (
                     id, document_id, version_id, section_hash, section_heading, page_number,
-                    brand_name, product_name, price, price_currency, advantages, disadvantages
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    brand_name, product_name, model_code, price, price_currency, advantages, disadvantages
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
                         str(uuid.uuid4()), document_id, version_id, f.section_hash, f.section_heading, f.page_number,
-                        f.brand_name, f.product_name, f.price, f.price_currency,
+                        f.brand_name, f.product_name, f.model_code, f.price, f.price_currency,
                         f.advantages, f.disadvantages,
                     )
                     for f in features

@@ -389,6 +389,13 @@ MIGRATIONS.append((8, """
     );
 """))
 
+# v9: the model / part number / SKU of a product as the document writes it (e.g. "WS-X6516-GBIC").
+# Price lists name many items by it; before v9 it was lost or folded into product_name.
+MIGRATIONS.append((9, """
+    ALTER TABLE features ADD COLUMN model_code TEXT;
+    CREATE INDEX idx_features_code ON features (model_code);
+"""))
+
 
 def run_migrations(conn: sqlite3.Connection, migrations: list[tuple[int, Migration]] | None = None) -> None:
     """Apply pending migrations. Safe to call on every startup."""

@@ -44,6 +44,10 @@ WHICH ROWS (use the CATALOG):
    e.g. LOWER(brand_name) LIKE '%x%' AND LOWER(product_name) LIKE '%gold%'.
    Filter on the words the user wrote, never on a narrower catalog
    name: when they fit several catalog products, all of them answer.
+   The CATALOG shows a product's model or part number in brackets
+   ("Name [AB-123]"). A code the user types is matched on model_code OR
+   product_name, ignoring case, dashes and spaces, e.g.
+   REPLACE(LOWER(model_code), '-', '') LIKE '%ab123%'.
 10. A category or product type (credit cards, laptops, cars): choose the
    CATALOG documents whose type, title or products belong to it and
    filter doc IN (...). Do not search text for the category word.

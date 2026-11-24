@@ -8,7 +8,8 @@ the active sources — no LLM call — and kept small:
     - doc 'D2' — product_terms: RIPLAY Kartu Kredit ICBC
       PT Bank ICBC Indonesia: UP Gold*, UP Platinum*, Visa Gold*, Visa Platinum*
 
-`*` = the product has a price. At most `names_per_doc` names per document (the names that share a
+`*` = the product has a price; a model/part number follows the name in brackets
+("Catalyst 6500 16-port GigE Module [WS-X6516-GBIC]*"). At most `names_per_doc` names per document (the names that share a
 word with the question first, so a large price list still shows the product asked about) and at
 most `max_chars` for the whole block.
 """
@@ -28,27 +29,33 @@ def _tokens(text: str) -> set[str]:
 
 
 def _load(db_path: Path, version_ids: list[str]) -> dict[str, list[tuple[str, str, bool]]]:
-    """version_id → [(brand, product, has_price)] in document order, one entry per product."""
+    """version_id → [(brand, product label, has_price)] in document order, one entry per product.
+
+    The label is the product name plus its model/part number in brackets when it has one, so the
+    model can filter on a code the user types ("WS-X6516-GBIC") as well as on the name.
+    """
     placeholders = ", ".join("?" for _ in version_ids)
     src = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
     try:
         rows = src.execute(
-            "SELECT version_id, COALESCE(brand_name, ''), product_name, MAX(price IS NOT NULL) "
+            "SELECT version_id, COALESCE(brand_name, ''), product_name, COALESCE(model_code, ''), "
+            "MAX(price IS NOT NULL) "
             f"FROM features WHERE version_id IN ({placeholders}) AND product_name IS NOT NULL "
-            "GROUP BY version_id, COALESCE(brand_name, ''), product_name "
+            "GROUP BY version_id, COALESCE(brand_name, ''), product_name, COALESCE(model_code, '') "
             "ORDER BY version_id, MIN(rowid)",
             list(version_ids),
         ).fetchall()
     finally:
         src.close()
     out: dict[str, list[tuple[str, str, bool]]] = {}
-    for vid, brand, product, priced in rows:
-        out.setdefault(vid, []).append((brand.strip(), product.strip(), bool(priced)))
+    for vid, brand, product, code, priced in rows:
+        label = product.strip() + (f" [{code.strip()}]" if code.strip() else "")
+        out.setdefault(vid, []).append((brand.strip(), label, bool(priced)))
     return out
 
 
 def _pick(products: list[tuple[str, str, bool]], question: set[str], limit: int):
-    """The products sharing the most words with the question first, then document order."""
+    """The products sharing the most words (or codes) with the question first, then document order."""
     if len(products) <= limit:
         return products
     ranked = sorted(

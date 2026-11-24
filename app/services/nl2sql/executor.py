@@ -29,6 +29,7 @@ FEATURE_COLUMNS: tuple[tuple[str, str], ...] = (
     ("section_heading", "TEXT"),
     ("brand_name", "TEXT"),
     ("product_name", "TEXT"),
+    ("model_code", "TEXT"),
     ("price", "REAL"),
     ("price_currency", "TEXT"),
     ("advantages", "TEXT"),

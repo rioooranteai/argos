@@ -72,6 +72,22 @@ product_name: the specific product or service variant name, EXCLUDING
   - If a product is introduced with a full name and later referred to
     by an alias or abbreviation, use the first full name.
 
+model_code: the model number, part number, SKU, order code or product
+  code the text gives for this product, copied exactly as written
+  (keep dashes, slashes and suffixes such as "=" or "-B").
+  Example: from "XR-200-B  Wireless Bridge, 2 ports  $450" →
+           product_name: "Wireless Bridge, 2 ports",
+           model_code: "XR-200-B"
+  - When the text names an item only by its code and a description,
+    model_code is the code and product_name is the description.
+  - When the model name itself is the code-like name (e.g. "Model 40X"),
+    keep it in product_name; set model_code only when the text gives a
+    separate code, or labels that name as the code.
+  - It identifies this product: not a customs or tariff classification
+    (HS, HTS), a category, price-group or box-quantity code, or any
+    number the text repeats for several different products.
+  - Never invent or complete a code; use null when none is written.
+
 price: the numeric value only of a direct user-facing price,
   stripped of all currency symbols, codes, and formatting.
   Examples: 9.99 (from "$9.99/month"), 299000.0 (from "Rp 299.000"),
@@ -142,7 +158,7 @@ Rule 4:  Use the first occurrence of an entity's full name as written.
 Rule 5:  Generic references like "the product" or "this service" must
          not be extracted.
 Rule 6:  Produce one extracted object per distinct (brand_name,
-         product_name, price) combination.
+         product_name, model_code, price) combination.
 Rule 7:  If a product family has multiple named variants, each variant
          gets its own extracted object.
 Rule 8:  If a product is mentioned but has no named variant, use the
@@ -162,7 +178,7 @@ Rule 12: Revenue, market size, and growth figures go into advantages
          or disadvantages, never into price.
 Rule 13: Include exact numeric values in advantages or disadvantages
          when present in the text.
-Rule 14: If the same (brand_name, product_name, price) combination
+Rule 14: If the same (brand_name, product_name, model_code, price) combination
          would produce duplicate or near-identical objects, extract
          it only once.
 Rule 15: If no valid named product exists in the text, return [].
@@ -264,6 +280,7 @@ OUTPUT SCHEMA
   {
     "brand_name": string or null,
     "product_name": string,
+    "model_code": string or null,
     "price": float or null,
     "price_currency": string or null,
     "advantages": string or null,

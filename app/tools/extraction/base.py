@@ -22,6 +22,13 @@ class CompetitorFeature(BaseModel):
             "Not a component, option or category word."
         ),
     )
+    model_code: str | None = Field(
+        default=None,
+        description=(
+            "The product's model number, part number, SKU or product code exactly as written "
+            "(e.g. 'XR-200-B'), if the text gives one for this product. Null if none."
+        ),
+    )
     price: float | None = Field(
         default=None,
         description=(

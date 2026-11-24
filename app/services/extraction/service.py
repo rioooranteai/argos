@@ -130,6 +130,7 @@ class ExtractionService:
                     page_number=section.page_start,
                     brand_name=f.brand_name,
                     product_name=f.product_name.strip(),
+                    model_code=(f.model_code or "").strip() or None,
                     price=f.price,
                     price_currency=f.price_currency,
                     advantages=f.advantages,

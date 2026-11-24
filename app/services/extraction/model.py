@@ -14,3 +14,5 @@ class FeatureRow:
     price_currency: str | None
     advantages: str | None
     disadvantages: str | None
+    # Last, with a default: extraction-cache entries written before v9 have no model_code.
+    model_code: str | None = None

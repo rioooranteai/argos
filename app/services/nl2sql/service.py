@@ -31,6 +31,7 @@ _COLUMN_HINTS: dict[str, str] = {
     "section_heading": "Heading of the document section the row came from.",
     "brand_name": "The company that makes, issues or provides the product (e.g. Toyota, Spotify, a bank). NULL if not determinable.",
     "product_name": "The specific product or service variant name, excluding the brand prefix (e.g. 'Avanza 1.3E Manual', 'Premium Individual').",
+    "model_code": "Model number, part number, SKU or product code as written in the document (e.g. 'XR-200-B'), or NULL. Match a code the user types with LIKE, ignoring dashes/spaces when unsure.",
     "price": "Float or NULL. What a customer pays for the product, including a recurring annual/membership/subscription fee (0 = free). Numeric only.",
     "price_currency": "ISO 4217 currency code (e.g. USD, IDR, EUR, GBP, SGD) or NULL if no currency indicator is present near the price.",
     "advantages": "Explicit positive facts about the product stated in the text. Include exact numeric values when present. NULL if none stated.",

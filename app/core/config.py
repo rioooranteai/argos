@@ -174,7 +174,7 @@ class AppConfig:
 
     # ── Worker ───────────────────────────────────────────────────────
     # Bump when the ingestion prompts/chunker/models change (A §5 `pipeline_version`).
-    PIPELINE_VERSION: str = "2"  # 2: document profile + document context for extraction
+    PIPELINE_VERSION: str = "3"  # 2: document profile + context for extraction; 3: model_code, product rules
     DOC_WORKERS: int = 2
     VERSION_LEASE_MINUTES: int = 10
     DOC_MAX_ATTEMPTS: int = 3
