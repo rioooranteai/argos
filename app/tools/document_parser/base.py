@@ -91,6 +91,11 @@ class BaseDocumentParser(ABC):
             ParserUnavailable / ParserTimeout: the parser failed (temporary).
         """
 
+    def a4_page_equivalents(self, path: str) -> float | None:
+        """How much page surface the document has, in A4 pages (a newspaper-sized page counts as
+        several). Used to size the parse time limit. None = unknown (the page count is used)."""
+        return None
+
     async def start(self) -> None:
         """Prepare the parser (e.g. load models). Optional."""
 

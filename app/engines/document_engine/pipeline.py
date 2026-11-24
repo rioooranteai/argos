@@ -83,11 +83,14 @@ class DocumentPipeline:
 
         # ── 1. Parsing ─────────────────────────────────────────────────
         await ctx.stage("parsing")
-        pages = version.page_count or 10
+        # Time scales with the amount of page surface, not the page count: one newspaper-sized
+        # page holds as much as a dozen A4 pages.
+        pages = await asyncio.to_thread(self._parser.a4_page_equivalents, str(path))
+        pages = max(pages or 0, version.page_count or 0) or 10
         timeout = self._cfg.DOCLING_TIMEOUT_BASE + self._cfg.DOCLING_TIMEOUT_PER_PAGE * pages
         with spans.span("parsing") as span:
             spans.set_input(span, {"file": version.original_filename, "pages": version.page_count,
-                                   "timeout_s": timeout})
+                                   "a4_pages": round(pages, 1), "timeout_s": round(timeout)})
             elements = await self._parser.parse(str(path), timeout)
             sections = build_sections(elements)
             figures = sum(1 for e in elements if e.element_type == ElementType.FIGURE)

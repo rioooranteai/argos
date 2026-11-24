@@ -54,6 +54,21 @@ def _serve(conn: Connection, loader_spec: str) -> None:
             conn.send(("error", f"{type(exc).__name__}: {exc}"))
 
 
+_A4_AREA_PT2 = 595.0 * 842.0
+
+# Errors that come from the machine (GPU, memory), not from the document: the subprocess is
+# restarted and the job retried, instead of marking the document as unreadable.
+_SYSTEM_FAILURE_MARKERS = (
+    "cuda", "acceleratorerror", "out of memory", "memoryerror", "paging file", "os error 1455",
+    "cublas", "cudnn", "bad_alloc", "unable to allocate", "system failure while converting",
+)
+
+
+def _is_system_failure(message: object) -> bool:
+    text = str(message).lower()
+    return any(marker in text for marker in _SYSTEM_FAILURE_MARKERS)
+
+
 class DoclingProcess(BaseDocumentParser):
     def __init__(self, loader_spec: str = DEFAULT_LOADER, start_timeout: float = 300.0) -> None:
         self._loader_spec = loader_spec
@@ -71,6 +86,23 @@ class DoclingProcess(BaseDocumentParser):
         async with self._lock:
             await self._ensure_started()
 
+
+    def a4_page_equivalents(self, path: str) -> float | None:
+        if not path.lower().endswith(".pdf"):
+            return None
+        try:
+            import pypdfium2 as pdfium  # a Docling dependency, already installed
+
+            pdf = pdfium.PdfDocument(path)
+            try:
+                area = sum(w * h for w, h in (pdf.get_page_size(i) for i in range(len(pdf))))
+            finally:
+                pdf.close()
+        except Exception:
+            logger.debug("Could not measure the pages of %s.", path, exc_info=True)
+            return None
+        return area / _A4_AREA_PT2
+
     async def parse(self, path: str, timeout: float) -> list[DocumentElement]:
         async with self._lock:
             await self._ensure_started()
@@ -87,6 +119,10 @@ class DoclingProcess(BaseDocumentParser):
                 self._kill()
                 raise ParserUnavailable("The Docling subprocess stopped unexpectedly.") from None
             if kind == "error":
+                if _is_system_failure(payload):
+                    logger.warning("Docling hit a system failure on %s; restarting the subprocess.", path)
+                    self._kill()
+                    raise ParserUnavailable(f"The parser failed on this machine: {str(payload)[:200]}")
                 raise DocumentLoadError(path, payload)
             return payload
 

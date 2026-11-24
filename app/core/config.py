@@ -130,9 +130,18 @@ class AppConfig:
 
     # ── Docling ──────────────────────────────────────────────────────
     DOCLING_NUM_THREADS: int = 4
+    # Pages rendered and analysed together. Lower = less peak memory (Docling drops pages with
+    # std::bad_alloc when memory runs out); higher = a little faster on a large machine.
+    DOCLING_PAGE_BATCH_SIZE: int = 2
+    # PDF backend used once more when the default one (docling-parse) runs out of memory on a
+    # document: on some table-heavy PDFs it needs ~13 GB and drops most pages, pypdfium2 ~5 GB.
+    # "pypdfium2" | "" (no second attempt: the job is retried with the same backend).
+    DOCLING_FALLBACK_BACKEND: str = "pypdfium2"
     DOCLING_OCR: bool = False  # True only for scanned PDFs (slower)
     DOCLING_TIMEOUT_BASE: int = 30  # seconds
-    DOCLING_TIMEOUT_PER_PAGE: int = 3  # seconds per page
+    # Seconds per A4-sized page (a larger page counts as several). A guard against a stuck parser,
+    # not an estimate: a newspaper-format page (5.8 × A4, ~30 tables) took 106 s on a laptop.
+    DOCLING_TIMEOUT_PER_PAGE: int = 20
 
     # ── Auth ─────────────────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"

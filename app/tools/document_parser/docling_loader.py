@@ -1,3 +1,4 @@
+import gc
 import io
 import logging
 import threading
@@ -5,8 +6,9 @@ import threading
 import tiktoken
 from docling.chunking import HybridChunker
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.base_models import InputFormat
+from docling.datamodel.base_models import ConversionStatus, InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.settings import settings as docling_settings
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.tokenizer.openai import OpenAITokenizer
 
@@ -62,6 +64,48 @@ def _resolve_device(name: str) -> AcceleratorDevice:
     return device
 
 
+# Page failures caused by the machine (memory, GPU) rather than by the document.
+_MACHINE_ERRORS = (
+    "bad_alloc", "out of memory", "memoryerror", "unable to allocate", "cuda", "paging file", "os error 1455",
+)
+
+
+class IncompleteConversion(RuntimeError):
+    """Docling dropped pages because the machine ran out of memory or the GPU failed.
+
+    The message names the cause so the parser process reports it as a temporary system failure
+    (the job is retried) instead of publishing a document with pages silently missing.
+    """
+
+
+def _error_messages(result) -> list[str]:
+    return [str(e.error_message) for e in (result.errors or [])]
+
+
+def _machine_failure(result) -> bool:
+    """Did Docling drop pages because of the machine (memory, GPU) rather than the document?"""
+    if result.status == ConversionStatus.SUCCESS:
+        return False
+    return any(m in msg.lower() for msg in _error_messages(result) for m in _MACHINE_ERRORS)
+
+
+def _check_complete(result, file_path: str) -> None:
+    """Never accept a conversion with silently dropped pages."""
+    if result.status == ConversionStatus.SUCCESS:
+        return
+    messages = _error_messages(result)
+    if _machine_failure(result):
+        raise IncompleteConversion(
+            f"system failure while converting {file_path}: {len(messages)} page/stage error(s), "
+            f"e.g. {messages[0][:150]}"
+        )
+    if result.status != ConversionStatus.PARTIAL_SUCCESS:  # FAILURE etc.: the document itself
+        raise RuntimeError(f"conversion {result.status.value}: {'; '.join(messages[:3]) or 'no details'}")
+    if result.status == ConversionStatus.PARTIAL_SUCCESS:
+        logger.warning("Docling converted %s only partially (%d error(s)): %s",
+                       file_path, len(messages), "; ".join(messages[:3]))
+
+
 class DoclingLoader(BaseDocumentLoader):
     """
     PDF loader with HybridChunker and image extraction.
@@ -69,6 +113,7 @@ class DoclingLoader(BaseDocumentLoader):
     """
 
     def __init__(self):
+        docling_settings.perf.page_batch_size = app_config.DOCLING_PAGE_BATCH_SIZE
         accel_options = AcceleratorOptions(
             device=_resolve_device(infra.DOCLING_DEVICE),
             num_threads=app_config.DOCLING_NUM_THREADS,
@@ -88,6 +133,8 @@ class DoclingLoader(BaseDocumentLoader):
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
             }
         )
+        self._pipeline_options = pipeline_options
+        self._fallback_converter: DocumentConverter | None = None  # built on first need
 
         encoding = tiktoken.get_encoding("cl100k_base")
 
@@ -106,6 +153,45 @@ class DoclingLoader(BaseDocumentLoader):
     def supports(self, file_path: str) -> bool:
         return file_path.lower().endswith((".pdf", ".docx", ".md"))
 
+    def _fallback(self) -> DocumentConverter | None:
+        """The converter with the PDF backend from DOCLING_FALLBACK_BACKEND (None = disabled)."""
+        name = (app_config.DOCLING_FALLBACK_BACKEND or "").strip().lower()
+        if not name:
+            return None
+        if name != "pypdfium2":
+            logger.warning("Unknown DOCLING_FALLBACK_BACKEND=%r; no second attempt.", name)
+            return None
+        if self._fallback_converter is None:
+            from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
+
+            self._fallback_converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_options=self._pipeline_options, backend=PyPdfiumDocumentBackend
+                    )
+                },
+            )
+        return self._fallback_converter
+
+    def _convert(self, file_path: str):
+        """Convert with the default backend; on a memory failure, once more with the fallback."""
+        result = self.converter.convert(file_path, raises_on_error=False)
+        if not (file_path.lower().endswith(".pdf") and _machine_failure(result)):
+            return result
+        fallback = self._fallback()
+        if fallback is None:
+            return result
+        messages = _error_messages(result)
+        logger.warning(
+            "Docling (default backend) ran out of memory on %s (%d page/stage error(s), e.g. %s); "
+            "converting again with the %s backend.",
+            file_path, len(messages), messages[0][:120], app_config.DOCLING_FALLBACK_BACKEND,
+        )
+        del result
+        gc.collect()  # release the failed attempt's pages before the second one
+        return fallback.convert(file_path, raises_on_error=False)
+
     def load(self, file_path: str) -> list[DocumentElement]:
         elements: list[DocumentElement] = []
 
@@ -113,7 +199,8 @@ class DoclingLoader(BaseDocumentLoader):
             # One shared converter; a lock stops parallel uploads from using the
             # same model at the same time (safe for GPU memory).
             with self._convert_lock:
-                result = self.converter.convert(file_path)
+                result = self._convert(file_path)
+            _check_complete(result, file_path)
             doc = result.document
 
             docling_chunks = list(self.chunker.chunk(dl_doc=doc))
