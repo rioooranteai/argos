@@ -19,13 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # PyTorch variant: "cpu" (default, smaller image) or "cu129" (NVIDIA GPU)
 ARG TORCH_INDEX=cpu
 
-COPY requirements-torch.txt requirements.txt ./
+COPY requirements.txt ./
 
-# PyTorch first for the chosen variant, then the other Python libraries
+# The same requirements.txt as a manual install; a GPU build adds the CUDA index
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements-torch.txt \
-        --index-url https://download.pytorch.org/whl/${TORCH_INDEX} && \
-    pip install --no-cache-dir -r requirements.txt
+    if [ "$TORCH_INDEX" = "cpu" ]; then extra=""; \
+    else extra="--extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX}"; fi && \
+    pip install --no-cache-dir -r requirements.txt $extra
 
 COPY . .
 

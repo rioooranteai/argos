@@ -5,11 +5,52 @@ description = "ArgosAI — Competitive Intelligence System (RAG + NL2SQL + Voice
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "rioooranteai" }]
-# Dependencies are not listed here. One source of truth:
-#   requirements.in        direct dependencies (edit this)
-#   requirements.txt       the lock file generated from it: python devtools/lock.py
-#   requirements-torch.txt the PyTorch pins (installed separately as the CPU or CUDA build)
-dependencies = []
+
+# The DIRECT dependencies, for maintainers. To install the app, use requirements.txt (README §5):
+# it is generated from this list with `python devtools/lock.py` and pins every package.
+dependencies = [
+    # Web / API
+    "fastapi==0.119.1",
+    "uvicorn[standard]==0.39.0",
+    "python-multipart==0.0.22",       # file uploads (FastAPI)
+
+    # Config
+    "pydantic==2.12.5",
+    "pydantic-settings==2.16.3",
+    "python-dotenv==1.2.2",           # .env loading (pydantic-settings)
+
+    # Auth: Google OAuth, the session JWT (authlib.jose) and the OAuth state cookie
+    "authlib==1.6.9",
+    "httpx==0.28.1",
+    "itsdangerous==2.2.0",            # Starlette SessionMiddleware
+
+    # LLM / agent (OpenAI provider only)
+    "openai==1.109.1",
+    "langchain-core==1.3.2",
+    "langchain-openai==1.1.9",
+    "langgraph==1.1.10",
+    "pydantic-ai-slim[openai]==1.30.1",
+    "tiktoken==0.12.0",
+
+    # Documents: Docling for PDF and Markdown only (layout/table models, OCR, chunking), not every format
+    "docling-slim[convert-core,format-pdf,format-markdown,models-local,feat-ocr-rapidocr-onnx,feat-chunking]==2.151.1",
+    "docling-core==2.108.0",
+    # PyTorch for Docling's models. requirements.txt installs the CPU build; the CUDA build comes
+    # from an extra index (README §5). Change the version here only.
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+
+    # Vector store
+    "chromadb==1.5.5",
+
+    # NL2SQL guard
+    "sqlparse==0.5.5",
+
+    # Observability (OpenTelemetry → Langfuse or any OTLP backend)
+    "opentelemetry-api==1.39.1",
+    "opentelemetry-sdk==1.39.1",
+    "opentelemetry-exporter-otlp-proto-http==1.39.1",
+]
 
 [tool.ruff]
 line-length = 100

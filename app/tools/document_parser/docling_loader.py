@@ -128,7 +128,7 @@ class DoclingLoader(BaseDocumentLoader):
         pipeline_options.images_scale = 1.0
 
         self.converter = DocumentConverter(
-            allowed_formats=[InputFormat.PDF, InputFormat.DOCX, InputFormat.MD],
+            allowed_formats=[InputFormat.PDF, InputFormat.MD],  # what uploads accept (UPLOAD_ALLOWED_EXTENSIONS)
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
             }
@@ -151,7 +151,7 @@ class DoclingLoader(BaseDocumentLoader):
         self._convert_lock = threading.Lock()
 
     def supports(self, file_path: str) -> bool:
-        return file_path.lower().endswith((".pdf", ".docx", ".md"))
+        return file_path.lower().endswith((".pdf", ".md"))
 
     def _fallback(self) -> DocumentConverter | None:
         """The converter with the PDF backend from DOCLING_FALLBACK_BACKEND (None = disabled)."""

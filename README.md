@@ -228,13 +228,9 @@ Desktop crashes with `failed to receive status: ... EOF`.
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
-Or let the helper detect the GPU and choose A or B for you:
-
-```bash
-python docker_up.py                # detects GPU → CPU or GPU compose
-python docker_up.py --device cpu   # force CPU
-python docker_up.py -- logs -f     # pass any other compose command
-```
+The GPU only speeds up document parsing (Docling); chat, extraction and embeddings run through
+the OpenAI API either way. Use the same two `-f` files for every other compose command
+(`logs`, `down`, …) of a GPU deployment.
 
 ### C. Local Python (no Docker)
 
@@ -245,13 +241,19 @@ python -m venv .venv
 # Windows:      .venv\Scripts\activate
 # Linux/macOS:  source .venv/bin/activate
 
-python install.py                  # detects NVIDIA GPU → installs CUDA or CPU PyTorch
+pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
 
-`install.py` options: `--device auto` (default), `--device cuda`, `--device cpu`.
-It also creates `.env` from `.env.example` if it does not exist yet, and finishes by
-printing whether PyTorch can see your GPU.
+`requirements.txt` is the only file to install, here and in Docker. It pins every package and
+installs the CPU build of PyTorch. With an NVIDIA GPU, add the CUDA index to the same command:
+
+```bash
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu129
+```
+
+Check what you got: `python -c "import torch; print(torch.__version__, torch.cuda.is_available())"`
+(`2.8.0+cpu False`, or `2.8.0+cu129 True` with a working GPU and driver).
 
 > The app must run as **one process** (no `--workers N`): the document worker runs inside
 > the app, and ChromaDB's local client is not safe across processes.
@@ -431,16 +433,22 @@ Rules:
 
 ### Dependencies
 
-- `requirements.in` — the **direct** dependencies (edit this one).
-- `requirements.txt` — cross-platform lock file generated from it. PyTorch is intentionally
-  excluded; `install.py` and the Dockerfile install the CPU or CUDA build.
+- `pyproject.toml` — the **direct** dependencies (edit these), plus the ruff config.
+- `requirements.txt` — what everyone installs (manual and Docker): every package pinned,
+  generated from `pyproject.toml`, cross-platform. It points pip at the PyTorch CPU index; the
+  CUDA build is the same file with the CUDA index added (§5).
 
-To add or upgrade a package, edit `requirements.in`, then regenerate the lock
+Docling is installed as `docling-slim` with the extras the app uses (PDF, Markdown, layout and
+table models, OCR, chunking), not every document format.
+
+To add or upgrade a package, edit `pyproject.toml`, then regenerate `requirements.txt`
 (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-python lock.py
+python devtools/lock.py
 ```
+
+Linting: `pip install ruff && ruff check app eval devtools`.
 
 ### Database migrations
 
