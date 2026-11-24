@@ -11,25 +11,31 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from authlib.jose import JsonWebToken
+from authlib.jose.errors import JoseError
 from fastapi import Request, Response
-from jose import JWTError, jwt
 
 from app.core.config import app_config, secrets
+
+# Only the configured algorithm is accepted (no "none", no algorithm switching).
+_jwt = JsonWebToken([app_config.JWT_ALGORITHM])
 
 
 def create_session_token(user_id: str, given_name: str = "") -> str:
     """Minimal JWT: only the user ID (UUID) and first name. Everything else is read from the DB."""
     expire = datetime.now(UTC) + timedelta(minutes=app_config.JWT_EXPIRE_MINUTES)
-    payload = {"sub": user_id, "given_name": given_name, "exp": expire}
-    return jwt.encode(payload, secrets.SECRET_KEY, algorithm=app_config.JWT_ALGORITHM)
+    payload = {"sub": user_id, "given_name": given_name, "exp": int(expire.timestamp())}
+    return _jwt.encode({"alg": app_config.JWT_ALGORITHM}, payload, secrets.SECRET_KEY).decode("ascii")
 
 
 def decode_session_token(token: str) -> dict[str, Any] | None:
     """The payload when the signature & expiry are valid, otherwise None."""
     try:
-        return jwt.decode(token, secrets.SECRET_KEY, algorithms=[app_config.JWT_ALGORITHM])
-    except JWTError:
+        claims = _jwt.decode(token, secrets.SECRET_KEY)
+        claims.validate()  # exp
+    except (JoseError, ValueError):
         return None
+    return dict(claims)
 
 
 def set_session_cookie(response: Response, request: Request, token: str) -> None:
