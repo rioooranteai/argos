@@ -187,6 +187,15 @@ class AppConfig:
     EXTRACTION_CONCURRENCY: int = 3
     EMBED_CONCURRENCY: int = 2
 
+    # ── NL2SQL ───────────────────────────────────────────────────────
+    # CATALOG block (app/services/nl2sql/catalog.py): product names shown per document and the
+    # size cap of the whole block (~4 chars per token → 3200 chars ≈ 800 tokens).
+    NL2SQL_CATALOG_NAMES_PER_DOC: int = 30
+    NL2SQL_CATALOG_MAX_CHARS: int = 3200
+    # Second attempts when the first query is INVALID_QUESTION, fails, or finds 0 rows through a
+    # text filter (LIKE). 0 = never retry.
+    NL2SQL_MAX_RETRIES: int = 1
+
     # ── Timeouts (seconds) ───────────────────────────────────────────
     LLM_TIMEOUT_ROUTER: int = 10
     LLM_TIMEOUT_NL2SQL: int = 20

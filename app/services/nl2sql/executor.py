@@ -35,6 +35,15 @@ FEATURE_COLUMNS: tuple[tuple[str, str], ...] = (
     ("disadvantages", "TEXT"),
 )
 
+# A short alias of each source document ('D1', 'D2', ... in the order of `version_ids`), only in the
+# sandbox table. The CATALOG block names documents by it, so a category filter is
+# `doc IN ('D1', 'D3')` instead of copying 36-character UUIDs (which the model sometimes miscopies).
+DOC_COLUMN = ("doc", "TEXT")
+
+
+def doc_aliases(version_ids: list[str]) -> dict[str, str]:
+    return {vid: f"D{i}" for i, vid in enumerate(dict.fromkeys(version_ids), start=1)}
+
 _ALLOWED_ACTIONS = {
     sqlite3.SQLITE_SELECT,
     sqlite3.SQLITE_READ,
@@ -84,11 +93,14 @@ def build_scoped_db(db_path: Path, version_ids: list[str]) -> sqlite3.Connection
         finally:
             src.close()
 
+    aliases = doc_aliases(version_ids)
+    table = (*FEATURE_COLUMNS, DOC_COLUMN)
     mem = sqlite3.connect(":memory:")
-    ddl = ", ".join(f"{name} {kind}" for name, kind in FEATURE_COLUMNS)
+    ddl = ", ".join(f"{name} {kind}" for name, kind in table)
     mem.execute(f"CREATE TABLE features ({ddl})")
     mem.executemany(
-        f"INSERT INTO features ({columns}) VALUES ({', '.join('?' for _ in FEATURE_COLUMNS)})", rows
+        f"INSERT INTO features ({columns}, {DOC_COLUMN[0]}) VALUES ({', '.join('?' for _ in table)})",
+        [(*r, aliases.get(r[0])) for r in rows],
     )
     mem.commit()
     mem.execute("PRAGMA query_only = ON")
@@ -98,7 +110,7 @@ def build_scoped_db(db_path: Path, version_ids: list[str]) -> sqlite3.Connection
 
 
 def features_schema_ddl() -> str:
-    body = ",\n".join(f"    {name} {kind}" for name, kind in FEATURE_COLUMNS)
+    body = ",\n".join(f"    {name} {kind}" for name, kind in (*FEATURE_COLUMNS, DOC_COLUMN))
     return f"CREATE TABLE features (\n{body}\n);"
 
 
