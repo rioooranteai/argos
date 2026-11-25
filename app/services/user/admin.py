@@ -1,4 +1,4 @@
-"""User management by the admin (DESIGN_GROUP_A.md §4, stage 2)."""
+"""User management by the admin."""
 from __future__ import annotations
 
 import logging

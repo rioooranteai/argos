@@ -1,4 +1,4 @@
-"""Argos error contract (DESIGN_GROUP_C.md §2).
+"""Argos error contract.
 
 Every error that reaches the client has the same shape::
 

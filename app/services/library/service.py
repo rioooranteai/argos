@@ -2,9 +2,9 @@
 
 Documents are NOT processed here. An upload only stores the file in the queue
 folder (``<queue>/<version_id><ext>``) and records a version with status
-``queued``; the worker (DESIGN_GROUP_B.md §3) processes it.
+``queued``; the worker processes it.
 
-A new document whose content resembles a Library document (stage 3, A §6.3) is
+A new document whose content resembles a Library document is
 not registered right away: the file is kept as *pending* (``<queue>/pending-<id><ext>``)
 until the user chooses "new version" or "separate document".
 """
@@ -162,7 +162,7 @@ class LibraryService:
         finally:
             received.path.unlink(missing_ok=True)
 
-    # ── Uploads that resemble a Library document (stage 3, A §6.3) ──────
+    # ── Uploads that resemble a Library document ───────────────────────
 
     async def resolve_pending(
         self, user: CurrentUser, pending_id: str, action: Literal["new_version", "separate"]
@@ -253,7 +253,7 @@ class LibraryService:
         self._repo.rename_document(document_id, name)
         return self._repo.get_document_item(document_id)
 
-    # ── Delete / archive (stage 2, DESIGN_GROUP_A.md §6.6–6.7) ───────
+    # ── Delete / archive ───────────────────────────────────────────────
 
     def delete_document(self, user: CurrentUser, document_id: str) -> Literal["deleted", "archived"]:
         document = self._repo.get_document(document_id)

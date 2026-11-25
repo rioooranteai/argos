@@ -1,6 +1,6 @@
-"""Document text fingerprints for the "similar to a Library document" suggestion (DESIGN_GROUP_A.md §6.3).
+"""Document text fingerprints for the "similar to a Library document" suggestion.
 
-Method (calibrated on data/eval_corpus, see IMPLEMENTATION_PLAN_AB.md §4 stage 3):
+Method (thresholds calibrated on sample documents, see SIMILARITY_THRESHOLD in config.py):
   - text comes from the PDF text layer (pypdfium2, no Docling) or the MD file as is;
   - lowercased, every digit → "#", so price changes (the point of a new price-list
     version) do not lower the score;

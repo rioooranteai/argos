@@ -17,7 +17,7 @@ def register_middleware(app: FastAPI) -> None:
         allow_headers=["Content-Type", "Accept", REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],
     )
-    # The API cannot be opened from the address bar / other sites (DESIGN_GROUP_D.md D2).
+    # The API cannot be opened from the address bar / other sites.
     # Checked before CORS & authentication.
     app.add_middleware(
         FetchMetadataMiddleware,

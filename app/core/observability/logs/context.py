@@ -1,4 +1,4 @@
-"""Log context per request / per job (DESIGN_GROUP_C.md §7.2).
+"""Log context per request / per job.
 
 Known fields: ``user_id``, ``session_id`` (the conversation), ``notebook_id``,
 ``version_id``, ``stage``, ``message_id``. Their values go into every log line (see ``logs.setup``) and

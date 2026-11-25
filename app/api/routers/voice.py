@@ -20,7 +20,7 @@ from app.tools.speech.base import (
 
 logger = logging.getLogger(__name__)
 
-# Sign-in required: STT/TTS spend OpenAI credit (audit point 4, DESIGN_GROUP_D.md D4).
+# Sign-in required: STT/TTS spend OpenAI credit.
 router = APIRouter(
     prefix="/api/v1/voice",
     tags=["Voice"],
@@ -66,7 +66,7 @@ MIME_TO_EXT = {
 
 @contextmanager
 def _voice_errors() -> Iterator[None]:
-    """Voice service errors → the standard error contract (DESIGN_GROUP_C.md §2)."""
+    """Voice service errors → the standard error contract."""
     try:
         yield
     except (UnsupportedFormatError, UnsupportedLanguageError) as e:
@@ -90,7 +90,7 @@ async def speech_to_text(
     if content_type not in ALLOWED_AUDIO:
         raise UnsupportedMediaType("Unsupported audio format.", code="AUDIO_UNSUPPORTED")
 
-    # Read in chunks & stopped as soon as it goes over the limit (DESIGN_GROUP_B.md §8);
+    # Read in chunks & stopped as soon as it goes over the limit;
     # the limit follows the Whisper API (25 MB).
     max_bytes = app_config.STT_MAX_MB * 1024 * 1024
     chunks: list[bytes] = []

@@ -1,4 +1,4 @@
-"""Library: documents shared by every employee (DESIGN_GROUP_A.md §6, §10)."""
+"""Library: documents shared by every employee."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status

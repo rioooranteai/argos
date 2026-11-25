@@ -1,4 +1,4 @@
-"""Numbered citations taken from the data, not made up by the LLM (DESIGN_GROUP_A.md §8.4).
+"""Numbered citations taken from the data, not made up by the LLM.
 
 Each (document version, page) pair that appears in the retrieved data gets a
 `[n]` label. The LLM may only refer to the labels it is given; the API response

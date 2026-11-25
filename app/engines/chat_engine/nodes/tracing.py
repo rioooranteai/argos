@@ -1,4 +1,4 @@
-"""One span per LangGraph node (DESIGN_GROUP_F.md §2).
+"""One span per LangGraph node.
 
 The node functions stay as they are; ``@traced_node`` wraps them, records what went in and
 what came out, and reads the outcome from the ``NodeTrace`` the node already returns

@@ -227,7 +227,7 @@ class DoclingLoader(BaseDocumentLoader):
                         page_number=page_num,
                         section_heading=current_heading,
                         # The full heading path: used to group sections
-                        # & extraction units (DESIGN_GROUP_B.md §7).
+                        # & extraction units.
                         metadata={"headings": list(c.meta.headings or [])},
                     )
                 )

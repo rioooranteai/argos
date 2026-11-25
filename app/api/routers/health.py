@@ -1,4 +1,4 @@
-"""Health check (DESIGN_GROUP_C.md §6).
+"""Health check.
 
 - ``/health/live``  — public; the process is alive. Used by the Docker healthcheck.
 - ``/health/ready`` — admin only; the status of each component, without calling OpenAI.

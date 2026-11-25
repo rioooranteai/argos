@@ -1,4 +1,4 @@
-"""The processing pipeline for one document version (DESIGN_GROUP_A.md §7, DESIGN_GROUP_B.md §3).
+"""The processing pipeline for one document version.
 
     parsing → vision → profile → indexing → extracting → publish (one SQL transaction)
 
@@ -12,7 +12,7 @@ Safe write order (Chroma and SQLite cannot share a transaction):
 A failure anywhere → the worker calls `cleanup()`; no half-finished data
 is ever visible.
 
-Reuse for new versions (stage 3, A §6.3): images through the Vision cache,
+Reuse for new versions: images through the Vision cache,
 extraction units through the extraction cache, and vectors of chunks with identical
 text are copied from the same document's latest `ready` version (no re-embedding).
 """
@@ -75,7 +75,7 @@ class DocumentPipeline:
 
     async def process(self, version: DocumentVersion, ctx: JobContext) -> None:
         """Process one version; each stage is a span under the worker's document.process
-        trace (DESIGN_GROUP_F.md §2)."""
+        trace."""
         path = self.source_path(version)
         if not path.exists():
             raise PermanentJobError("The source file was not found. Upload this document again.")

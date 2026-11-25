@@ -1,4 +1,4 @@
-"""Context & error classification for document processing jobs (DESIGN_GROUP_B.md §3.2)."""
+"""Context & error classification for document processing jobs."""
 from __future__ import annotations
 
 import asyncio

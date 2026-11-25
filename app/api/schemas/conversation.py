@@ -1,4 +1,4 @@
-"""HTTP request/response schemas for conversation (DESIGN_GROUP_E.md §3.7)."""
+"""HTTP request/response schemas for conversation."""
 from __future__ import annotations
 
 from datetime import datetime

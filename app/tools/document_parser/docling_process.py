@@ -1,4 +1,4 @@
-"""Docling in a subprocess that can be force-stopped (DESIGN_GROUP_B.md §4).
+"""Docling in a subprocess that can be force-stopped.
 
 A Python thread cannot be killed: a bad PDF that makes Docling hang would lock
 the worker forever. So Docling runs in one long-lived subprocess (the models stay

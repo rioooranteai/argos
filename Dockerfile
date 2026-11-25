@@ -63,5 +63,5 @@ USER argos
 EXPOSE 8000
 
 # MUST be a single process: the document queue worker runs inside the app, and the Chroma
-# PersistentClient is not safe across processes (DESIGN_GROUP_B.md §3.4).
+# PersistentClient is not safe across processes.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

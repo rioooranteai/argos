@@ -1,6 +1,4 @@
 """Notebook use cases: a private workspace with at most N sources from the Library.
-
-(DESIGN_GROUP_A.md §6.2–6.5)
 """
 from __future__ import annotations
 
@@ -119,7 +117,7 @@ class NotebookService:
         """Resolve an upload that resembles a Library document, then add the result to the notebook.
 
         If the document is already in the notebook (the "new version" choice), the old pin is kept;
-        the "new version available" badge appears once the new version is ready (A §6.3–6.4).
+        the "new version available" badge appears once the new version is ready.
         """
         self.get(user, notebook_id)
         result = await self._library_svc.resolve_pending(user, pending_id, action)
@@ -192,7 +190,7 @@ class NotebookService:
 
     def _maybe_cancel(self, user: CurrentUser, source: NotebookSource) -> None:
         """Cancel processing when the removed source is still being processed, was uploaded
-        by this user, and no other notebook uses it (B §9). The document stays in the Library."""
+        by this user, and no other notebook uses it. The document stays in the Library."""
         if source.stage in FINAL_STAGES or source.stage == STAGE_READY:
             return
         version = self._library.get_version(source.version_id)

@@ -9,14 +9,14 @@ from pydantic import BaseModel
 
 class IncomingFile(Protocol):
     """An uploaded file as the services see it. FastAPI's ``UploadFile`` fits this shape,
-    so services do not depend on the web framework (DESIGN_GROUP_E.md §3.7)."""
+    so services do not depend on the web framework."""
 
     filename: str | None
 
     async def read(self, size: int = -1) -> bytes: ...
 
 
-# Version processing stages (DESIGN_GROUP_B.md §3.1)
+# Version processing stages
 STAGE_QUEUED = "queued"
 STAGE_READY = "ready"
 STAGE_FAILED = "failed"
@@ -78,7 +78,7 @@ class NewVersion:
 
 @dataclass(frozen=True)
 class PendingUpload:
-    """An upload that resembles a Library document and waits for the user's choice (A §6.3)."""
+    """An upload that resembles a Library document and waits for the user's choice."""
 
     id: str
     user_id: str

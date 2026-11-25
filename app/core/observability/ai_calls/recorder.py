@@ -1,4 +1,4 @@
-"""AI call recorder (DESIGN_GROUP_C.md §7.3).
+"""AI call recorder.
 
 Every OpenAI provider wraps its calls with ``recorder.track(...)``::
 
@@ -137,7 +137,7 @@ class LLMCallRecorder:
 
     @contextmanager
     def track(self, purpose: str, model: str) -> Iterator[_CallHandle]:
-        """Record one AI call in llm_calls and as a trace span (DESIGN_GROUP_F.md §3)."""
+        """Record one AI call in llm_calls and as a trace span."""
         kind = spans.EMBEDDING if purpose == "embedding" else spans.GENERATION
         with spans.span(
             purpose, kind,

@@ -100,7 +100,7 @@ async def lifespan(app: FastAPI):
 
     conversation_repo = SQLiteConversationRepository(database=db)
 
-    # --- AI call records (DESIGN_GROUP_C.md §7.3) ---
+    # --- AI call records ---
     llm_call_repo = SQLiteLLMCallRepository(database=db)
     purged = llm_call_repo.purge_older_than(app_config.LLM_CALLS_RETENTION_DAYS)
     if purged:
@@ -126,7 +126,7 @@ async def lifespan(app: FastAPI):
     )
     app.state.library_service.purge_expired_pending()
 
-    # --- Document pipeline & worker (DESIGN_GROUP_B.md) ---
+    # --- Document pipeline & worker ---
     docling = build_document_parser()
     pipeline = DocumentPipeline(
         parser=docling,

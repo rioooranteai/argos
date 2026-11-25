@@ -63,7 +63,7 @@ class CompetitorFeature(BaseModel):
 
 
 class ExtractedFeature(CompetitorFeature):
-    """LLM output: a feature + the label of its source section (DESIGN_GROUP_B.md §7)."""
+    """LLM output: a feature + the label of its source section."""
 
     section_ref: str = Field(
         default="",

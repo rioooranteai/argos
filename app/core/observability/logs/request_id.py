@@ -1,4 +1,4 @@
-"""A request ID per request (DESIGN_GROUP_C.md §7).
+"""A request ID per request.
 
 - Taken from the ``X-Request-ID`` header (when safe) or newly generated.
 - Stored in ``request.state`` and a contextvar, returned in a response header,

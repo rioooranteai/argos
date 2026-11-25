@@ -7,7 +7,7 @@ from app.tools.document_parser.base import DocumentElement
 
 @dataclass
 class Section:
-    """A document section per heading (DESIGN_GROUP_A.md §3).
+    """A document section per heading.
 
     ``section_hash`` is computed from the CONTENT only (text + image hashes), without page
     numbers or positions — a section that moves to another page is still recognised.
@@ -27,7 +27,7 @@ class Section:
 
 @dataclass
 class ExtractionUnit:
-    """One extraction LLM call: one or more sections (DESIGN_GROUP_B.md §7)."""
+    """One extraction LLM call: one or more sections."""
 
     unit_hash: str
     sections: list[Section]

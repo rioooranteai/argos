@@ -1,4 +1,4 @@
-"""Classify failed AI calls into stable codes (DESIGN_GROUP_C.md §3, §7.3).
+"""Classify failed AI calls into stable codes.
 
 The codes go into ``llm_calls.error_code`` and the chat ``metadata.issues``. The
 original exception message is never sent to the client; it only goes to the log.

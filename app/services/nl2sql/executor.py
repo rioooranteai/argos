@@ -1,10 +1,10 @@
-"""Run LLM-generated SQL in an isolated database (DESIGN_GROUP_A.md §9).
+"""Run LLM-generated SQL in an isolated database.
 
 Each question runs in an **in-memory** database that only holds the `features`
 table with rows from the sources checked in the notebook. Other tables
 (users, conversations, other documents) physically do not exist there, so
 LLM-generated SQL cannot read them — not even through `COUNT(*)`, which got past
-the authorizer in the TEMP VIEW approach (found during the spike, step 7.0).
+the SQLite authorizer when the rows were exposed through a TEMP VIEW instead.
 
 Layers of defence:
 1. Validator: a single SELECT statement only (security.py).

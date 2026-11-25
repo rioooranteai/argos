@@ -1,4 +1,4 @@
-"""Chat use cases: send a message and resend a failed one (DESIGN_GROUP_E.md §3.5).
+"""Chat use cases: send a message and resend a failed one.
 
 Orchestrates three collaborators, all injected at startup:
 - ``NotebookService``     — which sources are checked and ready;
@@ -126,7 +126,7 @@ class ChatOrchestrator:
         schedule_title: bool,
     ) -> ChatReply:
         """One trace per answered message: chat.message → routing / sql / vector_search /
-        synthesis (DESIGN_GROUP_F.md §2). Session = conversation."""
+        synthesis. Session = conversation."""
         # goes into the logs, llm_calls and every span of this trace
         log_context.bind_request(message_id=user_msg.id, session_id=conversation_id)
         with trace_scope(), spans.span("chat.message", spans.CHAIN) as root:

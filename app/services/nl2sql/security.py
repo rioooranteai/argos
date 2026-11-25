@@ -1,6 +1,6 @@
 """Validation of LLM-generated SQL.
 
-There is no keyword filter on the user's question (DESIGN_GROUP_C.md §5): such a
+There is no keyword filter on the user's question: such a
 filter rejected valid questions ("price after the update?"). Safety comes from the
 validator below, the isolated in-memory database + authorizer, and the timeout.
 """

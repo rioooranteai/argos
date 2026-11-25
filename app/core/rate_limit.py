@@ -1,4 +1,4 @@
-"""Rate limits per user per endpoint group (DESIGN_GROUP_D.md D9).
+"""Rate limits per user per endpoint group.
 
 Sliding window: each key stores the request times within the last ``window``
 seconds. Going over the limit → ``RateLimited`` (429 + ``Retry-After``).

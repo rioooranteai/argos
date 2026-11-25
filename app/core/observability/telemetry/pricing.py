@@ -1,4 +1,4 @@
-"""Cost of one AI call, from the prices in ``TelemetryConfig`` (DESIGN_GROUP_F.md §4.4).
+"""Cost of one AI call, from the prices in ``TelemetryConfig``.
 
 Langfuse does not promise to price OTel-ingested generations itself, so Argos sends
 ``cost_details`` explicitly. A model without a configured price gets no cost (token usage

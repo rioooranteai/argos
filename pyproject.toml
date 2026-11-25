@@ -89,7 +89,7 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-# BLE: every `except Exception` must use logger.exception / exc_info=True or re-raise
-# (DESIGN_GROUP_C.md §7.2). Deliberate exceptions get `# noqa: BLE001 — <reason>`.
+# BLE: every `except Exception` must use logger.exception / exc_info=True or re-raise.
+# Deliberate exceptions get `# noqa: BLE001 — <reason>`.
 select = ["E", "F", "W", "I", "B", "UP", "BLE"]
 ignore = ["E501"]  # line length handled by formatter

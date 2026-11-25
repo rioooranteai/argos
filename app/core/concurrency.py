@@ -1,4 +1,4 @@
-"""Global concurrency limits for AI calls (DESIGN_GROUP_B.md §6).
+"""Global concurrency limits for AI calls.
 
 The limits apply to ALL documents being processed, not per document.
 Chat deliberately does not use these limits so a large upload cannot hold it up.

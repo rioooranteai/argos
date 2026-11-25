@@ -60,7 +60,7 @@ class NL2SQLResult:
     - ``ok``    : the query succeeded and returned rows
     - ``empty`` : the query succeeded with no rows, or the question really cannot be
                   answered from the features table (``INVALID_QUESTION``)
-    - ``error`` : a system failure; the code is in ``error_code`` (DESIGN_GROUP_C.md §3):
+    - ``error`` : a system failure; the code is in ``error_code``:
                   ``SQL_REJECTED``, ``SQL_TIMEOUT``, ``SQL_FAILED``, or an LLM_* code
 
     ``message`` is only for the log; it is sent neither to the user nor to the prompt.

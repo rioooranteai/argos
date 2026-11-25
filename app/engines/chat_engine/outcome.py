@@ -1,4 +1,4 @@
-"""Typed chat results and per-node status (DESIGN_GROUP_C.md §3).
+"""Typed chat results and per-node status.
 
 Node status:
 - ``ok``    — succeeded, with data

@@ -1918,7 +1918,7 @@ body.login-body {
 }
 
 /* ═════════════════════════════════════════════════════════════════
-   MANAGEMENT (stage 2) — manage documents & users
+   MANAGEMENT — manage documents & users
 ═════════════════════════════════════════════════════════════════ */
 
 .panel-overlay { z-index: 420; }
@@ -2087,7 +2087,7 @@ body.login-body {
   .panel-actions .modal-btn { flex: 1; }
 }
 
-/* ── Failed messages + resend (DESIGN_GROUP_C.md §4, §8) ── */
+/* ── Failed messages + resend ── */
 /* Avatar aligned with the bubble, not with the error line below it */
 .user-wrapper.is-failed { align-items: flex-start; }
 .user-wrapper.is-failed .message.user {
@@ -2144,7 +2144,7 @@ body.login-body {
 
 .chat-notice .btn-copy-id { margin-left: 4px; align-self: center; min-height: 24px; padding: 1px 8px; }
 
-/* ── Degraded answers (DESIGN_GROUP_C.md §8) ── */
+/* ── Degraded answers ── */
 .degraded-banner {
   display: flex;
   align-items: flex-start;

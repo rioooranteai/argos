@@ -148,7 +148,7 @@ class ChatEngine:
 
 
 def build_trace(state: dict, traces: list[NodeTrace], issues, llm_calls: list[LLMCall]) -> dict[str, Any]:
-    """Trace per message (DESIGN_GROUP_C.md §7.4): no prompts and no document text."""
+    """Trace per message: no prompts and no document text."""
     trace: dict[str, Any] = {
         "route": state["route"],
         "router_reasoning": state["router_reasoning"],

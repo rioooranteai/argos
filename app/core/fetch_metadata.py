@@ -1,4 +1,4 @@
-"""The API cannot be opened by URL in a browser (DESIGN_GROUP_D.md D2).
+"""The API cannot be opened by URL in a browser.
 
 Modern browsers always send Fetch Metadata headers (``Sec-Fetch-Mode``,
 ``Sec-Fetch-Dest``, ``Sec-Fetch-Site``), and a web page cannot forge them.

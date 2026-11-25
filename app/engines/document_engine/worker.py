@@ -1,4 +1,4 @@
-"""In-process document queue worker (DESIGN_GROUP_B.md §3, §9).
+"""In-process document queue worker.
 
 - `DOC_WORKERS` asyncio loops take jobs from the `document_versions` table.
 - Every job is limited by `DOC_TOTAL_TIMEOUT`.
@@ -47,7 +47,7 @@ class DocumentWorker:
         self._cfg = config
         self._stopping = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
-        # For /health/ready (DESIGN_GROUP_C.md §6).
+        # For /health/ready.
         self._last_tick: float | None = None  # time.monotonic() of the last loop iteration
         self._active_jobs = 0
 
@@ -120,7 +120,7 @@ class DocumentWorker:
 
     async def _run_traced(self, job: DocumentVersion) -> None:
         """One trace per processing attempt: document.process → parsing / vision / indexing /
-        extracting / publish (DESIGN_GROUP_F.md §2). The user is the uploader."""
+        extracting / publish. The user is the uploader."""
         with trace_scope(), spans.span("document.process", spans.CHAIN) as root:
             spans.set_attributes(root, **{"langfuse.trace.name": "document.process"})
             bind_trace(

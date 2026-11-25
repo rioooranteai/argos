@@ -1,4 +1,4 @@
-"""Sign-in session in an ``HttpOnly`` cookie (DESIGN_GROUP_D.md D1).
+"""Sign-in session in an ``HttpOnly`` cookie.
 
 - The token never travels in a URL and cannot be read by JavaScript.
 - ``SameSite=Lax``: the cookie is not sent on POST/PATCH/DELETE from other sites (CSRF),

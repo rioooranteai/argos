@@ -1,4 +1,4 @@
-"""HTTP request/response schemas for notebook (DESIGN_GROUP_E.md §3.7)."""
+"""HTTP request/response schemas for notebook."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,7 +15,7 @@ class NotebookOut(BaseModel):
     source_count: int
     created_at: datetime
     updated_at: datetime
-    last_opened_at: datetime | None = None  # to pick the default notebook (D8)
+    last_opened_at: datetime | None = None  # to pick the default notebook
 
 
 class NotebookSourceOut(BaseModel):

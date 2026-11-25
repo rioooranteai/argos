@@ -1,4 +1,4 @@
-"""Copies request/job context onto every span (DESIGN_GROUP_F.md §4.2).
+"""Copies request/job context onto every span.
 
 Langfuse can only filter and aggregate by user, session, tags and metadata when they are on
 every span, not just the root. Argos already carries that context in ``log_context`` (per

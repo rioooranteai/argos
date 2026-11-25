@@ -1,5 +1,5 @@
 """Cache of AI results. Also works as a checkpoint: a job restarted from scratch
-does not pay again for Vision/extraction work already done (DESIGN_GROUP_B.md §9)."""
+does not pay again for Vision/extraction work already done."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

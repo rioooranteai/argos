@@ -62,7 +62,7 @@ class BaseLibraryRepository(ABC):
     @abstractmethod
     def rename_document(self, document_id: str, display_name: str) -> None: ...
 
-    # ── Stage 2: delete / archive ───────────────────────────────────────
+    # ── Delete / archive ────────────────────────────────────────────────
 
     @abstractmethod
     def detach_from_owner_notebooks(self, document_id: str, owner_id: str) -> int:
@@ -90,7 +90,7 @@ class BaseLibraryRepository(ABC):
     def transfer_ownership(self, from_user_id: str, to_user_id: str) -> int:
         """Transfer ownership of every document. Returns the number of documents."""
 
-    # ── Stage 3: similarity suggestions ─────────────────────────────────
+    # ── Similarity suggestions ──────────────────────────────────────────
 
     @abstractmethod
     def list_fingerprints(self) -> list[tuple[str, str, bytes]]:

@@ -1,6 +1,6 @@
 """Argos application configuration.
 
-Rules (see DESIGN_GROUP_A.md §13):
+Rules:
 
 - ``Secrets``   — the ONLY class that reads ``.env``. Only secrets and security
                   policy (who may sign in, who is admin, CORS).
@@ -141,16 +141,16 @@ class AppConfig:
     DOCLING_OCR: bool = False  # True only for scanned PDFs (slower)
     DOCLING_TIMEOUT_BASE: int = 30  # seconds
     # Seconds per A4-sized page (a larger page counts as several). A guard against a stuck parser,
-    # not an estimate: a newspaper-format page (5.8 × A4, ~30 tables) took 106 s on a laptop.
+    # not an estimate: a newspaper-format page full of tables can take well over a minute on CPU.
     DOCLING_TIMEOUT_PER_PAGE: int = 20
 
     # ── Auth ─────────────────────────────────────────────────────────
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
-    SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly (DESIGN_GROUP_D.md D1)
-    API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json are public (D5, portfolio)
+    SESSION_COOKIE_NAME: str = "argos_session"  # HttpOnly
+    API_DOCS_ENABLED: bool = True  # /docs, /redoc, /openapi.json are public; False to hide them
 
-    # ── Rate limits per minute (DESIGN_GROUP_D.md D9) ────────────────
+    # ── Rate limits per minute ───────────────────────────────────────
     RATE_LIMIT_WINDOW_SECONDS: int = 60
     RATE_LIMIT_CHAT: int = 20      # send & resend message (3–5 LLM calls per message)
     RATE_LIMIT_VOICE: int = 10     # STT & TTS
@@ -166,14 +166,14 @@ class AppConfig:
     UPLOAD_MAX_BATCH_MB: int = 30
     UPLOAD_ALLOWED_EXTENSIONS: tuple[str, ...] = (".pdf", ".md")
 
-    # ── Similarity suggestion on upload (A §6.3, stage 3) ────────────
-    # Calibrated on data/eval_corpus: different products peak at 0.894; new versions ≥ 0.913.
+    # ── Similarity suggestion on upload ──────────────────────────────
+    # Calibrated on sample documents: different products peaked at 0.894, new versions at ≥ 0.913.
     SIMILARITY_THRESHOLD: float = 0.9
     SIMILARITY_MIN_SHINGLES: int = 200     # less text (e.g. a scanned PDF) → no suggestion
     PENDING_UPLOAD_TTL_MINUTES: int = 60   # choices left undecided → file is deleted
 
     # ── Worker ───────────────────────────────────────────────────────
-    # Bump when the ingestion prompts/chunker/models change (A §5 `pipeline_version`).
+    # Bump when the ingestion prompts/chunker/models change (stored per document version).
     PIPELINE_VERSION: str = "3"  # 2: document profile + context for extraction; 3: model_code, product rules
     DOC_WORKERS: int = 2
     VERSION_LEASE_MINUTES: int = 10
@@ -227,7 +227,7 @@ class AppConfig:
     APP_TIMEZONE: str = "Asia/Jakarta"
     APP_TIMEZONE_LABEL: str = "WIB"
 
-    # ── Logging & observability (DESIGN_GROUP_C.md §7) ───────────────
+    # ── Logging & observability ──────────────────────────────────────
     LOG_FORMAT: str = "auto"          # "auto" (text in a terminal, json otherwise) | "json" | "text"
     LOG_PROMPTS: bool = False         # True: LLM prompts & responses are logged at DEBUG
     LLM_CALLS_RETENTION_DAYS: int = 90

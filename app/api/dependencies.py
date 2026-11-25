@@ -17,7 +17,7 @@ from app.services.user.model import CurrentUser, User
 from app.services.user.ports import BaseUserRepository
 from app.services.voice.service import VoiceService
 
-# The session comes only from the HttpOnly cookie (DESIGN_GROUP_D.md D1). Argos is only
+# The session comes only from the HttpOnly cookie. Argos is only
 # used from the browser, so the ``Authorization: Bearer`` header is deliberately not accepted.
 
 
@@ -66,7 +66,7 @@ def get_current_user(
         raise PermissionDenied("Your account has been deactivated.", code="USER_INACTIVE")
 
     log_context.bind_request(user_id=user.id)
-    # General per-user limit for every endpoint that needs a sign-in (D9).
+    # General per-user limit for every endpoint that needs a sign-in.
     limiter.check("default", user.id)
 
     return CurrentUser(
@@ -80,7 +80,7 @@ def get_current_user(
 
 
 def rate_limit(group: str) -> Callable[..., None]:
-    """FastAPI dependency: the `group` limit per signed-in user (DESIGN_GROUP_D.md D9)."""
+    """FastAPI dependency: the `group` limit per signed-in user."""
 
     def _check(user: CurrentUser = Depends(get_current_user)) -> None:
         limiter.check(group, user.id)

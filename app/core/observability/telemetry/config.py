@@ -1,4 +1,4 @@
-"""Telemetry configuration — kept apart from the application config (DESIGN_GROUP_F.md §4.6).
+"""Telemetry configuration — kept apart from the application config.
 
 - ``TelemetrySecrets`` reads only the Langfuse keys from ``.env``. They are optional:
   without them telemetry is off and the app still starts.

@@ -1,6 +1,6 @@
 """Feature extraction per section unit, with concurrency limits, timeouts and a cache.
 
-(DESIGN_GROUP_B.md §7; audit point 11 — no more 100,000-character truncation.)
+Every section is extracted: long documents are split into units, never truncated.
 
 Errors propagate to the worker: finished units are stored in the cache,
 so a retry only pays for the units that did not finish.

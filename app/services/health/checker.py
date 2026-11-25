@@ -1,4 +1,4 @@
-"""System readiness checks for ``/health/ready`` (DESIGN_GROUP_C.md §6).
+"""System readiness checks for ``/health/ready``.
 
 Status per check: ``ok`` / ``degraded`` / ``fail`` (``unknown`` for OpenAI when it has
 not been called yet). The overall status is ``fail`` (HTTP 503) only when some check is

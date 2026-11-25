@@ -1,4 +1,4 @@
-"""Document sections, extraction units and vector chunks (DESIGN_GROUP_A.md §3, B §7).
+"""Document sections, extraction units and vector chunks.
 
 Flow:
     Docling elements → build_sections()      sections per heading + content-only section_hash

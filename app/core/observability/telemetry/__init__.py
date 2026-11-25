@@ -1,4 +1,4 @@
-"""Observability via OpenTelemetry (DESIGN_GROUP_F.md). Langfuse is only the destination.
+"""Observability via OpenTelemetry. Langfuse is only the destination.
 
 - ``config``  — its own settings, separate from the app config (keys in .env, the rest in code)
 - ``setup``   — install / shut down the tracer provider (called by bootstrap)

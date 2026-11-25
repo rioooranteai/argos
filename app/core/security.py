@@ -1,4 +1,4 @@
-"""Access policy: Google Workspace domain & admin (DESIGN_GROUP_A.md §6.8)."""
+"""Access policy: Google Workspace domain & admin."""
 from __future__ import annotations
 
 from typing import Any
@@ -6,7 +6,7 @@ from typing import Any
 from app.core.config import Secrets, secrets
 from app.core.errors import PermissionDenied
 
-# Personal Gmail mode (testing/portfolio): ALLOWED_GOOGLE_DOMAIN=gmail.com.
+# Personal Gmail mode (e.g. for testing): ALLOWED_GOOGLE_DOMAIN=gmail.com.
 # Checking the email suffix is safe here because only Google can create @gmail.com addresses.
 GMAIL_DOMAIN = "gmail.com"
 

@@ -1,4 +1,4 @@
-"""Logging configuration (DESIGN_GROUP_C.md §7.2).
+"""Logging configuration.
 
 ``json`` format: one JSON object per line, with the fields
 ``ts, level, logger, msg, request_id`` + any context fields that are set

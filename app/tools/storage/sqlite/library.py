@@ -274,7 +274,7 @@ class SQLiteLibraryRepository(BaseLibraryRepository):
 
     # ── Mapper ─────────────────────────────────────────────────────────
 
-    # ── Stage 3: similarity suggestions ─────────────────────────────────
+    # ── Similarity suggestions ─────────────────────────────────────────
 
     def list_fingerprints(self) -> list[tuple[str, str, bytes]]:
         with self._db.get_connection() as conn:

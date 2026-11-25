@@ -138,7 +138,7 @@ class ConversationService:
         return msg
 
     def mark_failed(self, message_id: str, error_code: str) -> None:
-        """A user message got no answer (DESIGN_GROUP_C.md §4)."""
+        """A user message got no answer."""
         self._repo.set_message_status(message_id, "failed", error_code)
 
     def prepare_retry(

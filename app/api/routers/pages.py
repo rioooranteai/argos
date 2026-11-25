@@ -1,4 +1,4 @@
-"""Web pages (DESIGN_GROUP_D.md D3).
+"""Web pages.
 
 - ``/``, ``/home``: only sent to users with a valid session; otherwise → ``/login``.
 - ``/js/*``: application code, only for users with a valid session; otherwise → 404.

@@ -1,7 +1,4 @@
-"""Image descriptions with Vision: rate-limited, cached, and failures recorded.
-
-(DESIGN_GROUP_B.md §6, audit point 10.)
-"""
+"""Image descriptions with Vision: rate-limited, cached, and failures recorded."""
 from __future__ import annotations
 
 import asyncio

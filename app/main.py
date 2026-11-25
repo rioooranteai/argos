@@ -13,7 +13,7 @@ from app.core.observability.logs.setup import configure_logging
 configure_logging(app_config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
-_docs = app_config.API_DOCS_ENABLED  # D5: public for the portfolio; turn off in config.py
+_docs = app_config.API_DOCS_ENABLED  # public API docs; turn off in config.py
 app = FastAPI(
     title="Argos - Competitive Intelligence API",
     description="API for RAG and Agentic Extraction",

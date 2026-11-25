@@ -8,7 +8,7 @@ const FINAL_STAGES = new Set(["ready", "failed", "cancelled"]);
 // Authentication
 // ---------------------------------------------------------------------------
 
-// Session = an HttpOnly cookie set by the server (DESIGN_GROUP_D.md D1). JavaScript never
+// Session = an HttpOnly cookie set by the server. JavaScript never
 // sees the token, and there is no session data in localStorage. The server only sends
 // this page to signed-in users; when the session expires, the API answers 401.
 
@@ -614,7 +614,7 @@ function closeSourceModal() {
     sm.root.hidden = true;
     document.removeEventListener("keydown", sourceModalKeys);
     if (sm.returnFocus) sm.returnFocus.focus();
-    // Similar files left undecided → separate documents (the default, A §6.3).
+    // Similar files left undecided → separate documents (the default).
     const undecided = (sm.results || []).filter((r) => r.status === "similar");
     sm.results = null;
     if (undecided.length) resolveUndecided(undecided);
@@ -821,7 +821,7 @@ function renderUploadList() {
 }
 
 function reuseLine(stats) {
-    // Only shown when results from the previous version were reused (stage 3).
+    // Only shown when results from the previous version were reused.
     if (!stats) return null;
     const parts = [];
     if (stats.chunks_reused) parts.push(`${stats.chunks_reused} of ${stats.chunks} text chunks`);
@@ -1166,7 +1166,7 @@ function failureText(code, message) {
     return `Failed: ${FAILURE_TEXT[code] || "this message has no answer yet."}`;
 }
 
-/** Mark a user message as failed (DESIGN_GROUP_C.md §4): dimmed + reason + [Resend]. */
+/** Mark a user message as failed: dimmed + reason + [Resend]. */
 function markFailed(wrapper, { code, message, requestId, messageId, conversationId, canRetry = true }) {
     clearFailed(wrapper);
     wrapper.classList.add("is-failed");
@@ -1197,7 +1197,7 @@ function clearRetryButtons() {
 
 /**
  * A bot answer. `info` (optional) = chat response metadata or a message from history:
- * {degraded, issues} (DESIGN_GROUP_C.md §3).
+ * {degraded, issues}.
  */
 const SAFE_MARKDOWN = { USE_PROFILES: { html: true }, FORBID_TAGS: ["style", "form", "input", "button", "img"], FORBID_ATTR: ["style"] };
 

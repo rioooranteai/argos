@@ -1,6 +1,4 @@
 """Notebooks: sources (max. N, checkbox, pinned version) and the chat inside them.
-
-(DESIGN_GROUP_A.md §6, §8, §10)
 """
 from __future__ import annotations
 

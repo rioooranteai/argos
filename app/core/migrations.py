@@ -1,7 +1,7 @@
 """Argos database schema.
 
 The old schema (features without versions, conversations without notebooks) was
-dropped entirely (decision Q6, DESIGN_GROUP_A.md). The new database lives in
+dropped entirely. The new database lives in
 ``DATA_DIR/argos.db``, so migrations start again from a v1 baseline.
 """
 from __future__ import annotations
@@ -53,7 +53,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
             page_count         INTEGER,
             uploaded_by        TEXT NOT NULL REFERENCES users(id),
             uploaded_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            -- Version = job (DESIGN_GROUP_B.md §3.1)
+            -- Version = job
             stage              TEXT NOT NULL DEFAULT 'queued'
                                CHECK (stage IN ('queued', 'parsing', 'vision', 'indexing',
                                                 'extracting', 'ready', 'failed', 'cancelled')),
@@ -112,7 +112,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
         CREATE INDEX idx_notebooks_owner ON notebooks (owner_id, updated_at DESC);
 
         -- version_id / document_id without CASCADE: a version or document still
-        -- used by a notebook cannot be deleted by accident (A §6.6-6.7).
+        -- used by a notebook cannot be deleted by accident.
         CREATE TABLE notebook_sources (
             notebook_id  TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
             document_id  TEXT NOT NULL REFERENCES library_documents(id),
@@ -124,8 +124,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
         CREATE INDEX idx_notebook_sources_version ON notebook_sources (version_id);
 
         -- ── Chat ────────────────────────────────────────────────────────
-        -- notebook_id may still be NULL until the chat routes move to notebooks
-        -- (IMPLEMENTATION_PLAN_AB.md step 7.2); after that the service requires it.
+        -- notebook_id may be NULL in this baseline schema; the service requires it.
         CREATE TABLE conversations (
             id           TEXT PRIMARY KEY,
             notebook_id  TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
@@ -148,7 +147,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
         );
         CREATE INDEX idx_messages_conversation ON messages (conversation_id, created_at);
 
-        -- ── AI cache (also works as a checkpoint, B §9) ─────────────────
+        -- ── AI cache (also works as a checkpoint) ───────────────────────
         CREATE TABLE vision_cache (
             image_hash   TEXT NOT NULL,
             model        TEXT NOT NULL,
@@ -167,8 +166,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
     """),
     (2, """
         -- A version number counter that never goes down: a deleted version's number
-        -- is never reused, so an old "v2" citation always means the same content
-        -- (DESIGN_GROUP_A.md §6.7).
+        -- is never reused, so an old "v2" citation always means the same content.
         ALTER TABLE library_documents ADD COLUMN version_counter INTEGER NOT NULL DEFAULT 1;
         UPDATE library_documents SET version_counter = COALESCE(
             (SELECT MAX(version_no) FROM document_versions v WHERE v.document_id = library_documents.id),
@@ -176,12 +174,12 @@ MIGRATIONS: list[tuple[int, Migration]] = [
         );
     """),
     (3, """
-        -- Reuse statistics per version (stage 3, IMPLEMENTATION_PLAN_AB.md §4):
+        -- Reuse statistics per version:
         -- JSON {chunks, chunks_reused, units, units_cached, images, images_cached}.
         ALTER TABLE document_versions ADD COLUMN reuse_stats TEXT;
     """),
     (4, """
-        -- Similarity suggestion on upload (stage 3): a bottom-k text fingerprint per
+        -- Similarity suggestion on upload: a bottom-k text fingerprint per
         -- version, and uploads waiting for the user's "new version" / "separate document" choice.
         ALTER TABLE document_versions ADD COLUMN fingerprint BLOB;
 
@@ -201,7 +199,6 @@ MIGRATIONS: list[tuple[int, Migration]] = [
         CREATE INDEX idx_pending_uploads_created ON pending_uploads (created_at);
     """),
     (5, """
-        -- Group C (DESIGN_GROUP_C.md §4, §7).
         -- Failed messages: a user message that got no answer is marked `failed`,
         -- is left out of the LLM history, and can be resent.
         ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT 'ok'
@@ -231,7 +228,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
 ]
 
 
-# ── v6: every ID is a UUID (DESIGN_GROUP_D.md D10) ────────────────────────────
+# ── v6: every ID is a UUID ───────────────────────────────────────────────
 
 # Columns that refer to users.id (with or without an FK).
 _USER_REFERENCES = (
@@ -374,7 +371,7 @@ def _v6_uuid_ids(conn: sqlite3.Connection) -> None:
 
 MIGRATIONS.append((6, _v6_uuid_ids))
 
-# v7: the last opened notebook is stored on the server, not in localStorage (D8).
+# v7: the last opened notebook is stored on the server, not in localStorage.
 MIGRATIONS.append((7, """
     ALTER TABLE notebooks ADD COLUMN last_opened_at TIMESTAMP;
 """))

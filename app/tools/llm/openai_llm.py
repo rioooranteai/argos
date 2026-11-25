@@ -74,8 +74,7 @@ class OpenAILLM(BaseLLM):
         self._log_response(response.content)
         return response.content
 
-    # Prompts can contain confidential document content: only logged when LOG_PROMPTS = True
-    # (DESIGN_GROUP_C.md §7.5).
+    # Prompts can contain confidential document content: only logged when LOG_PROMPTS = True.
     def _log_prompt(self, messages: list) -> None:
         if app_config.LOG_PROMPTS:
             logger.debug("[%s] prompt: %s", self._purpose, messages)

@@ -1,9 +1,9 @@
-"""Safe handling of uploaded files (DESIGN_GROUP_B.md §8).
+"""Safe handling of uploaded files.
 
 - Files are read in chunks (1 MB) and stopped as soon as they go over the size limit;
   the Content-Length header is not trusted.
 - On disk the file name is always a UUID; the original name is only kept as metadata
-  (closes the path traversal hole, audit point 3).
+  (no path traversal through crafted file names).
 - SHA-256 is computed while writing, without reading the file twice.
 """
 from __future__ import annotations

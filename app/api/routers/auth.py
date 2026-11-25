@@ -23,7 +23,7 @@ def _login_error(code: str) -> RedirectResponse:
 
 
 def _login_rate_limited(request: Request) -> RedirectResponse | None:
-    """Sign-in attempt limit per IP (D9). The sign-in flow is a browser navigation → redirect, not JSON."""
+    """Sign-in attempt limit per IP. The sign-in flow is a browser navigation → redirect, not JSON."""
     try:
         limiter.check("login", client_ip(request))
     except RateLimited:
@@ -77,7 +77,7 @@ async def google_callback(
         return _login_error("USER_INACTIVE")
 
     token = create_session_token(user.id, google_user.get("given_name", ""))
-    # The token goes in an HttpOnly cookie, not in the URL (audit point 5, DESIGN_GROUP_D.md D1).
+    # The token goes in an HttpOnly cookie, not in the URL.
     response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     set_session_cookie(response, request, token)
     return response

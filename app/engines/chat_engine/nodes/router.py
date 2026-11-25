@@ -63,8 +63,7 @@ async def router_node(state: dict, llm: BaseLLM) -> dict:
     except Exception:
         logger.exception("[router] Failed to pick a route; using the fallback route.")
         trace = NodeTrace(node="router", status="error", duration_ms=clock.ms(), code="ROUTER_FAILED")
-        # Fallback route `both`: reading every source beats guessing one
-        # (DESIGN_GROUP_C.md §3).
+        # Fallback route `both`: reading every source beats guessing one.
         return {
             "route": "both",
             "router_reasoning": "Fallback route because source selection failed.",

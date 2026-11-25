@@ -1,4 +1,4 @@
-"""The only place that picks concrete tool implementations (DESIGN_GROUP_E.md §3.2).
+"""The only place that picks concrete tool implementations.
 
 Called by the composition root at startup. Services, engines and routers depend on the
 ``Base…`` contracts in ``app/tools/<tool>/base.py`` and receive their tools through the
@@ -26,7 +26,7 @@ from app.tools.vector_store.chroma import ChromaVectorStore
 from app.tools.vision.base import BaseVisionModel
 from app.tools.vision.openai_vision import OpenAIVision
 
-# profile → (model, timeout seconds, retries, purpose in llm_calls). DESIGN_GROUP_B.md §5, C §7.3.
+# profile → (model, timeout seconds, retries, purpose in llm_calls).
 _OPENAI_LLM_PROFILES = {
     "llm": (app_config.OPENAI_LLM_MODEL, app_config.LLM_TIMEOUT_CHAT, 1, "synthesizer"),
     "chat": (app_config.OPENAI_CHAT_MODEL, app_config.LLM_TIMEOUT_CHAT, 1, "synthesizer"),

@@ -25,7 +25,7 @@ class Message:
     created_at: datetime
     source_snapshot: list[str] | None = None  # active version_ids when the message was sent
     citations: list[dict] = field(default_factory=list)
-    # DESIGN_GROUP_C.md §4: a user message with no answer → `failed` + error code.
+    # A user message with no answer → `failed` + error code.
     status: str = "ok"  # 'ok' | 'failed'
     error_code: str | None = None
-    trace: dict | None = None  # assistant messages only (§7.4)
+    trace: dict | None = None  # assistant messages only
