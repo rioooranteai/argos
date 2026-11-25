@@ -38,12 +38,15 @@ def user_from_token(request: Request, token: str | None) -> tuple[User, dict] | 
     """The active user + payload when the token is valid; otherwise None. Never raises."""
     if not token:
         return None
+
     payload = decode_session_token(token)
     if payload is None:
         return None
+
     user = get_user_repo(request).get(payload.get("sub", ""))
     if user is None or not user.is_active:
         return None
+
     return user, payload
 
 
