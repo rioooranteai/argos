@@ -47,6 +47,11 @@ RUN useradd --create-home --uid 1000 argos
 
 COPY --from=builder /opt/venv /opt/venv
 
+# The token encoding (cl100k_base) ships in the image: otherwise tiktoken downloads it on every
+# start of a new container, and the app does not start when that download fails.
+ENV TIKTOKEN_CACHE_DIR=/opt/tiktoken
+RUN python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+
 WORKDIR /app
 COPY --chown=argos:argos app/ app/
 COPY --chown=argos:argos prompts/ prompts/
