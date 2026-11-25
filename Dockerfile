@@ -1,36 +1,59 @@
-FROM python:3.11-slim
+# ArgosAI image, one Dockerfile for both PyTorch variants (the extras in pyproject.toml):
+#   docker compose --profile cpu up -d --build     → image argos:cpu
+#   docker compose --profile gpu up -d --build     → image argos:cu129 (NVIDIA GPU)
+# Two stages: the builder installs the locked environment with uv, the runtime image gets only
+# that environment, the system libraries and the application files.
+
+ARG PYTHON_VERSION=3.11
+
+# ── builder ──────────────────────────────────────────────────────────────────────────────────
+FROM python:${PYTHON_VERSION}-slim AS builder
+
+# The uv version that wrote uv.lock
+COPY --from=ghcr.io/astral-sh/uv:0.7.5 /uv /bin/uv
+
+# PyTorch variant: "cpu" or "cu129" (an extra in pyproject.toml)
+ARG TORCH_VARIANT=cpu
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+# Compilers for packages that have no wheel for this platform (not copied to the runtime image)
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY pyproject.toml uv.lock ./
+# --frozen: exactly the versions in uv.lock (fails instead of re-resolving)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project --extra ${TORCH_VARIANT}
+
+# ── runtime ──────────────────────────────────────────────────────────────────────────────────
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PATH=/opt/venv/bin:$PATH
 
-WORKDIR /app
-
-# System libraries:
-#  - build-essential : compiles packages that have no wheel yet
-#  - libgl1, libglib2.0-0 : needed by OpenCV (used by Docling for OCR/layout)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        sqlite3 \
-        libgl1 \
-        libglib2.0-0 \
+# libgl1, libglib2.0-0: OpenCV (Docling layout/OCR). sqlite3: the CLI, for inspecting the database.
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# PyTorch variant: "cpu" (default, smaller image) or "cu129" (NVIDIA GPU)
-ARG TORCH_INDEX=cpu
+# Runs as an unprivileged user. UID 1000 = the usual first user on a Linux host, so a bind-mounted
+# ./data stays writable (otherwise: sudo chown -R 1000:1000 data, see README).
+RUN useradd --create-home --uid 1000 argos
 
-COPY requirements.txt ./
+COPY --from=builder /opt/venv /opt/venv
 
-# The same requirements.txt as a manual install; a GPU build adds the CUDA index
-RUN pip install --upgrade pip && \
-    if [ "$TORCH_INDEX" = "cpu" ]; then extra=""; \
-    else extra="--extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX}"; fi && \
-    pip install --no-cache-dir -r requirements.txt $extra
+WORKDIR /app
+COPY --chown=argos:argos app/ app/
+COPY --chown=argos:argos prompts/ prompts/
+COPY --chown=argos:argos web-app/ web-app/
+RUN mkdir -p data && chown argos:argos data
 
-COPY . .
-
-RUN mkdir -p data
-
+USER argos
 EXPOSE 8000
 
 # MUST be a single process: the document queue worker runs inside the app, and the Chroma

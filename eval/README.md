@@ -257,11 +257,11 @@ they return the same answer.
 ## How to run
 
 ```bash
-python eval/run_eval.py --repeats 3            # full run
-python eval/run_eval.py --smoke                # 2 documents per notebook, 4 questions per set
-python eval/run_eval.py --rescore <RUN>        # rescore an existing run with the current ground truth
-python eval/extraction_lab.py                  # extraction only, on cached parses: tuning + notebook B
-python eval/extraction_lab.py --sets validation  # the frozen held-out set: aggregate scores only
+uv run python eval/run_eval.py --repeats 3            # full run
+uv run python eval/run_eval.py --smoke                # 2 documents per notebook, 4 questions per set
+uv run python eval/run_eval.py --rescore <RUN>        # rescore an existing run with the current ground truth
+uv run python eval/extraction_lab.py                  # extraction only, on cached parses: tuning + notebook B
+uv run python eval/extraction_lab.py --sets validation  # the frozen held-out set: aggregate scores only
 ```
 
 Options: `--no-judge` skips the LLM judge for free-text fields, and `--no-validation` skips the

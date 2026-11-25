@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "rioooranteai" }]
 
-# The DIRECT dependencies, for maintainers. To install the app, use requirements.txt (README §5):
-# it is generated from this list with `python devtools/lock.py` and pins every package.
+# The direct dependencies. Every resolved version is pinned in uv.lock (commit it); install with
+#   uv sync --extra cpu      or      uv sync --extra cu129      (README §5)
 dependencies = [
     # Web / API
     "fastapi==0.119.1",
@@ -32,13 +32,10 @@ dependencies = [
     "pydantic-ai-slim[openai]==1.30.1",
     "tiktoken==0.12.0",
 
-    # Documents: Docling for PDF and Markdown only (layout/table models, OCR, chunking), not every format
+    # Documents: Docling for PDF and Markdown only (layout/table models, OCR, chunking), not every
+    # format. Its PyTorch comes from the `cpu` or `cu129` extra below.
     "docling-slim[convert-core,format-pdf,format-markdown,models-local,feat-ocr-rapidocr-onnx,feat-chunking]==2.151.1",
     "docling-core==2.108.0",
-    # PyTorch for Docling's models. requirements.txt installs the CPU build; the CUDA build comes
-    # from an extra index (README §5). Change the version here only.
-    "torch==2.8.0",
-    "torchvision==0.23.0",
 
     # Vector store
     "chromadb==1.5.5",
@@ -51,6 +48,39 @@ dependencies = [
     "opentelemetry-sdk==1.39.1",
     "opentelemetry-exporter-otlp-proto-http==1.39.1",
 ]
+
+# PyTorch variant: pick exactly one. `cpu` runs everywhere; `cu129` needs an NVIDIA GPU with a
+# driver for CUDA 12.9 (Windows ≥ 576.x; check with `nvidia-smi`). The version lives only here.
+[project.optional-dependencies]
+cpu = ["torch==2.8.0", "torchvision==0.23.0"]
+cu129 = ["torch==2.8.0", "torchvision==0.23.0"]
+
+[dependency-groups]
+dev = ["ruff>=0.8"]
+
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "cu129" }]]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu129", extra = "cu129" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu129", extra = "cu129" },
+]
+
+# explicit: only torch/torchvision come from these indexes; everything else from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
 
 [tool.ruff]
 line-length = 100

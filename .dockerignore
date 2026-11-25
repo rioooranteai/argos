@@ -1,3 +1,6 @@
+# The image copies only app/, prompts/, web-app/, pyproject.toml and uv.lock (see Dockerfile).
+# Everything below is kept out of the build context too, so builds stay small and fast.
+
 # Secrets — never in the image (env comes in through env_file at runtime)
 .env
 .env.*
@@ -20,10 +23,16 @@ data/
 *.db-shm
 *.db-wal
 
+# Not needed at runtime: evaluation (PDFs, results), documentation
+eval/
+# root-level only (README, design notes); prompts/*.md are needed and stay in
+*.md
+
 # Git, IDE, cache
 .git/
 .idea/
 .vscode/
+.claude/
 __pycache__/
 *.py[cod]
 .ruff_cache/

@@ -173,10 +173,11 @@ Pick the path that fits your machine:
 
 | Your situation | Recommended path |
 |---|---|
-| Just want it running, any OS | **A. Docker (CPU)** |
-| NVIDIA GPU + Docker | **B. Docker (GPU)** |
-| Developing the code (Windows / Linux / Apple Silicon Mac) | **C. Local Python** |
-| Intel Mac | **A. Docker** (PyTorch 2.8 has no Intel-Mac build) |
+| Just want it running, any OS | **A. Docker** |
+| Developing the code (Windows / Linux / Apple Silicon Mac) | **B. Without Docker** |
+
+Both paths install the same locked dependencies (`pyproject.toml` + `uv.lock`) and pick the
+PyTorch variant the same way.
 
 ### Step 1 — Get the code and create `.env`
 
@@ -208,52 +209,55 @@ start if one is empty:
 
 Use your real domain instead of `localhost:8000` when you deploy.
 
-### A. Docker (CPU) — works everywhere
+### Choose the PyTorch variant: `cpu` or `cu129`
 
-Requires **Docker Desktop** (Windows/macOS) or Docker Engine (Linux).
+PyTorch (used only by Docling to read PDFs) comes in two variants. You pick one, in Docker and
+without Docker alike:
 
-```bash
-docker compose up -d --build
-```
+| Variant | Use it when |
+|---|---|
+| `cpu` | Any machine. The default choice. |
+| `cu129` | An NVIDIA GPU whose driver supports CUDA 12.9 |
 
-### B. Docker (GPU) — NVIDIA only
+Check your machine yourself; nothing is detected automatically. Run `nvidia-smi`: if the command
+exists and its header shows **CUDA Version 12.9 or higher** (on Windows: driver ≥ 576.x), you
+can use `cu129`. Otherwise use `cpu`. The GPU only speeds up document parsing; chat, extraction
+and embeddings run through the OpenAI API either way.
 
-Requires an NVIDIA driver, plus Docker Desktop with the WSL2 backend (Windows) or the
-[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) (Linux).
-The CUDA build of PyTorch is large: plan for roughly 15 GB of free space on the drive that
-holds Docker's data (on Windows this is usually `C:`). If the disk fills mid-build, Docker
-Desktop crashes with `failed to receive status: ... EOF`.
+### A. Docker
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
-```
-
-The GPU only speeds up document parsing (Docling); chat, extraction and embeddings run through
-the OpenAI API either way. Use the same two `-f` files for every other compose command
-(`logs`, `down`, …) of a GPU deployment.
-
-### C. Local Python (no Docker)
-
-Requires **Python 3.11 – 3.13**.
+Requires **Docker Desktop** (Windows/macOS) or Docker Engine (Linux). One compose file, one
+profile per variant:
 
 ```bash
-python -m venv .venv
-# Windows:      .venv\Scripts\activate
-# Linux/macOS:  source .venv/bin/activate
-
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+docker compose --profile cpu up -d --build     # image argos:cpu
+docker compose --profile gpu up -d --build     # image argos:cu129
 ```
 
-`requirements.txt` is the only file to install, here and in Docker. It pins every package and
-installs the CPU build of PyTorch. With an NVIDIA GPU, add the CUDA index to the same command:
+The `gpu` profile also needs the NVIDIA Container Toolkit on Linux, or Docker Desktop with the
+WSL2 backend on Windows. Its image is large: plan for roughly 15 GB of free space on the drive
+that holds Docker's data (on Windows usually `C:`); if the disk fills mid-build, Docker Desktop
+crashes with `failed to receive status: ... EOF`.
+
+The container runs as an unprivileged user (UID 1000) and keeps all data in `./data`, which is
+mounted from the host. On a Linux host where your user is not UID 1000, make the folder
+writable once: `mkdir -p data && sudo chown -R 1000:1000 data`. Docker Desktop (Windows/macOS)
+needs nothing.
+
+### B. Without Docker
+
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) (it installs a matching
+Python 3.11+ itself if needed). From the project folder:
 
 ```bash
-pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu129
+uv sync --extra cpu          # or: uv sync --extra cu129
+uv run uvicorn app.main:app --reload
 ```
 
-Check what you got: `python -c "import torch; print(torch.__version__, torch.cuda.is_available())"`
-(`2.8.0+cpu False`, or `2.8.0+cu129 True` with a working GPU and driver).
+`uv sync` creates `.venv/` with exactly the versions in `uv.lock`. Check what you got:
+`uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available())"`
+(`2.8.0+cpu False`, or `2.8.0+cu129 True` with a working GPU and driver). Intel Macs have no
+PyTorch 2.8 build: use Docker there.
 
 > The app must run as **one process** (no `--workers N`): the document worker runs inside
 > the app, and ChromaDB's local client is not safe across processes.
@@ -354,11 +358,13 @@ models without a price report token usage only.
 
 ### Docker commands
 
+Add the profile you started with (`--profile cpu` or `--profile gpu`) to every command:
+
 | Command | Description |
 |---|---|
-| `docker compose up -d --build` | Build and run in the background |
-| `docker compose logs -f` | Follow logs |
-| `docker compose down` | Stop and remove containers (data in `./data` is kept) |
+| `docker compose --profile cpu up -d --build` | Build and run in the background |
+| `docker compose --profile cpu logs -f` | Follow logs |
+| `docker compose --profile cpu down` | Stop and remove containers (data in `./data` is kept) |
 
 ### Troubleshooting
 
@@ -367,10 +373,11 @@ models without a price report token usage only.
 | The app does not start: "Required settings missing in .env" | Fill in every value listed in Step 1 |
 | Google says `redirect_uri_mismatch` | Add `http://<host>/api/v1/auth/google/callback` to the OAuth client's redirect URIs |
 | Sign-in fails with "This Google account is not allowed to sign in" | The account does not match `ALLOWED_GOOGLE_DOMAIN` (a Workspace domain, or `gmail.com`) |
-| `install.py` says CUDA is not available on an NVIDIA machine | Update the NVIDIA driver (CUDA 12.9 needs ≥ 576.x on Windows), or use `--device cpu` |
+| `torch.cuda.is_available()` is `False` with `cu129` | Update the NVIDIA driver (CUDA 12.9 needs ≥ 576.x on Windows), or use the `cpu` variant; the app still runs on CPU |
 | First PDF upload is slow | Docling loads/downloads its models on first use; later runs use the cache |
-| `ResolutionImpossible` from pip | Use a fresh virtual environment and run `python install.py` (do not `pip install` torch manually) |
-| GPU compose fails with "could not select device driver" | NVIDIA Container Toolkit / WSL2 GPU support is not installed — use path A |
+| Docker: `PermissionError` / `attempt to write a readonly database` under `/app/data` | The host's `./data` is not writable by UID 1000: `sudo chown -R 1000:1000 data` |
+| `--profile gpu` fails with "could not select device driver" | The NVIDIA Container Toolkit / WSL2 GPU support is not installed — use `--profile cpu` |
+| `uv sync` refuses `--extra cpu --extra cu129` | The variants exclude each other: pick one |
 
 ---
 
@@ -433,22 +440,27 @@ Rules:
 
 ### Dependencies
 
-- `pyproject.toml` — the **direct** dependencies (edit these), plus the ruff config.
-- `requirements.txt` — what everyone installs (manual and Docker): every package pinned,
-  generated from `pyproject.toml`, cross-platform. It points pip at the PyTorch CPU index; the
-  CUDA build is the same file with the CUDA index added (§5).
+- `pyproject.toml` — the **direct** dependencies (edit these), the PyTorch variants as the
+  mutually exclusive extras `cpu` and `cu129` (each mapped to its PyTorch index), the dev group
+  (ruff) and the ruff config.
+- `uv.lock` — every resolved version, for every OS and both variants. Commit it; Docker installs
+  it with `uv sync --frozen`, so a build never re-resolves.
 
 Docling is installed as `docling-slim` with the extras the app uses (PDF, Markdown, layout and
 table models, OCR, chunking), not every document format.
 
-To add or upgrade a package, edit `pyproject.toml`, then regenerate `requirements.txt`
-(requires [uv](https://docs.astral.sh/uv/)):
+To add or upgrade a package, edit `pyproject.toml`, then:
 
 ```bash
-python devtools/lock.py
+uv lock                      # re-resolve; keeps the other locked versions
+uv sync --extra cpu          # apply it to your .venv
 ```
 
-Linting: `pip install ruff && ruff check app eval devtools`.
+To move to another CUDA version, change the `cu129` extra and its index in `pyproject.toml`
+(the extra name, `[tool.uv.sources]`, `[[tool.uv.index]]`), the Dockerfile default stays `cpu`,
+and the `gpu` service in `docker-compose.yml`.
+
+Linting: `uv run ruff check app eval`.
 
 ### Database migrations
 

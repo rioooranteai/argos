@@ -1,26 +1,61 @@
+# One compose file, two variants. Pick one with a profile (README §5):
+#   docker compose --profile cpu up -d --build      any machine
+#   docker compose --profile gpu up -d --build      NVIDIA GPU: needs the NVIDIA driver and, on Linux,
+#                                                   the NVIDIA Container Toolkit (WSL2 on Windows)
+# Use the same --profile for every other command (logs, down, …).
+
+x-argos: &argos
+  env_file:
+    - .env
+  ports:
+    - "8000:8000"
+  volumes:
+    # All data (SQLite, Chroma, upload queue, model cache) lives in ./data on the host
+    - ./data:/app/data
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+    interval: 30s
+    timeout: 5s
+    start_period: 60s
+    retries: 3
+  # Give the worker time to finish the stage it is running (WORKER_SHUTDOWN_GRACE = 20 s).
+  stop_grace_period: 30s
+  restart: unless-stopped
+
+# Per-machine infrastructure values (not secrets, not in .env)
+x-env: &env
+  DATA_DIR: /app/data
+  # Cache the Docling/HuggingFace models so they are not downloaded again on every restart
+  HF_HOME: /app/data/hf_cache
+
 services:
-  argos-api:
-    build: .
-    container_name: argos_backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
+  argos-cpu:
+    <<: *argos
+    profiles: ["cpu"]
+    image: argos:cpu
+    build:
+      context: .
+      args:
+        TORCH_VARIANT: cpu
     environment:
-      # Per-machine infrastructure values (not secrets, not in .env).
-      # All data (SQLite, Chroma, upload queue) lives in DATA_DIR.
-      DATA_DIR: /app/data
-      DOCLING_DEVICE: auto
-      # Cache the Docling/HuggingFace models so they are not downloaded again on every restart
-      HF_HOME: /app/data/hf_cache
-    volumes:
-      - ./data:/app/data
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
-      interval: 30s
-      timeout: 5s
-      start_period: 60s
-      retries: 3
-    # Give the worker time to finish the stage it is running (WORKER_SHUTDOWN_GRACE = 20 s).
-    stop_grace_period: 30s
-    restart: unless-stopped
+      <<: *env
+      DOCLING_DEVICE: cpu
+
+  argos-gpu:
+    <<: *argos
+    profiles: ["gpu"]
+    image: argos:cu129
+    build:
+      context: .
+      args:
+        TORCH_VARIANT: cu129
+    environment:
+      <<: *env
+      DOCLING_DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
