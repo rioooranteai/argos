@@ -1,15 +1,14 @@
 {
   "_readme": [
-    "Ground truth untuk evaluasi ArgosAI: 10 dokumen di eval/pdf-files/ (maks. 10 sumber per notebook).",
-    "products : untuk skor ekstraksi. match = semua token harus muncul di (brand_name + product_name), lowercase alfanumerik.",
-    "price    : nilai yang dianggap benar; null = harga memang tidak ada. Field hilang = harga tidak dinilai.",
-    "currency : kode yang dianggap benar (null boleh).",
-    "complete : true = daftar products lengkap, jadi precision bisa dihitung; false = sampel (recall saja).",
-    "expect_no_price: true = dokumen tidak memuat harga produk; baris ekstraksi yang punya price = halusinasi.",
-    "facts    : fakta terverifikasi untuk pertanyaan uji. evidence = kutipan teks dari PDF (dicek otomatis ada di halaman `page`).",
-    "cross_document: fakta yang jawabannya butuh dua dokumen atau lebih (uses = id fakta).",
-    "unanswerable: pertanyaan yang jawabannya tidak ada di dokumen mana pun; jawaban benar = mengakui data tidak tersedia, tanpa mengarang.",
-    "Dokumen lama (13 PDF) dicadangkan di eval/ground_truth_lama.json."
+    "Ground truth for the ArgosAI evaluation: 10 documents in eval/pdf-files/ (max. 10 sources per notebook).",
+    "products : for the extraction score. match = every token must appear in (brand_name + product_name), lowercase alphanumeric.",
+    "price    : the accepted values; null = the document really has no price. Field missing = the price is not scored.",
+    "currency : the accepted codes (null allowed).",
+    "complete : true = the products list is complete, so precision can be computed; false = a sample (recall only).",
+    "expect_no_price: true = the document has no product prices; an extracted row with a price is a hallucination.",
+    "facts    : verified facts for the test questions. evidence = a text quote from the PDF (checked to be on page `page`).",
+    "cross_document: facts whose answer needs two or more documents (uses = fact ids).",
+    "unanswerable: questions no document answers; the right answer says the data is not available, without making anything up."
   ],
   "documents": [
     {
@@ -19,7 +18,7 @@
       "lang": "id",
       "pages": 2,
       "difficulty": "easy",
-      "kind": "RIPLAY kartu kredit, layout 2 kolom",
+      "kind": "credit-card terms (RIPLAY), two-column layout",
       "complete": true,
       "products": [
         {
@@ -74,7 +73,7 @@
       "lang": "id",
       "pages": 3,
       "difficulty": "easy",
-      "kind": "RIPLAY kartu kredit, teks padat",
+      "kind": "credit-card terms (RIPLAY), dense text",
       "complete": true,
       "products": [
         {
@@ -130,7 +129,7 @@
       "lang": "id+en",
       "pages": 2,
       "difficulty": "easy",
-      "kind": "RIPLAY bilingual, tabel biaya (urutan teks tercampur; dicek dari gambar halaman)",
+      "kind": "bilingual credit-card terms (RIPLAY), fee table (text order mixed up; checked against the page image)",
       "complete": true,
       "products": [
         {
@@ -188,7 +187,7 @@
           "value": "gratis",
           "page": 1,
           "evidence": "Gratis / Free",
-          "note": "tabel; pasangan label-nilai dicek dari gambar halaman 1"
+          "note": "table; label-value pairs checked against the image of page 1"
         }
       ]
     },
@@ -199,7 +198,7 @@
       "lang": "id",
       "pages": 16,
       "difficulty": "medium",
-      "kind": "laporan keuangan publikasi (individual), tabel padat, dalam jutaan rupiah",
+      "kind": "published financial statement (bank only), dense tables, in millions of rupiah",
       "complete": true,
       "expect_no_price": true,
       "products": [],
@@ -276,11 +275,11 @@
       "lang": "id",
       "pages": 1,
       "difficulty": "hard",
-      "kind": "laporan keuangan publikasi format koran: 1 halaman raksasa, kolom Bank & Konsolidasian, sebagian teks rusak encoding",
+      "kind": "published financial statement in newspaper format: one huge page, Bank and Consolidated columns, part of the text with broken encoding",
       "complete": true,
       "expect_no_price": true,
       "products": [],
-      "column_order": "Bank CIMB Niaga 2025, Bank 2024, Konsolidasian 2025, Konsolidasian 2024 (dicek dari gambar halaman)",
+      "column_order": "Bank CIMB Niaga 2025, Bank 2024, Consolidated 2025, Consolidated 2024 (checked against the page image)",
       "facts": [
         {
           "id": "cimb_total_assets",
@@ -323,7 +322,7 @@
           "value": "Rp 70.224.032 juta (BUKAN total aset bank)",
           "page": 1,
           "evidence": "TOTAL ASET 70.224.032 67.503.107",
-          "note": "jebakan: angka unit syariah, jangan tertukar dengan total aset bank"
+          "note": "trap: Sharia-unit figures, not to be confused with the bank's total assets"
         }
       ]
     },
@@ -334,7 +333,7 @@
       "lang": "en",
       "pages": 11,
       "difficulty": "medium",
-      "kind": "spec sheet tanpa harga",
+      "kind": "spec sheet without prices",
       "complete": false,
       "expect_no_price": true,
       "products": [
@@ -390,7 +389,7 @@
       "lang": "en",
       "pages": 5,
       "difficulty": "easy",
-      "kind": "datasheet marketing tanpa harga",
+      "kind": "marketing datasheet without prices",
       "complete": false,
       "expect_no_price": true,
       "products": [
@@ -690,16 +689,16 @@
   "unanswerable": [
     {
       "id": "u_t14_price",
-      "about": "harga ThinkPad T14 Gen 5",
-      "reason": "spec sheet tidak memuat harga",
+      "about": "price of the ThinkPad T14 Gen 5",
+      "reason": "the spec sheet states no price",
       "docs": [
         "en_lenovo_t14_gen5_intel.pdf"
       ]
     },
     {
       "id": "u_probook_price",
-      "about": "harga HP ProBook 4 G1i",
-      "reason": "datasheet tidak memuat harga",
+      "about": "price of the HP ProBook 4 G1i",
+      "reason": "the datasheet states no price",
       "docs": [
         "en_hp_probook4_g1i.pdf"
       ]
@@ -707,13 +706,13 @@
     {
       "id": "u_dell_share",
       "about": "market share PC Dell 2025",
-      "reason": "tidak ada dokumen Dell di set ini",
+      "reason": "there is no Dell document in this set",
       "docs": []
     },
     {
       "id": "u_bca_profit",
       "about": "laba bersih BCA 2025",
-      "reason": "tidak ada dokumen BCA di set ini",
+      "reason": "there is no BCA document in this set",
       "docs": []
     }
   ],
@@ -1684,7 +1683,7 @@
         "file": "en_lenovo_t14s_2in1_gen1.pdf",
         "url": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14s_2_in_1_Gen_1/ThinkPad_T14s_2_in_1_Gen_1_Spec.pdf",
         "lang": "en",
-        "kind": "spec sheet tanpa harga",
+        "kind": "spec sheet without prices",
         "complete": false,
         "products": [
           {
@@ -1724,7 +1723,7 @@
         "file": "en_datavideo_msrp_2017.pdf",
         "url": "http://resource.datavideo.com/dv_brochures/05_09_2017_Datavideo_MSRP_Price_List.pdf",
         "lang": "en",
-        "kind": "price list 21 hal., banyak gambar produk",
+        "kind": "price list, 21 pages, many product images",
         "complete": false,
         "products": [
           {
@@ -2048,7 +2047,7 @@
         "file": "en_cisco_price_list_reseller.pdf",
         "url": "https://andovercg.com/datasheets/cisco%20price%20list.pdf",
         "lang": "en",
-        "kind": "price list 43 hal., ~1.967 baris produk",
+        "kind": "price list, 43 pages, ~1,967 product rows",
         "complete": false,
         "products": [
           {
