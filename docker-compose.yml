@@ -44,11 +44,11 @@ services:
   argos-gpu:
     <<: *argos
     profiles: ["gpu"]
-    image: argos:cu129
+    image: argos:gpu
     build:
       context: .
       args:
-        TORCH_VARIANT: cu129
+        TORCH_VARIANT: gpu
     environment:
       <<: *env
       DOCLING_DEVICE: cuda

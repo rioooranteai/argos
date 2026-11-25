@@ -1,6 +1,6 @@
 # ArgosAI image, one Dockerfile for both PyTorch variants (the extras in pyproject.toml):
 #   docker compose --profile cpu up -d --build     → image argos:cpu
-#   docker compose --profile gpu up -d --build     → image argos:cu129 (NVIDIA GPU)
+#   docker compose --profile gpu up -d --build     → image argos:gpu (NVIDIA GPU)
 # Two stages: the builder installs the locked environment with uv, the runtime image gets only
 # that environment, the system libraries and the application files.
 
@@ -12,7 +12,8 @@ FROM python:${PYTHON_VERSION}-slim AS builder
 # The uv version that wrote uv.lock
 COPY --from=ghcr.io/astral-sh/uv:0.7.5 /uv /bin/uv
 
-# PyTorch variant: "cpu" or "cu129" (an extra in pyproject.toml)
+# PyTorch variant: "cpu" or "gpu" (an extra in pyproject.toml; the CUDA version of "gpu" is the
+# pytorch-gpu index URL there)
 ARG TORCH_VARIANT=cpu
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \

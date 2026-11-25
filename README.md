@@ -193,7 +193,7 @@ start if one is empty:
 | Variable | What to put there |
 |---|---|
 | `OPENAI_API_KEY` | Your key from https://platform.openai.com/api-keys |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | An OAuth client from Google Cloud Console → APIs & Services → Credentials (see below) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | An OAuth client from the Google Cloud console — step by step in the next section |
 | `SECRET_KEY` | A long random string: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
 | `ALLOWED_GOOGLE_DOMAIN` | Your Google Workspace domain (e.g. `company.com`), or `gmail.com` to allow personal Gmail accounts |
 | `ADMIN_EMAIL` | The email of the single admin account |
@@ -202,27 +202,115 @@ start if one is empty:
 > ⚠️ Never commit `.env` or paste its values into issues, docs or screenshots. It is listed in
 > `.gitignore` and `.dockerignore`.
 
-**Google OAuth client** — create an OAuth client of type *Web application* and add:
+### Google sign-in credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 
-- Authorized JavaScript origin: `http://localhost:8000`
-- Authorized redirect URI: `http://localhost:8000/api/v1/auth/google/callback`
+Argos signs users in with Google (scopes `openid email profile` only). You create the OAuth
+client once in the Google Cloud console; the screens below are the current **Google Auth
+Platform** ([Google's guide](https://support.google.com/cloud/answer/15544987),
+[managing clients](https://support.google.com/cloud/answer/15549257)).
 
-Use your real domain instead of `localhost:8000` when you deploy.
+1. **Project.** Open https://console.cloud.google.com, and in the project picker at the top
+   choose an existing project or **New project**.
+2. **Register the app with Google Auth.** Menu ☰ → **APIs & Services** → **OAuth consent
+   screen** (this opens the Google Auth Platform; direct link:
+   https://console.cloud.google.com/auth/overview) → **Get started**, then fill in:
+   - **App information** — *App name* (e.g. `ArgosAI`) and *User support email* (your own
+     address or a Google Group you manage).
+   - **Audience** — **Internal** if everyone signs in with accounts of your Google Workspace
+     organisation (matches `ALLOWED_GOOGLE_DOMAIN=company.com`; only available when the project
+     belongs to that organisation). **External** for any Google account (needed for
+     `ALLOWED_GOOGLE_DOMAIN=gmail.com`).
+   - **Contact information** — an email address Google can write to about the project.
+   - **Finish** — agree to the Google API Services User Data Policy, then **Create**.
+3. **External apps: testing or production.** An External app starts in **Testing**. Open
+   **Audience**: either add the people who may sign in under **Test users** (at most 100), or
+   click **Publish app** to make it available to every Google account (Argos still lets in only
+   the domain in `ALLOWED_GOOGLE_DOMAIN`). The `openid email profile` scopes are not sensitive,
+   so publishing needs no security review; Google asks for brand verification only if you want
+   your app name and logo shown on the consent screen.
+4. **Create the client.** **Clients** → **Create client** → *Application type*: **Web
+   application** → a *Name* (e.g. `argos-web`), then add:
+   - **Authorized JavaScript origins**: `http://localhost:8000`
+   - **Authorized redirect URIs**: `http://localhost:8000/api/v1/auth/google/callback`
 
-### Choose the PyTorch variant: `cpu` or `cu129`
+   For a deployment, add your real address instead, e.g. `https://argos.company.com` and
+   `https://argos.company.com/api/v1/auth/google/callback`. Rules: `https://` is required
+   except for `localhost`; no raw IP addresses; an origin has no path; a port other than 80/443
+   must be written out. Changes can take from 5 minutes to a few hours to apply.
+5. **Copy the ID and the secret right away.** After **Create**, the dialog shows the
+   **Client ID** (`…apps.googleusercontent.com`) and the **Client secret**. Put them in `.env`
+   as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. **The secret is shown only this once**
+   (later the console shows only its last four characters), so copy it or download the JSON
+   now. Lost it? Open the client → **Add secret**, put the new one in `.env`, then disable and
+   delete the old secret.
 
-PyTorch (used only by Docling to read PDFs) comes in two variants. You pick one, in Docker and
-without Docker alike:
+Common sign-in errors: `redirect_uri_mismatch` (the callback URL is not listed exactly — check
+scheme, host, port), `org_internal` (Internal audience, but the account is outside your
+organisation), `access_denied` (External app in Testing and the account is not a test user).
+
+### Choose the PyTorch variant: `cpu` or `gpu`
+
+PyTorch is used only by Docling, to read PDFs. You pick one variant, in Docker and without
+Docker alike; nothing is detected automatically:
 
 | Variant | Use it when |
 |---|---|
-| `cpu` | Any machine. The default choice. |
-| `cu129` | An NVIDIA GPU whose driver supports CUDA 12.9 |
+| `cpu` | Any machine: no NVIDIA GPU, an AMD/Intel GPU, a Mac, a server without GPU. The safe default. |
+| `gpu` | An NVIDIA GPU with a recent driver. First pick the CUDA build that fits it (next section). |
 
-Check your machine yourself; nothing is detected automatically. Run `nvidia-smi`: if the command
-exists and its header shows **CUDA Version 12.9 or higher** (on Windows: driver ≥ 576.x), you
-can use `cu129`. Otherwise use `cpu`. The GPU only speeds up document parsing; chat, extraction
-and embeddings run through the OpenAI API either way.
+The GPU only speeds up document parsing. Chat, extraction and embeddings run through the OpenAI
+API either way, so `cpu` is a fine choice for most deployments.
+
+### GPU: pick the CUDA build for your machine
+
+The `gpu` variant installs one CUDA build of PyTorch 2.8. Which one works depends on your GPU and
+its driver, so check your own machine:
+
+1. **Look at your GPU and driver.** Run `nvidia-smi` (Windows: in PowerShell or cmd; it comes
+   with the NVIDIA driver). The header shows the GPU name, `Driver Version` and `CUDA Version`
+   (the newest CUDA your driver supports). If `nvidia-smi` is not found, there is no NVIDIA
+   driver: install it from https://www.nvidia.com/drivers, or use `cpu`.
+2. **Pick the build** — the newest one your GPU and driver allow:
+
+   | Build | Minimum driver, Windows / Linux | GPUs |
+   |---|---|---|
+   | `cu129` *(default)* | ≥ 576.02 / ≥ 575.51.03 | Volta and newer: GTX 16xx, RTX 20xx, 30xx, 40xx, 50xx, data-centre GPUs from V100 on |
+   | `cu128` | ≥ 570.65 / ≥ 570.26 | same as `cu129` |
+   | `cu126` | ≥ 560.76 / ≥ 560.28.03 | also Maxwell and Pascal: GTX 9xx, GTX 10xx — **the only build for these**; not RTX 50xx |
+
+   In short: GTX 9xx/10xx → `cu126`. Everything newer → `cu129` if `nvidia-smi` shows CUDA
+   Version 12.9 or higher, else `cu128` (12.8), else `cu126` (12.6), else update the driver.
+   (PyTorch 2.8 dropped Maxwell and Pascal from its CUDA 12.8/12.9 builds — [release
+   notes](https://github.com/pytorch/pytorch/releases/tag/v2.8.0); driver minimums from
+   [NVIDIA](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html).)
+3. **Set it in `pyproject.toml`** — only if you need another build than `cu129`. Change the last
+   part of one URL:
+
+   ```toml
+   [[tool.uv.index]]
+   name = "pytorch-gpu"
+   url = "https://download.pytorch.org/whl/cu129"   # → cu128 or cu126
+   explicit = true
+   ```
+
+   then re-resolve the lock file (requires [uv](https://docs.astral.sh/uv/)):
+
+   ```bash
+   uv lock
+   ```
+
+   Nothing else changes: the extra stays `gpu`, the Docker profile stays `gpu`. Commit the
+   changed `pyproject.toml` and `uv.lock` together if the machine you deploy to needs them.
+4. **Install and check** — with Docker (A) or without (B) below, then:
+
+   ```bash
+   uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+   # Docker:
+   docker compose --profile gpu exec argos-gpu python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+   ```
+
+   You want `2.8.0+cu129 True <your GPU>`. `False` means the driver is too old for the build:
+   update it, or choose an older build. The app still runs (on CPU) in that case.
 
 ### A. Docker
 
@@ -231,13 +319,16 @@ profile per variant:
 
 ```bash
 docker compose --profile cpu up -d --build     # image argos:cpu
-docker compose --profile gpu up -d --build     # image argos:cu129
+docker compose --profile gpu up -d --build     # image argos:gpu (NVIDIA)
 ```
 
-The `gpu` profile also needs the NVIDIA Container Toolkit on Linux, or Docker Desktop with the
-WSL2 backend on Windows. Its image is large: plan for roughly 15 GB of free space on the drive
-that holds Docker's data (on Windows usually `C:`); if the disk fills mid-build, Docker Desktop
-crashes with `failed to receive status: ... EOF`.
+Use the same `--profile` for every other command (`logs`, `down`, …). For `gpu`, the host needs
+the NVIDIA driver, plus the [NVIDIA Container
+Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) on Linux, or Docker
+Desktop with the WSL2 backend on Windows. No CUDA install is needed in the image: the PyTorch
+wheels bring their own CUDA libraries. The `gpu` image is large: plan for roughly 15 GB of free
+space on the drive that holds Docker's data (on Windows usually `C:`); if the disk fills
+mid-build, Docker Desktop crashes with `failed to receive status: ... EOF`.
 
 The container runs as an unprivileged user (UID 1000) and keeps all data in `./data`, which is
 mounted from the host. On a Linux host where your user is not UID 1000, make the folder
@@ -250,14 +341,12 @@ Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) (it insta
 Python 3.11+ itself if needed). From the project folder:
 
 ```bash
-uv sync --extra cpu          # or: uv sync --extra cu129
+uv sync --extra cpu          # or: uv sync --extra gpu
 uv run uvicorn app.main:app --reload
 ```
 
-`uv sync` creates `.venv/` with exactly the versions in `uv.lock`. Check what you got:
-`uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available())"`
-(`2.8.0+cpu False`, or `2.8.0+cu129 True` with a working GPU and driver). Intel Macs have no
-PyTorch 2.8 build: use Docker there.
+`uv sync` creates `.venv/` with exactly the versions in `uv.lock`. Intel Macs have no PyTorch 2.8
+build: use Docker there.
 
 > The app must run as **one process** (no `--workers N`): the document worker runs inside
 > the app, and ChromaDB's local client is not safe across processes.
@@ -373,11 +462,11 @@ Add the profile you started with (`--profile cpu` or `--profile gpu`) to every c
 | The app does not start: "Required settings missing in .env" | Fill in every value listed in Step 1 |
 | Google says `redirect_uri_mismatch` | Add `http://<host>/api/v1/auth/google/callback` to the OAuth client's redirect URIs |
 | Sign-in fails with "This Google account is not allowed to sign in" | The account does not match `ALLOWED_GOOGLE_DOMAIN` (a Workspace domain, or `gmail.com`) |
-| `torch.cuda.is_available()` is `False` with `cu129` | Update the NVIDIA driver (CUDA 12.9 needs ≥ 576.x on Windows), or use the `cpu` variant; the app still runs on CPU |
+| `torch.cuda.is_available()` is `False` with `gpu` | The driver is older than the CUDA build: update it, or pick an older build (see *GPU: pick the CUDA build*); the app still runs on CPU |
 | First PDF upload is slow | Docling loads/downloads its models on first use; later runs use the cache |
 | Docker: `PermissionError` / `attempt to write a readonly database` under `/app/data` | The host's `./data` is not writable by UID 1000: `sudo chown -R 1000:1000 data` |
 | `--profile gpu` fails with "could not select device driver" | The NVIDIA Container Toolkit / WSL2 GPU support is not installed — use `--profile cpu` |
-| `uv sync` refuses `--extra cpu --extra cu129` | The variants exclude each other: pick one |
+| `uv sync` refuses `--extra cpu --extra gpu` | The variants exclude each other: pick one |
 
 ---
 
@@ -441,7 +530,7 @@ Rules:
 ### Dependencies
 
 - `pyproject.toml` — the **direct** dependencies (edit these), the PyTorch variants as the
-  mutually exclusive extras `cpu` and `cu129` (each mapped to its PyTorch index), the dev group
+  mutually exclusive extras `cpu` and `gpu` (each mapped to its PyTorch index), the dev group
   (ruff) and the ruff config.
 - `uv.lock` — every resolved version, for every OS and both variants. Commit it; Docker installs
   it with `uv sync --frozen`, so a build never re-resolves.
@@ -456,9 +545,8 @@ uv lock                      # re-resolve; keeps the other locked versions
 uv sync --extra cpu          # apply it to your .venv
 ```
 
-To move to another CUDA version, change the `cu129` extra and its index in `pyproject.toml`
-(the extra name, `[tool.uv.sources]`, `[[tool.uv.index]]`), the Dockerfile default stays `cpu`,
-and the `gpu` service in `docker-compose.yml`.
+To use another CUDA build for `gpu`, change the `pytorch-gpu` index URL and run `uv lock`
+(§5, *GPU: pick the CUDA build*).
 
 Linting: `uv run ruff check app eval`.
 
