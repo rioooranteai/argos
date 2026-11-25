@@ -557,43 +557,18 @@ Add a new migration at the end of the list; never edit one that has already ship
 
 ---
 
-## 9. Reliability Test
+## 9. Evaluation
 
-The same question was asked **3 times in a row** to check how consistent the generated SQL and
-the answers are, once in **Indonesian** and once in **English**.
+[`eval/`](eval/README.md) holds a benchmark of the whole pipeline on real competitor documents:
+document processing, information extraction (against hand-labelled references, including a
+frozen held-out set), query routing, NL2SQL execution accuracy, latency and consistency over
+repeated runs. It runs the real application code, in its own data folder:
 
-> This test was run on an earlier version of Argos, before notebooks and citations, when the
-> `features` table used `competitor_name` and `feature_name` (now `brand_name` and
-> `product_name`). The answers are kept as they were produced.
+```bash
+uv run python eval/run_eval.py --repeats 3
+```
 
-### Table A — Indonesian prompt (3 attempts)
-
-*Prompt: "Coba cari tahu tentang Scopely, apa kelebihan atau kekurangan mereka?"*
-(*"Find out about Scopely — what are their strengths or weaknesses?"*)
-
-| Attempt | Generated SQL | AI Answer (Summary) |
-|---|---|---|
-| #1 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Scopely unggul sebagai data source Star Trek™ Fleet Command dan MONOPOLY GO! raih $1.2B di 2023. Tidak ada kekurangan tercantum. |
-| #2 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | MONOPOLY GO! menduduki puncak growth chart revenue 2023 ($1.2B). Scopely juga menjadi basis data case study. Kekurangan: tidak terlihat. |
-| #3 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | Dua kelebihan utama: revenue leadership (MONOPOLY GO! $1.2B) dan data source attribution. Kekurangan tidak tercantum di data. |
-
-### Table B — English prompt (3 attempts)
-
-*Prompt: "Find out about Scopely, what are their strengths and weaknesses?"*
-
-| Attempt | Generated SQL | AI Answer (Summary) |
-|---|---|---|
-| #1 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Two strengths: data source for Star Trek™ case study + MONOPOLY GO! revenue $1.2B topped 2023 chart. No weaknesses visible. |
-| #2 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name;` | Scopely shows two clear strengths. MONOPOLY GO! generated $1.2B in 2023 and topped the revenue growth chart. No weaknesses shown. |
-| #3 | `SELECT competitor_name, feature_name, advantages, disadvantages FROM features WHERE competitor_name LIKE '%Scopely%' OR feature_name LIKE '%Scopely%' ORDER BY competitor_name, feature_name` | Strengths: data source attribution + MONOPOLY GO! $1.2B revenue leadership 2023. Weaknesses: none visible in current data. |
-
-### Conclusions
-
-- **Consistent SQL:** all 6 attempts produced the same query.
-- **Language follows the user:** the answer came back in the language of the question.
-- **Consistent content:** the key facts (MONOPOLY GO! $1.2B, Star Trek™ data source) appeared
-  in every answer.
-- **Natural variation:** sentence structure varied slightly, as expected from a generative model.
+The latest results and the method are in [`eval/README.md`](eval/README.md).
 
 ---
 
