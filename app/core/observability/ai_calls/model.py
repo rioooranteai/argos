@@ -4,11 +4,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
 
-Purpose = Literal[
-    "router", "nl2sql", "synthesizer", "title", "vision", "extraction", "profile", "embedding", "stt", "tts"
-]
-
-
 @dataclass
 class LLMCall:
     """One call to an AI service. Never contains prompts or document content."""
