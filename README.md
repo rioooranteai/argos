@@ -568,7 +568,23 @@ repeated runs. It runs the real application code, in its own data folder:
 uv run python eval/run_eval.py --repeats 3
 ```
 
-The latest results and the method are in [`eval/README.md`](eval/README.md).
+### Latest results (24 November 2026)
+
+Run [`20261124_150030`](eval/results/20261124_150030/report.md): 22 PDFs (229 pages, English and
+Indonesian), 31 chat questions and 18 NL2SQL questions, each asked 3 times in a new conversation.
+
+| Area | Metric | Result |
+|---|---|---|
+| Document processing | documents processed to `ready` | **22 / 22 (100%)** |
+| Information extraction (notebook B) | entity-level micro F1 | **0.984** |
+| Information extraction (held-out, frozen) | entity-level micro F1 · sample products found | **0.829** · **41 / 57** |
+| Query routing | accuracy (31 questions) | **93.5%** |
+| SQL generation | execution accuracy, 18 questions × 3 runs | **100%** |
+| Consistency | same route / same retrieval / same SQL answer over 3 runs | **100% / 96.8% / 100%** |
+| Performance | end-to-end latency mean / p50 / p95 | **4.31 s / 4.09 s / 7.25 s** |
+| Cost | per chat question · per processed page | **$0.00082** · **$0.0015** |
+
+The datasets, the method per metric and the full tables are in [`eval/README.md`](eval/README.md).
 
 ---
 
