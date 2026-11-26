@@ -94,15 +94,6 @@ class UnsupportedLanguageError(SpeechError):
         )
 
 
-class ProviderUnavailableError(SpeechError):
-    """The provider cannot be reached / its health check failed."""
-
-    def __init__(self, provider: str, reason: str = ""):
-        super().__init__(
-            f"Provider '{provider}' is unavailable. {reason}".strip()
-        )
-
-
 class BaseSTT(ABC):
     """
     The required contract for every STT provider.
