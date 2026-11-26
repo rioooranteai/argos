@@ -15,7 +15,6 @@ DOMPurify (an answer is LLM output and the LLM reads uploaded documents).
 """
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Request
