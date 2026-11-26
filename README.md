@@ -478,8 +478,8 @@ signed-in user. Full details are in `/docs`.
 | Area | Endpoints |
 |---|---|
 | Auth | `GET /api/v1/auth/google/login`, `GET /api/v1/auth/google/callback`, `POST /api/v1/auth/logout`, `GET /api/v1/users/me` |
-| Library | `/api/v1/library/documents` (upload, search, details, rename, delete), `.../versions` (new version, delete version), `/api/v1/library/versions/{id}` (processing status), `/api/v1/library/pending/{id}/resolve` (similar upload) |
-| Notebooks | `/api/v1/notebooks` (list, create, rename, delete), `.../sources` (add from Library, upload, check/uncheck, update version, remove) |
+| Library | `/api/v1/library/documents` (search, details, rename, delete), `.../versions` (new version, delete version) |
+| Notebooks | `/api/v1/notebooks` (list, create, rename, delete), `.../sources` (add from Library, upload, resolve a similar upload, check/uncheck, update version, remove) |
 | Chat | `POST /api/v1/notebooks/{id}/messages`, `.../conversations` (list, read, rename, delete), `.../messages/{id}/retry` |
 | Voice | `POST /api/v1/voice/stt`, `POST /api/v1/voice/tts` |
 | Admin | `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/{id}` |

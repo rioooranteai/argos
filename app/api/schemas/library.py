@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.services.library.model import DocumentListItem, DocumentVersion, UploadFileResult
+from app.services.library.model import DocumentListItem, DocumentVersion
 
 
 class VersionOut(BaseModel):
@@ -79,10 +79,6 @@ class DocumentOut(BaseModel):
 
 class DocumentDetailOut(DocumentOut):
     versions: list[VersionOut]
-
-
-class UploadBatchOut(BaseModel):
-    results: list[UploadFileResult]
 
 
 class ResolvePendingRequest(BaseModel):

@@ -8,8 +8,6 @@ from app.api.schemas.library import (
     DocumentDetailOut,
     DocumentOut,
     RenameDocumentRequest,
-    ResolvePendingRequest,
-    UploadBatchOut,
     VersionOut,
 )
 from app.services.library.model import UploadFileResult
@@ -17,38 +15,6 @@ from app.services.library.service import LibraryService
 from app.services.user.model import CurrentUser
 
 router = APIRouter(prefix="/api/v1/library", tags=["Library"])
-
-
-@router.post(
-    "/documents",
-    status_code=status.HTTP_202_ACCEPTED,
-    summary="Upload new documents to the Library (processed in the background)",
-    dependencies=[Depends(rate_limit("upload"))],
-)
-async def upload_documents(
-    files: list[UploadFile] = File(...),
-    user: CurrentUser = Depends(get_current_user),
-    svc: LibraryService = Depends(get_library_service),
-) -> UploadBatchOut:
-    """Result per file: `queued` (added to the queue), `existing` (an identical file
-    already exists and is reused without reprocessing), `similar` (resembles a Library
-    document; waiting for a choice via `POST /pending/{pending_id}/resolve`), or `rejected`."""
-    return UploadBatchOut(results=await svc.upload_documents(user, files))
-
-
-@router.post(
-    "/pending/{pending_id}/resolve",
-    status_code=status.HTTP_202_ACCEPTED,
-    summary="Similar upload: make it a new version of the similar document, or a separate document",
-    dependencies=[Depends(rate_limit("upload"))],
-)
-async def resolve_pending(
-    pending_id: str,
-    body: ResolvePendingRequest,
-    user: CurrentUser = Depends(get_current_user),
-    svc: LibraryService = Depends(get_library_service),
-) -> UploadFileResult:
-    return await svc.resolve_pending(user, pending_id, body.action)
 
 
 @router.post(
@@ -126,12 +92,3 @@ def delete_version(
 ) -> Response:
     svc.delete_version(user, document_id, version_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/versions/{version_id}", summary="Processing status of a version (for polling)")
-def get_version_status(
-    version_id: str,
-    _: CurrentUser = Depends(get_current_user),
-    svc: LibraryService = Depends(get_library_service),
-) -> VersionOut:
-    return VersionOut.from_version(svc.get_version(version_id))
