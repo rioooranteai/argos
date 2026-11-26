@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
 
+
 @dataclass
 class LLMCall:
     """One call to an AI service. Never contains prompts or document content."""
