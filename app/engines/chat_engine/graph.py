@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
 
+from app.engines.chat_engine.nodes.history_trimmer import history_trimmer_node
 from app.engines.chat_engine.nodes.router import router_node
 from app.engines.chat_engine.nodes.sql_node import sql_node
 from app.engines.chat_engine.nodes.synthesizer import synthesizer_node
@@ -76,6 +77,8 @@ def build_graph(
     builder = StateGraph(ChatState)
 
     # --- Register every node ---
+    # The history from the database is trimmed once; router & synthesizer read the same messages.
+    builder.add_node("history_trimmer_node", history_trimmer_node)
     # A small model is enough for the router (classification); the synthesizer uses the chat model.
     builder.add_node("router_node", partial(router_node, llm=router_llm or llm))
     builder.add_node("sql_node", partial(sql_node, nl2sql_svc=nl2sql_svc))
@@ -83,8 +86,9 @@ def build_graph(
     builder.add_node("synthesizer_node", partial(_synthesizer_wrapper, llm=llm))
 
     # --- Define the edges ---
-    # START → router
-    builder.add_edge(START, "router_node")
+    # START → history trim → router
+    builder.add_edge(START, "history_trimmer_node")
+    builder.add_edge("history_trimmer_node", "router_node")
 
     # router → (sql | vector | both | synthesizer) via conditional
     builder.add_conditional_edges(
