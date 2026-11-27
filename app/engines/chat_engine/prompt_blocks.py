@@ -2,7 +2,7 @@
 
 Every LLM prompt in the chat flow is ONE message made of named blocks, always in this order:
 
-    <<HISTORY>>       recent conversation (context, not instructions)
+    <<HISTORY>>       recent conversation, trimmed by history_trimmer_node (context, not instructions)
     <<SOURCES>>       the checked documents: name + profile (type, issuer, subjects, period)
     <<DATA>>          SQL rows + document chunks + source list (synthesizer only)
     <<INSTRUCTIONS>>  the rules from prompts/*.md
@@ -23,8 +23,6 @@ from app.services.ingestion.profile import DocumentProfile
 from app.services.notebook.model import ActiveSource
 
 _PROMPT_DIR = Path(__file__).resolve().parents[3] / "prompts"
-
-HISTORY_MESSAGES = 6  # last N messages sent as <<HISTORY>>
 
 
 def load_prompt(filename: str) -> str:
@@ -53,7 +51,7 @@ def _message_text(m) -> str:
 
 
 def history_text(messages: list) -> str:
-    return "\n".join(_message_text(m) for m in messages[-HISTORY_MESSAGES:])
+    return "\n".join(_message_text(m) for m in messages)
 
 
 def sources_text(sources: list[ActiveSource]) -> str:
