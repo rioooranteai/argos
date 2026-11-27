@@ -226,8 +226,13 @@ class AppConfig:
     # Time zone for the <<CURRENT_DATE>> block the router & synthesizer receive.
     APP_TIMEZONE: str = "Asia/Jakarta"
     APP_TIMEZONE_LABEL: str = "WIB"
-    # Token budget of the conversation (history + current question) the router & synthesizer see.
-    # Older messages are dropped first; counted approximately (~4 chars per token).
+    # Conversation each LLM sees (history + current question), counted approximately
+    # (~4 chars per token); older messages are dropped first. The router only picks the route and
+    # rewrites follow-ups, so it gets the last turns with each answer cut short.
+    ROUTER_HISTORY_TURNS: int = 2
+    ROUTER_HISTORY_ANSWER_CHARS: int = 300
+    ROUTER_HISTORY_MAX_TOKENS: int = 512
+    SYNTH_HISTORY_MAX_TOKENS: int = 1024
     CHAT_HISTORY_MAX_TOKENS: int = 1024
 
     # ── Logging & observability ──────────────────────────────────────

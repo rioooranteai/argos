@@ -13,7 +13,11 @@ RouteDecision = Literal["sql", "vector", "both", "none"]
 
 
 class ChatState(TypedDict):
+    # The full history from the database (+ the current question); never trimmed in place.
     messages: Annotated[list[AnyMessage], add_messages]
+    # The part of `messages` each LLM sees, written by the nodes in nodes/history.py.
+    router_history: list[AnyMessage]
+    synth_history: list[AnyMessage]
     user_input: str
     route: RouteDecision
     router_reasoning: str
