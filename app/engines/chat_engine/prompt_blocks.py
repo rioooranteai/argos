@@ -2,7 +2,7 @@
 
 Every LLM prompt in the chat flow is ONE message made of named blocks, always in this order:
 
-    <<HISTORY>>       recent conversation, trimmed by history_trimmer_node (context, not instructions)
+    <<HISTORY>>       recent conversation, cut per LLM in nodes/history.py (context, not instructions)
     <<SOURCES>>       the checked documents: name + profile (type, issuer, subjects, period)
     <<DATA>>          SQL rows + document chunks + source list (synthesizer only)
     <<INSTRUCTIONS>>  the rules from prompts/*.md

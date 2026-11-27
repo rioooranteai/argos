@@ -233,7 +233,6 @@ class AppConfig:
     ROUTER_HISTORY_ANSWER_CHARS: int = 300
     ROUTER_HISTORY_MAX_TOKENS: int = 512
     SYNTH_HISTORY_MAX_TOKENS: int = 1024
-    CHAT_HISTORY_MAX_TOKENS: int = 1024
 
     # ── Logging & observability ──────────────────────────────────────
     LOG_FORMAT: str = "auto"          # "auto" (text in a terminal, json otherwise) | "json" | "text"
