@@ -226,6 +226,9 @@ class AppConfig:
     # Time zone for the <<CURRENT_DATE>> block the router & synthesizer receive.
     APP_TIMEZONE: str = "Asia/Jakarta"
     APP_TIMEZONE_LABEL: str = "WIB"
+    # Token budget of the conversation (history + current question) the router & synthesizer see.
+    # Older messages are dropped first; counted approximately (~4 chars per token).
+    CHAT_HISTORY_MAX_TOKENS: int = 1024
 
     # ── Logging & observability ──────────────────────────────────────
     LOG_FORMAT: str = "auto"          # "auto" (text in a terminal, json otherwise) | "json" | "text"
