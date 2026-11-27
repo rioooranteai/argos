@@ -34,7 +34,7 @@ def _record_decision(result: dict) -> None:
 async def router_node(state: dict, llm: BaseLLM) -> dict:
     # One message, fixed block order: HISTORY → SOURCES → INSTRUCTIONS → QUESTION → CURRENT_DATE.
     prompt = build_prompt(
-        history=state.get("messages", []),
+        history=state.get("router_history", []),
         sources=state.get("sources") or [],
         instructions=_ROUTER_INSTRUCTIONS,
         question=state["user_input"],

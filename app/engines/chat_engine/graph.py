@@ -7,7 +7,7 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
 
-from app.engines.chat_engine.nodes.history_trimmer import history_trimmer_node
+from app.engines.chat_engine.nodes.history import router_history_node, synth_history_node
 from app.engines.chat_engine.nodes.router import router_node
 from app.engines.chat_engine.nodes.sql_node import sql_node
 from app.engines.chat_engine.nodes.synthesizer import synthesizer_node
@@ -44,7 +44,7 @@ def _route_condition(state: ChatState) -> list[str]:
         return ["sql_node", "vector_node"]  # run in parallel
     else:
         # route == "none" → straight to the synthesizer (it will answer "no data")
-        return ["synthesizer_node"]
+        return ["synth_history_node"]
 
 
 def _after_sql(state: ChatState) -> str:
@@ -59,7 +59,7 @@ def _after_sql(state: ChatState) -> str:
     if state.get("route") == "sql" and sql_result is not None and sql_result.status == "empty":
         logger.info("[graph] SQL returned no rows; falling back to document search.")
         return "vector_node"
-    return "synthesizer_node"
+    return "synth_history_node"
 
 
 def build_graph(
@@ -77,8 +77,9 @@ def build_graph(
     builder = StateGraph(ChatState)
 
     # --- Register every node ---
-    # The history from the database is trimmed once; router & synthesizer read the same messages.
-    builder.add_node("history_trimmer_node", history_trimmer_node)
+    # Each LLM node gets its own cut of the history (`messages` stays whole).
+    builder.add_node("router_history_node", router_history_node)
+    builder.add_node("synth_history_node", synth_history_node)
     # A small model is enough for the router (classification); the synthesizer uses the chat model.
     builder.add_node("router_node", partial(router_node, llm=router_llm or llm))
     builder.add_node("sql_node", partial(sql_node, nl2sql_svc=nl2sql_svc))
@@ -86,9 +87,9 @@ def build_graph(
     builder.add_node("synthesizer_node", partial(_synthesizer_wrapper, llm=llm))
 
     # --- Define the edges ---
-    # START → history trim → router
-    builder.add_edge(START, "history_trimmer_node")
-    builder.add_edge("history_trimmer_node", "router_node")
+    # START → router history → router
+    builder.add_edge(START, "router_history_node")
+    builder.add_edge("router_history_node", "router_node")
 
     # router → (sql | vector | both | synthesizer) via conditional
     builder.add_conditional_edges(
@@ -97,7 +98,7 @@ def build_graph(
         {
             "sql_node": "sql_node",
             "vector_node": "vector_node",
-            "synthesizer_node": "synthesizer_node",
+            "synth_history_node": "synth_history_node",
         },
     )
 
@@ -106,11 +107,12 @@ def build_graph(
     builder.add_conditional_edges(
         "sql_node",
         _after_sql,
-        {"vector_node": "vector_node", "synthesizer_node": "synthesizer_node"},
+        {"vector_node": "vector_node", "synth_history_node": "synth_history_node"},
     )
-    builder.add_edge("vector_node", "synthesizer_node")
+    builder.add_edge("vector_node", "synth_history_node")
 
-    # synthesizer → END
+    # synth history → synthesizer → END (sql & vector both lead here, so it runs once)
+    builder.add_edge("synth_history_node", "synthesizer_node")
     builder.add_edge("synthesizer_node", END)
 
     compiled = builder.compile()

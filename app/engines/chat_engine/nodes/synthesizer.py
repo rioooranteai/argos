@@ -128,7 +128,7 @@ def _chunk_refs(vector_result: list | None, registry: CitationRegistry) -> list[
 async def synthesizer_node(state: dict, llm: BaseLLM) -> dict:
     clock = Stopwatch()
     user_input = state["user_input"]
-    messages = state.get("messages", [])
+    messages = state.get("synth_history", [])
     registry = CitationRegistry(state.get("sources") or [])
 
     ran, failed = _retrieval_status(state)

@@ -112,6 +112,8 @@ class ChatEngine:
         initial_state = {
             "user_input": user_input,
             "messages": prior,
+            "router_history": [],
+            "synth_history": [],
             "route": "none",
             "router_reasoning": "",
             "standalone_question": None,
